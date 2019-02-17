@@ -21,6 +21,12 @@ int main()
 		0x8D, 1, 0    // sta RESULTAT_HI  ; Lagra ackumulatorn i högsta byten av resultatet
 	};
 
+	std::vector<std::uint8_t> program2 = { // Loop
+		0xA9, 10,
+		0x8D, 0, 0,
+		0x4C, 0, 0
+	};
+
 	CPU cpu;
 	cpu.LoadProgram(program);
 

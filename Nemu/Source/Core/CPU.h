@@ -104,6 +104,11 @@ public:
 			return true;
 		}
 
+		case 0x4C: { // JMP Absolute
+			reg_pc = *(std::uint16_t*)(instruction_memory.data() + reg_pc + 1);
+			return true;
+		}
+
 		default:
 			return false;
 		};

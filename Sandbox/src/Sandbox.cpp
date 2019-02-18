@@ -1,5 +1,6 @@
-#include "pch.h"
-#include "Core/CPU.h"
+#include "Nemu/CPU.h"
+#include "Nemu/System.h"
+#include <iostream>
 //#include "SFML/Window.hpp"
 
 int main()
@@ -30,6 +31,11 @@ int main()
 		0x4C, 0x02, 0x80    //9  JMP
 							//12 END
 	};
+
+	nemu::WriteFile("add.bin", (char*)program.data(), program.size());
+	nemu::WriteFile("loop.bin", (char*)program2.data(), program.size());
+
+	/*
 
 	CPU cpu;
 	cpu.LoadProgram(program, 0x8000); // 0x8000 ROM?

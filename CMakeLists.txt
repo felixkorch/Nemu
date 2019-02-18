@@ -7,3 +7,4 @@ if(!MSVC)
 endif()
 
 add_subdirectory(Nemu)
+add_subdirectory(Sandbox)

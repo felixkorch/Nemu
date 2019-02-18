@@ -79,7 +79,7 @@ namespace nemu {
 			}
 			case 0xA0: { // LDY Immediate
 				reg_y = random_access_memory[reg_pc + 1];
-				reg_status[S_NEG] = (reg_y & B_8 == B_8) ? 1 : 0; // Negative if 8th bit is set
+				reg_status[S_NEG] = (reg_y & B_8) == B_8 ? 1 : 0; // Negative if 8th bit is set
 				reg_status[S_ZERO] = reg_y == 0 ? 1 : 0;
 				reg_pc += 2;
 				return true;
@@ -91,7 +91,7 @@ namespace nemu {
 			}
 			case 0xA9: { // LDA Immediate
 				reg_a = random_access_memory[reg_pc + 1];
-				reg_status[S_NEG] = (reg_a & B_8 == B_8) ? 1 : 0; // Negative if 8th bit is set
+				reg_status[S_NEG] = (reg_y & B_8) == B_8 ? 1 : 0;
 				reg_status[S_ZERO] = reg_a == 0 ? 1 : 0;
 				reg_pc += 2;
 				return true;
@@ -128,7 +128,7 @@ namespace nemu {
 			}
 			case 0xA2: { // LDX Immediate
 				reg_x = random_access_memory[reg_pc + 1];
-				reg_status[S_NEG] = (reg_x & B_8 == B_8) ? 1 : 0; // Negative if 8th bit is set
+				reg_status[S_NEG] = (reg_x & B_8) == B_8 ? 1 : 0; // Negative if 8th bit is set
 				reg_status[S_ZERO] = reg_x == 0 ? 1 : 0;
 				reg_pc += 2;
 				return true;

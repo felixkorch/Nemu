@@ -5,6 +5,7 @@
 
 int main()
 {
+	/*
 	std::uint16_t A = 20;
 	std::uint16_t B = 30;
 	std::uint8_t A_LOW = A & 0xff;
@@ -33,19 +34,14 @@ int main()
 	};
 
 	nemu::WriteFile("add.bin", (char*)program.data(), program.size());
-	nemu::WriteFile("loop.bin", (char*)program2.data(), program.size());
+	nemu::WriteFile("loop.bin", (char*)program2.data(), program.size()); */
 
-	/*
+	auto program = nemu::ReadFile<std::vector<std::uint8_t>>("add.bin");
 
-	CPU cpu;
+	nemu::CPU cpu;
 	cpu.LoadProgram(program, 0x8000); // 0x8000 ROM?
-
 	auto ram = cpu.GetRAM();
-	std::cout << A << " + " << B << " = " << *(std::uint16_t*)ram.data() << std::endl;
-	/*
-	for (unsigned int i = 0; i < 10; i++) {
-		std::cout << +ram[i] << std::endl;
-	} */
+	std::cout << "20 + 30 = " << *(std::uint16_t*)ram.data() << std::endl;
 
 	std::cin.get();
 }

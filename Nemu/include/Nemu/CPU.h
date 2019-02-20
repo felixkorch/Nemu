@@ -77,6 +77,7 @@ namespace nemu {
 
 		bool Decode()
 		{
+			std::cout << "Executing op-code: " << std::hex << "0x" << +memory[reg_pc] << std::endl;
 			switch (memory[reg_pc]) {
 			case 0x0: { // BRK
 				reg_status[S_IRQ_DISABLE] = 1;
@@ -426,7 +427,9 @@ namespace nemu {
 			}
 			case 0x20: { // JSR
 				uint16 offset = *(uint16*)(memory.data() + reg_pc + 1);
-				stack.Push(reg_pc);
+				uint16 jmp_adr = reg_pc + 2;
+				stack.Push(jmp_adr);
+				stack.Push((jmp_adr >> 8));
 				reg_pc = offset;
 				return true;
 			}
@@ -457,8 +460,10 @@ namespace nemu {
 				return true;
 			}
 			case 0x60: { // RTS
-				reg_pc = stack.Pop();
-				reg_pc++;
+				uint16 reg_pc_high = stack.Pop();
+				uint16 reg_pc_low = stack.Pop();
+				uint16 return_adr = (reg_pc_high << 8) | reg_pc_low;
+				reg_pc = return_adr + 1;
 				return true;
 			}
 			case 0xF0: { // BEQ
@@ -732,8 +737,6 @@ namespace nemu {
 		void LoadProgram(std::vector<uint8> program, uint16 offset)
 		{
 			std::copy(program.begin(), program.end(), memory.begin() + offset); // Copy the program into RAM
-			memory[0xFFFC] = 0x00; // temp
-			memory[0xFFFD] = 0x80; // temp
 			reg_pc = *(uint16*)(memory.data() + 0xFFFC); // Load PC with the reset vector
 
 			while (reg_pc >= 0 && reg_pc < offset + program.size()) { // Execute while PC is valid
@@ -742,8 +745,6 @@ namespace nemu {
 					break;
 				}
 			}
-
-			std::cout << "Program done executing" << std::endl;
 		}
 
 		std::vector<uint8>& GetRAM()
@@ -783,6 +784,8 @@ private:
 		reg_status[S_N] = (result & B_7) == B_7 ? 1 : 0;                     // If 7th bit is 1, set negative
 		reg_a = result & 0xFF;                                               // 8 LSB -> A
 		reg_status[S_ZERO] = reg_a == 0;                                     // Set status zero
+
+		std::cout << "Flags after add:" << std::endl;
 		PrintRegisters();
 	}
 
@@ -795,6 +798,8 @@ private:
 		reg_status[S_N] = (result & B_7) == B_7 ? 1 : 0;                           // If 7th bit is 1, set negative
 		reg_a = result & 0xFF;                                                     // 8 LSB -> A
 		reg_status[S_ZERO] = reg_a == 0;                                           // Set status zero
+
+		std::cout << "Flags after sub:" << std::endl;
 		PrintRegisters();
 	}
 

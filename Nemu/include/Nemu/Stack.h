@@ -22,17 +22,17 @@ namespace nemu {
 				return false;
 			}
 			*memory-- = data;
-			sp--;
+			--sp;
 			return true;
 		}
 
 		T Pop()
 		{
-			if (sp == size - 1) {
+			if (sp == size) {
 				throw std::exception("Nothing on stack");
 			}
-			sp++;
-			return *memory++;
+			++sp;
+			return *++memory;
 		}
 
 		bool isEmpty()

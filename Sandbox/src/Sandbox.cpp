@@ -22,7 +22,7 @@ int main()
 	ram[1] = B;
 
 	cpu.LoadProgram(program, 0x8000);
-	std::cout << "B - A = " << +(int8)ram[2] << std::endl;
+	std::cout << +(int8)B << " - " << +(int8)A << " = " << +(int8)ram[2] << std::endl;
 
 	std::cin.get();
 }

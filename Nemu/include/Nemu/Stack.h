@@ -1,39 +1,46 @@
 #pragma once
-#include <cstdint>
+#include <vector>
 
 namespace nemu {
 
-	template <int size>
+	template <class T, unsigned int size>
 	class Stack {
 	private:
-		std::uint8_t memory[size];
-		int sp;
+		unsigned int sp;
+		T* memory;
 	public:
 
-		Stack()
-			: sp(-1) {}
+		Stack(T* mem)
+			: sp(size), memory(mem) {}
 
-		bool Push(std::uint8_t byte)
+		bool Push(T data)
 		{
-			if (sp >= (size - 1)) {
+			if (sp == 0) {
 				std::cout << "Stack Overflow" << std::endl;
 				return false;
 			}
-			memory[++sp] = byte;
+			*memory-- = data;
+			sp--;
 			return true;
 		}
 
-		std::uint8_t Pop()
+		T Pop()
 		{
-			if (sp < 0) {
-				throw std::exception("Nothing on stack"); // Evil?
+			if (sp == size - 1) {
+				throw std::exception("Nothing on stack");
 			}
-			return memory[sp--];
+			sp++;
+			return *memory++;
 		}
 
 		bool isEmpty()
 		{
-			return (sp < 0);
+			return (sp == 0);
+		}
+
+		std::uint8_t GetSP()
+		{
+			return sp & 0xFF;
 		}
 	};
 

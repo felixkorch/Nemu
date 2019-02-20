@@ -1,47 +1,28 @@
 #include "Nemu/CPU.h"
 #include "Nemu/System.h"
-#include <iostream>
-//#include "SFML/Window.hpp"
+
+using nemu::uint8;
+using nemu::int8;
 
 int main()
 {
-	/*
-	std::uint16_t A = 20;
-	std::uint16_t B = 30;
-	std::uint8_t A_LOW = A & 0xff;
-	std::uint8_t A_HIGH = A >> 8;
-	std::uint8_t B_LOW = B & 0xff;
-	std::uint8_t B_HIGH = B >> 8;
-
-	std::vector<std::uint8_t> program = {
-		0xA9, A_LOW,  // lda TAL1_LO
+	std::vector<uint8> program = { // Subtraction(zpg[1] - zpg[0])
+		0xA5, 1,      // lda  zpg[1]
 		0x18,         // clc
-		0x69, B_LOW,  // adc TAL2_LO
-		0x8D, 0, 0,   // sta RESULTAT_LO
-		0xA9, A_HIGH, // lda TAL1_HI
-		0x69, B_HIGH, // adc TAL2_HI
-		0x8D, 1, 0    // sta RESULTAT_HI
+		0xE5, 0,      // sbc  zpg[0]
+		0x85, 2,      // sta  zpg[2]
 	};
-
-	std::vector<std::uint8_t> program2 = { // Loop
-		0xA2, 10,			//0  LDX
-		0x8A,				//2  TXA
-		0x9D, 0, 0,		    //3  STA, X
-		0xCA,				//6  DEX
-		0xF0, 5,			//7  BEQ
-		0x4C, 0x02, 0x80    //9  JMP
-							//12 END
-	};
-
-	nemu::WriteFile("add.bin", (char*)program.data(), program.size());
-	nemu::WriteFile("loop.bin", (char*)program2.data(), program.size()); */
-
-	auto program = nemu::ReadFile<std::vector<std::uint8_t>>("add.bin");
 
 	nemu::CPU cpu;
-	cpu.LoadProgram(program, 0x8000); // 0x8000 ROM?
-	auto ram = cpu.GetRAM();
-	std::cout << "20 + 30 = " << *(std::uint16_t*)ram.data() << std::endl;
+	std::vector<uint8>& ram = cpu.GetRAM();
+
+	uint8 B = -80; // B -> zpg[1]
+	uint8 A = -5;  // A -> zpg[0]
+	ram[0] = A;
+	ram[1] = B;
+
+	cpu.LoadProgram(program, 0x8000);
+	std::cout << "B - A = " << +(int8)ram[2] << std::endl;
 
 	std::cin.get();
 }

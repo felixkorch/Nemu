@@ -13,6 +13,17 @@ int main()
 		0x85, 2,      // sta  zpg[2]
 	};
 
+	std::vector<uint8> subroutine = {
+		0x85, 0xEE,   // sta  zpg[10] (sub routine)
+		0x60,         // Return to (label A)
+		0xA5, 1,      // lda  zpg[1]
+		0x20, 0x80, 0,// JSR
+		0x18,         // clc (label A)
+		0xE5, 0,      // sbc  zpg[0]
+		0x85, 2,	  // sta  zpg[2]
+
+	};
+
 	nemu::CPU cpu;
 	std::vector<uint8>& ram = cpu.GetRAM();
 
@@ -21,8 +32,10 @@ int main()
 	ram[0] = A;
 	ram[1] = B;
 
-	cpu.LoadProgram(program, 0x8000);
-	std::cout << +(int8)B << " - " << +(int8)A << " = " << +(int8)ram[2] << std::endl;
+	cpu.LoadProgram(subroutine, 0x8002);
+	for (int i = 0; i < 15; i++) {
+		std::cout << +(int8)ram[i] << std::endl;
+	}
 
 	std::cin.get();
 }

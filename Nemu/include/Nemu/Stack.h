@@ -44,6 +44,10 @@ namespace nemu {
 		{
 			return sp & 0xFF;
 		}
+		void SetSP(std::uint8_t val)
+		{
+			sp = val;
+		}
 	};
 
 }

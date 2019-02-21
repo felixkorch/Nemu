@@ -38,7 +38,7 @@ int main()
 
 	cpu.LoadProgram(subroutine, 0x8000);
 	for (int i = 0; i < 15; i++) {
-		std::cout << std::dec << +(int8)ram[i] << std::endl;
+		std::cout << +(int8)ram[i] << std::endl;
 	}
 
 	std::cin.get();

@@ -10,7 +10,7 @@ namespace nemu {
 	typedef std::uint8_t uint8;
 	typedef std::uint16_t uint16;
 	typedef std::int8_t int8;
-	typedef std::uint8_t uint;
+	typedef unsigned int uint;
 
 	class CPU {
 
@@ -30,7 +30,7 @@ namespace nemu {
 		Stack<uint8, STACK_SIZE> stack;
 
 		// Status bits
-		constexpr static uint8 B_C = 0;
+		constexpr static uint8 B_C     = 0;
 		constexpr static uint8 B_Z     = 1;
 		constexpr static uint8 B_I     = 2;
 		constexpr static uint8 B_BCD   = 3; // Disabled (decimal mode)?

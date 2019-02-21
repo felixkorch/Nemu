@@ -2,18 +2,19 @@
 #include <vector>
 #include <iostream>
 #include <cstdint>
+#include <stdexcept>
 
-namespace nemu {
-
+namespace nemu
+{
 	template <class T, unsigned int size>
 	class Stack {
-	private:
+	    private:
 		unsigned int sp;
-		T* memory;
-	public:
+		T *memory;
 
-		Stack(T* mem)
-			: sp(size), memory(mem) {}
+	    public:
+		Stack(T *mem) : sp(size), memory(mem)
+		{}
 
 		bool Push(T data)
 		{
@@ -29,7 +30,7 @@ namespace nemu {
 		T Pop()
 		{
 			if (sp == size) {
-				throw std::exception("Nothing on stack");
+				throw std::underflow_error("Nothing on stack");
 			}
 			++sp;
 			return *++memory;
@@ -44,10 +45,11 @@ namespace nemu {
 		{
 			return sp & 0xFF;
 		}
+
 		void SetSP(std::uint8_t val)
 		{
 			sp = val;
 		}
 	};
 
-}
+} // namespace nemu

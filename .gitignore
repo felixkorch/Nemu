@@ -265,8 +265,12 @@ paket-files/
 __pycache__/
 *.pyc
 
-# vscode
+# Visual Studio Code
 .vscode/
-
-# cmake
 build/
+
+# macOS
+.DS_Store
+
+# emacs
+*~

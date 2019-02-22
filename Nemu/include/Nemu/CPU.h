@@ -52,15 +52,14 @@ namespace nemu
 
 	    public:
 		CPU(Memory mem = std::vector<uint8>(0xFFFF)) // Defaults to the whole address-space
-			: reg_X(0), reg_Y(0), reg_A(0), reg_PC(0), reg_S{},
+			: reg_X(0),
+			  reg_Y(0),
+			  reg_A(0),
+			  reg_PC(0),
+			  reg_S{},
 			  stack(&memory[0] + 0x1FF),             // Stack range 0x100 -> 0x1FF,
-			  memory(mem), running(false)
-		{}
-
-		static CPU MakeCPUWithNESMemory()
-		{
-			return MakeNESMemory<std::vector<uint8>, NROM256Mapper>();
-		}
+			  memory(mem),
+			  running(false) {}
 
 		Memory& GetMemory()
 		{
@@ -83,8 +82,7 @@ namespace nemu
 
 		bool Decode()
 		{
-			std::cout << "Executing op-code: " << std::hex << "0x"
-				  << +memory[reg_PC] << std::dec << std::endl;
+			std::cout << "Executing op-code: " << std::hex << "0x" << +memory[reg_PC] << std::dec << std::endl;
 			switch (memory[reg_PC]) {
 			case 0x0: { // BRK
 				reg_S[B_I] = 1;
@@ -736,18 +734,9 @@ namespace nemu
 				return true;
 			}
 			case 0x2A: { // ROL Accumulator (rotate left)
-				reg_S[B_C] = (reg_A & B_7) == B_7; // Sets carry
-								   // flag to
-								   // whatever
-								   // bit 7 is
-				reg_A <<= 1; // Shifts left one bit
-				reg_A ^=
-					(-reg_S[B_C] ^ reg_A) & B_0; // Changes
-								     // bit 0
-								     // to
-								     // whatever
-								     // carry
-								     // is
+				reg_S[B_C] = (reg_A & B_7) == B_7;    // Sets carry flag to whatever bit 7 is
+				reg_A <<= 1;                          // Shifts left one bit
+				reg_A ^= (-reg_S[B_C] ^ reg_A) & B_0; // Changes bit 0 to whatever carry is
 				SetFlags_NZ(reg_A);
 				reg_PC++;
 				return true;
@@ -793,18 +782,9 @@ namespace nemu
 				return true;
 			}
 			case 0x6A: { // ROR Accumulator (rotate right)
-				reg_S[B_C] = (reg_A & B_0) == B_0; // Sets carry
-								   // flag to
-								   // whatever
-								   // bit 0 is
-				reg_A >>= 1; // Shifts right one bit
-				reg_A ^=
-					(-reg_S[B_C] ^ reg_A) & B_7; // Changes
-								     // bit 7
-								     // to
-								     // whatever
-								     // carry
-								     // is
+				reg_S[B_C] = (reg_A & B_0) == B_0;    // Sets carry flag to whatever bit 0 is
+				reg_A >>= 1;						  // Shifts right one bit
+				reg_A ^= (-reg_S[B_C] ^ reg_A) & B_7; // Changes bit 7 to whatever carry bit is
 				SetFlags_NZ(reg_A);
 				reg_PC++;
 				return true;
@@ -891,8 +871,7 @@ namespace nemu
 				reg_PC += 3;
 				return true;
 			}
-			case 0x21: { // AND Indexed Indirect, X (Add first then
-				     // fetch)
+			case 0x21: { // AND Indexed Indirect, X (Add first then fetch)
 				uint8 offset = memory[reg_PC + 1] + reg_X;
 				uint16 adr = AsUInt16(offset);
 				reg_A &= memory[adr];
@@ -900,8 +879,7 @@ namespace nemu
 				reg_PC += 2;
 				return true;
 			}
-			case 0x31: { // AND Indirect Indexed, Y (Fetch first
-				     // then add)
+			case 0x31: { // AND Indirect Indexed, Y (Fetch first then add)
 				uint8 offset = memory[reg_PC + 1];
 				uint16 adr = AsUInt16(offset) + reg_Y;
 				reg_A &= memory[adr];
@@ -950,8 +928,7 @@ namespace nemu
 				reg_PC += 3;
 				return true;
 			}
-			case 0xC1: { // CMP Indexed Indirect, X (Add first then
-				     // fetch)
+			case 0xC1: { // CMP Indexed Indirect, X (Add first then fetch)
 				uint8 offset = memory[reg_PC + 1] + reg_X;
 				uint16 adr = AsUInt16(offset);
 				uint8 oper = memory[adr];
@@ -959,8 +936,7 @@ namespace nemu
 				reg_PC += 2;
 				return true;
 			}
-			case 0xD1: { // CMP Indirect Indexed, Y (Fetch first
-				     // then add)
+			case 0xD1: { // CMP Indirect Indexed, Y (Fetch first then add)
 				uint8 offset = memory[reg_PC + 1];
 				uint16 adr = AsUInt16(offset) + reg_Y;
 				uint8 oper = memory[adr];
@@ -1050,8 +1026,7 @@ namespace nemu
 				reg_PC += 3;
 				return true;
 			}
-			case 0x01: { // ORA Indexed Indirect, X (Add first then
-				     // fetch)
+			case 0x01: { // ORA Indexed Indirect, X (Add first then fetch)
 				uint8 offset = memory[reg_PC + 1] + reg_X;
 				uint16 adr = AsUInt16(offset);
 				reg_A |= memory[adr];
@@ -1059,8 +1034,7 @@ namespace nemu
 				reg_PC += 2;
 				return true;
 			}
-			case 0x11: { // ORA Indirect Indexed, Y (Fetch first
-				     // then add)
+			case 0x11: { // ORA Indirect Indexed, Y (Fetch first then add)
 				uint8 offset = memory[reg_PC + 1];
 				uint16 adr = AsUInt16(offset) + reg_Y;
 				reg_A |= memory[adr];
@@ -1174,16 +1148,20 @@ namespace nemu
 			};
 		}
 
-		void Run()
+		void Clock(int n)
 		{
-			running = true;
-			reg_PC = AsUInt16(0xFFFC); // Load PC with the reset vector
-			while (running) {          // Execute while PC is valid
+			for (int i = 0; i < n; i++) {
 				if (!Decode()) {
 					std::cout << "Op-code not supported, exiting..." << std::endl;
 					return;
 				}
 			}
+		}
+
+		void Run()
+		{
+			running = true;
+			reg_PC = AsUInt16(0xFFFC); // Load PC with the reset vector
 		}
 
 		void PrintFlags()
@@ -1198,6 +1176,16 @@ namespace nemu
 			std::cout << "A: " << +reg_A << std::endl;
 			std::cout << "X: " << +reg_X << std::endl;
 			std::cout << "Y: " << +reg_Y << std::endl;
+		}
+
+		template <class Type>
+		void PrintMemory(int n)
+		{
+			std::cout << "Memory: [ ";
+			for (int i = 0; i < n; i++) {
+				std::cout << +(Type)memory[i] << " ";
+			}
+			std::cout << "]" << std::endl;
 		}
 
 	    private:
@@ -1228,9 +1216,6 @@ namespace nemu
 			reg_S[B_N] = (result & B_7) == B_7 ? 1 : 0;						// If 7th bit is 1, set negative
 			reg_A = result & 0xFF;											// 8 LSB -> A
 			reg_S[B_Z] = reg_A == 0;										// Set status zero
-
-			std::cout << "Flags after add:" << std::endl;
-			PrintFlags();
 		}
 
 		void OP_CMP(uint8 oper, uint8 reg)
@@ -1250,9 +1235,6 @@ namespace nemu
 			reg_S[B_N] = (result & B_7) == B_7 ? 1 : 0;							// If 7th bit is 1, set negative
 			reg_A = result & 0xFF;												// 8 LSB -> A
 			reg_S[B_Z] = reg_A == 0;											// Set status zero
-
-			std::cout << "Flags after sub:" << std::endl;
-			PrintFlags();
 		}
 
 		void SetFlags_NZ(uint8 reg)

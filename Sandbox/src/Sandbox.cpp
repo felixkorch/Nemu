@@ -8,7 +8,7 @@ int main()
 	std::vector<uint8> program = { // Subtraction(zpg[1] - zpg[0])
 		0xA5, 1,      // lda  zpg[1]
 		0x18,         // clc
-		0x65, 0,      // abc  zpg[0]
+		0x65, 0,      // adc  zpg[0]
 		0x85, 2,      // sta  zpg[2]
 		0xA2, 1,      // ldx  #1
 		0xD0, 0       // while 1
@@ -28,13 +28,15 @@ int main()
 		0x18,          // clc (label A)
 		0x65, 1,       // adc  zpg[1]
 		0x85, 2,	   // sta  zpg[2]
+		0xA2, 1,       // ldx  #1
+		0xD0, 0        // while 1
 	};
 
 	CPU<std::vector<uint8>> cpu;
 	auto& memory = cpu.GetMemory();
-	std::copy(program.begin(), program.end(), &memory[0] + 0x8000);
+	std::copy(subroutine.begin(), subroutine.end(), &memory[0] + 0x8000);
 
-	AsUInt16(0xFFFC) = 0x8000; // Set reset-vector to start address
+	AsUInt16(0xFFFC) = 0x8005; // Set reset-vector to start address
 
 	uint8 A = 200;   // A -> zpg[0]
 	uint8 B = 40;    // B -> zpg[1]
@@ -42,8 +44,12 @@ int main()
 	memory[1] = B;
 
 	cpu.Run();
-
-	for (int i = 0; i < 15; i++) {
-		std::cout << "[" << i << "] " << +(uint8)memory[i] << std::endl;
+	while (true) {
+		cpu.Clock(1);
+		std::cin.get();
+		cpu.PrintFlags();
+		cpu.PrintRegisters();
+		cpu.PrintMemory<uint8>(15);
 	}
+
 }

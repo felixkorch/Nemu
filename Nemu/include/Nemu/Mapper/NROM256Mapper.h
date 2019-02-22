@@ -11,24 +11,8 @@
 
 namespace nemu
 {
-	static constexpr std::size_t NROM256MemorySize()
-	{
-		return 0x2000;
-	}
-
 	template <class Iterator>
-	class NROM256Mapper : OffsetIterator<NROM256Mapper<Iterator>> {
-		/// TODO:
-		///     Mirroring of NROM-256 is hardware specific so the
-		///     mapper should be configurable. But for now one chunk of
-		///     32kB memory will do.
-		///
-		/// Mapping:
-		///     chunk:
-		///             range: (0x8000, 0xFFFF)
-		///             size: 0x2000
-		///
-
+	class NROM256MapperBase : OffsetIterator<NROM256MapperBase<Iterator>> {
 		const Iterator itValue;
 		std::size_t offsetValue;
 
@@ -44,14 +28,58 @@ namespace nemu
 			return address > 0x7FFF && address <= 0xFFFF;
 		}
 
-		NROM256Mapper(const Iterator &it,
-			      difference_type offset = 0x8000)
-			: itValue(it), offsetValue(offset)
-		{}
-
+		// Implements Iterator
+		// -------------------------------------------------------------
 		reference operator*()
 		{
 			return *std::next(itValue, offsetValue - 0x8000);
+		}
+
+		// Implements OffsetIterator
+		// -------------------------------------------------------------
+		NROM256MapperBase(const Iterator &it,
+				  difference_type offset = 0x8000)
+			: itValue(it), offsetValue(offset)
+		{}
+
+		constexpr Iterator it() const
+		{
+			return itValue;
+		}
+
+		constexpr std::size_t offset() const
+		{
+			return offsetValue;
+		}
+
+		std::size_t &offset()
+		{
+			return offsetValue;
+		}
+	};
+
+	/// Provides mapping for the NROM-256 cartridge layout.
+	///
+	/// Mapping:
+	///     chunk:
+	///             range: (0x8000, 0xFFFF)
+	///             size: 0x7FFF (32kB)
+	///
+	/// TODO:
+	///     Mirroring of NROM-256 is hardware specific so the
+	///     mapper should be configurable. But for now one chunk of
+	///     32kB memory will do.
+	///
+	struct NROM256Mapper {
+		template <class Storage>
+		using BaseMapper =
+			NROM256MapperBase<typename Storage::iterator>;
+
+		/// Amount of cells needed to allocate for the NROM memory
+		/// (32kB).
+		static constexpr std::size_t AllocSize()
+		{
+			return 0x7FFF;
 		}
 	};
 

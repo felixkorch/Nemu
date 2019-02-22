@@ -11,13 +11,15 @@ namespace nemu
 {
 	template <class T>
 	class OffsetIterator {
-		T &sub()
+		constexpr T sub() const
 		{
-			return *static_cast<T *>(this);
+			return *static_cast<const T *>(this);
 		}
 
+		T &sub() { return *static_cast<T *>(this); }
+
 	    public:
-		T operator+(typename std::size_t n)
+		constexpr T operator+(typename std::size_t n) const
 		{
 			return T(sub(), sub().offset() + n);
 		}
@@ -34,7 +36,7 @@ namespace nemu
 			return sub();
 		}
 
-		bool operator!=(const T &other)
+		constexpr bool operator!=(const T &other) const
 		{
 			return sub().it() != other.it() ||
 			       sub().offset() != other.offset();

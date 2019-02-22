@@ -28,11 +28,11 @@ int main(int argc, char **argv)
 	}
 
 	// Dump memory
-	for (int i = 0; i < 0xFFFF; ++i) {
-		std::cout << std::hex << std::setfill('0') << "0x"
-			  << std::setw(4) << i << ": 0x" << std::setw(4)
-			  << memory[i] << '\n';
-	}
+	// for (int i = 0; i < 0xFFFF; ++i) {
+	//	std::cout << std::hex << std::setfill('0') << "0x"
+	//		  << std::setw(4) << i << ": 0x" << std::setw(4)
+	//		  << memory[i] << '\n';
+	// }
 
 	return 0;
 }

@@ -27,36 +27,45 @@ namespace nemu
 		uint16 reg_PC;
 		std::array<uint8, 8> reg_S;
 
-		using Storage = std::vector<uint8>;
 		Memory memory;
 		Stack<uint8, STACK_SIZE> stack;
 		bool running;
 
 		// Status bits
-		constexpr static uint8 B_C = 0;
-		constexpr static uint8 B_Z = 1;
-		constexpr static uint8 B_I = 2;
+		constexpr static uint8 B_C   = 0;
+		constexpr static uint8 B_Z   = 1;
+		constexpr static uint8 B_I   = 2;
 		constexpr static uint8 B_BCD = 3; // Disabled (decimal mode)?
 		constexpr static uint8 B_BRK = 4; // TODO: Not used
-		constexpr static uint8 B_O = 6;
-		constexpr static uint8 B_N = 7;
+		constexpr static uint8 B_O   = 6;
+		constexpr static uint8 B_N   = 7;
 
-		constexpr static uint8 B_0 = (1 << 0);
-		constexpr static uint8 B_1 = (1 << 1);
-		constexpr static uint8 B_2 = (1 << 2);
-		constexpr static uint8 B_3 = (1 << 3);
-		constexpr static uint8 B_4 = (1 << 4);
-		constexpr static uint8 B_5 = (1 << 5);
-		constexpr static uint8 B_6 = (1 << 6);
-		constexpr static uint8 B_7 = (1 << 7);
+		constexpr static uint8  B_0 = (1 << 0);
+		constexpr static uint8  B_1 = (1 << 1);
+		constexpr static uint8  B_2 = (1 << 2);
+		constexpr static uint8  B_3 = (1 << 3);
+		constexpr static uint8  B_4 = (1 << 4);
+		constexpr static uint8  B_5 = (1 << 5);
+		constexpr static uint8  B_6 = (1 << 6);
+		constexpr static uint8  B_7 = (1 << 7);
 		constexpr static uint16 B_8 = (1 << 8);
 
 	    public:
-		CPU()
+		CPU(Memory mem = std::vector<uint8>(0xFFFF)) // Defaults to the whole address-space
 			: reg_X(0), reg_Y(0), reg_A(0), reg_PC(0), reg_S{},
-			  stack(&memory[0] + 0x1FF), // Stack range 0x100 -> 0x1FF
-			  running(false)
+			  stack(&memory[0] + 0x1FF),             // Stack range 0x100 -> 0x1FF,
+			  memory(mem), running(false)
 		{}
+
+		static CPU MakeCPUWithNESMemory()
+		{
+			return MakeNESMemory<std::vector<uint8>, NROM256Mapper>();
+		}
+
+		Memory& GetMemory()
+		{
+			return memory;
+		}
 
 		uint8 ToBitMask(std::array<uint8, 8> array)
 		{
@@ -732,12 +741,13 @@ namespace nemu
 								   // whatever
 								   // bit 7 is
 				reg_A <<= 1; // Shifts left one bit
-				reg_A ^= (-reg_S[B_C] ^ reg_A) & B_0; // Changes
-								      // bit 0
-								      // to
-								      // whatever
-								      // carry
-								      // is
+				reg_A ^=
+					(-reg_S[B_C] ^ reg_A) & B_0; // Changes
+								     // bit 0
+								     // to
+								     // whatever
+								     // carry
+								     // is
 				SetFlags_NZ(reg_A);
 				reg_PC++;
 				return true;
@@ -788,12 +798,13 @@ namespace nemu
 								   // whatever
 								   // bit 0 is
 				reg_A >>= 1; // Shifts right one bit
-				reg_A ^= (-reg_S[B_C] ^ reg_A) & B_7; // Changes
-								      // bit 7
-								      // to
-								      // whatever
-								      // carry
-								      // is
+				reg_A ^=
+					(-reg_S[B_C] ^ reg_A) & B_7; // Changes
+								     // bit 7
+								     // to
+								     // whatever
+								     // carry
+								     // is
 				SetFlags_NZ(reg_A);
 				reg_PC++;
 				return true;
@@ -1166,29 +1177,21 @@ namespace nemu
 		void Run()
 		{
 			running = true;
-			reg_PC = AsUInt16(0xFFFC); // Load PC with the reset
-						   // vector
-			while (running) { // Execute while PC is valid
+			reg_PC = AsUInt16(0xFFFC); // Load PC with the reset vector
+			while (running) {          // Execute while PC is valid
 				if (!Decode()) {
-					std::cout
-						<< "Op-code not supported, exiting..."
-						<< std::endl;
+					std::cout << "Op-code not supported, exiting..." << std::endl;
 					return;
 				}
 			}
 		}
 
-		void SetMemory(Memory& mem)
-		{
-			memory = mem;
-		}
-
 		void PrintFlags()
 		{
 			std::cout << "[C: " << +reg_S[B_C] << " | "
-				  << "Z:  " << +reg_S[B_Z] << " | "
-				  << "N:  " << +reg_S[B_N] << " | "
-				  << "O:  " << +reg_S[B_O] << "]" << std::endl;
+					  << "Z:  " << +reg_S[B_Z] << " | "
+				      << "N:  " << +reg_S[B_N] << " | "
+				      << "O:  " << +reg_S[B_O] <<  "]" << std::endl;
 		}
 		void PrintRegisters()
 		{
@@ -1220,19 +1223,11 @@ namespace nemu
 		void OP_ADC(uint8 oper)
 		{
 			uint result = reg_A + oper + reg_S[B_C];
-			reg_S[B_C] = (result & B_8) == B_8 ? 1 : 0; // If 8th
-								    // bit is 1,
-								    // set carry
-			reg_S[B_O] = ((reg_A ^ result) & (oper ^ result) &
-				      B_7) != 0; // If the signs of both
-						 // operands != the sign of the
-						 // result, set overflow
-			reg_S[B_N] = (result & B_7) == B_7 ? 1 : 0; // If 7th
-								    // bit is 1,
-								    // set
-								    // negative
-			reg_A = result & 0xFF; // 8 LSB -> A
-			reg_S[B_Z] = reg_A == 0; // Set status zero
+			reg_S[B_C] = (result & B_8) == B_8 ? 1 : 0;						// If 8th bit is 1, set carry
+			reg_S[B_O] = ((reg_A ^ result) & (oper ^ result) & B_7) != 0;   // If the signs of both operands != the sign of the result, set overflow
+			reg_S[B_N] = (result & B_7) == B_7 ? 1 : 0;						// If 7th bit is 1, set negative
+			reg_A = result & 0xFF;											// 8 LSB -> A
+			reg_S[B_Z] = reg_A == 0;										// Set status zero
 
 			std::cout << "Flags after add:" << std::endl;
 			PrintFlags();
@@ -1250,17 +1245,11 @@ namespace nemu
 		{
 			uint8 complement = -oper;
 			uint result = reg_A + complement + reg_S[B_C];
-			reg_S[B_C] = (result & B_8) == B_8 ? 1 : 0; // If 8th
-								    // bit is 1,
-								    // set carry
-			reg_S[B_O] = ((reg_A ^ result) & (complement ^ result) &
-				      B_7) != 0; // Same logic as add
-			reg_S[B_N] = (result & B_7) == B_7 ? 1 : 0; // If 7th
-								    // bit is 1,
-								    // set
-								    // negative
-			reg_A = result & 0xFF; // 8 LSB -> A
-			reg_S[B_Z] = reg_A == 0; // Set status zero
+			reg_S[B_C] = (result & B_8) == B_8 ? 1 : 0;                         // If 8th bit is 1, set carry
+			reg_S[B_O] = ((reg_A ^ result) & (complement ^ result) & B_7) != 0; // Same logic as add
+			reg_S[B_N] = (result & B_7) == B_7 ? 1 : 0;							// If 7th bit is 1, set negative
+			reg_A = result & 0xFF;												// 8 LSB -> A
+			reg_S[B_Z] = reg_A == 0;											// Set status zero
 
 			std::cout << "Flags after sub:" << std::endl;
 			PrintFlags();
@@ -1268,10 +1257,8 @@ namespace nemu
 
 		void SetFlags_NZ(uint8 reg)
 		{
-			reg_S[B_N] = (reg & B_7) == B_7 ? 1 : 0; // If 7th bit
-								 // is 1, set
-								 // negative
-			reg_S[B_Z] = reg == 0; // If register is 0, set zero
+			reg_S[B_N] = (reg & B_7) == B_7 ? 1 : 0; // If 7th bit is 1, set negative
+			reg_S[B_Z] = reg == 0;					 // If register is 0, set zero
 		}
 	};
 

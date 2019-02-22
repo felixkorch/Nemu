@@ -10,6 +10,8 @@ int main()
 		0x18,         // clc
 		0x65, 0,      // abc  zpg[0]
 		0x85, 2,      // sta  zpg[2]
+		0xA2, 1,      // ldx  #1
+		0xD0, 0       // while 1
 	};
 
 	std::vector<uint8> subroutine = {
@@ -28,16 +30,10 @@ int main()
 		0x85, 2,	   // sta  zpg[2]
 	};
 
-	using Storage = std::vector<uint8>;
-	//using Memory = NESMemory<Storage, NROM256Mapper<Storage::iterator>>;
+	CPU<std::vector<uint8>> cpu;
+	auto& memory = cpu.GetMemory();
+	std::copy(program.begin(), program.end(), &memory[0] + 0x8000);
 
-	//Memory memory = MakeNESMemory<Storage, NROM256Mapper<Storage::iterator>>(
-	//	Storage(program));
-
-	using Memory = std::vector<uint8>;
-	Memory memory(program);
-
-	CPU<Memory> cpu;
 	AsUInt16(0xFFFC) = 0x8000; // Set reset-vector to start address
 
 	uint8 A = 200;   // A -> zpg[0]
@@ -45,7 +41,6 @@ int main()
 	memory[0] = A;
 	memory[1] = B;
 
-	cpu.SetMemory(memory);
 	cpu.Run();
 
 	for (int i = 0; i < 15; i++) {

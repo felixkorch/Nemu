@@ -1,9 +1,7 @@
 #include "Nemu/CPU.h"
 #include "Nemu/System.h"
 
-using nemu::uint8;
-using nemu::int8;
-using nemu::uint16;
+using namespace nemu;
 
 int main()
 {
@@ -30,18 +28,26 @@ int main()
 		0x85, 2,	   // sta  zpg[2]
 	};
 
-	using namespace nemu;
+	using Storage = std::vector<uint8>;
+	//using Memory = NESMemory<Storage, NROM256Mapper<Storage::iterator>>;
 
-	CPU cpu;
-	auto& memory = cpu.GetRAM();
-	AsUInt16(0xFFFC) = 0x8005; // Set reset-vector to start address
+	//Memory memory = MakeNESMemory<Storage, NROM256Mapper<Storage::iterator>>(
+	//	Storage(program));
+
+	using Memory = std::vector<uint8>;
+	Memory memory(program);
+
+	CPU<Memory> cpu;
+	AsUInt16(0xFFFC) = 0x8000; // Set reset-vector to start address
 
 	uint8 A = 200;   // A -> zpg[0]
 	uint8 B = 40;    // B -> zpg[1]
 	memory[0] = A;
 	memory[1] = B;
 
-	cpu.LoadProgram(subroutine, 0x8000);
+	cpu.SetMemory(memory);
+	cpu.Run();
+
 	for (int i = 0; i < 15; i++) {
 		std::cout << "[" << i << "] " << +(uint8)memory[i] << std::endl;
 	}

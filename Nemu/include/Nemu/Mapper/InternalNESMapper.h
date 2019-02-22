@@ -6,21 +6,14 @@
 #pragma once
 
 #include "Nemu/Mapper/MaskIterator.h"
+#include "Nemu/Mapper/OffsetIterator.h"
 #include <cstddef>
 
 namespace nemu
 {
-	/// Amount of cells needed to allocate for the internal NES memory.
-	constexpr std::size_t InternalNESMemorySize()
-	{
-		return 0x0828;
-	}
-
 	template <class Iterator>
-	class InternalNESMapperBase {
-		const Iterator it;
-		std::size_t offset;
-
+	class InternalNESMapperBase
+		: OffsetIterator<InternalNESMapperBase<Iterator>> {
 		static MaskIterator<Iterator> InternalRAM(const Iterator &it,
 							  std::size_t offset)
 		{
@@ -41,6 +34,9 @@ namespace nemu
 					 offset - 0x4000);
 		}
 
+		const Iterator itValue;
+		std::size_t offsetValue;
+
 	    public:
 		using difference_type = std::size_t;
 		using value_type = typename Iterator::value_type;
@@ -48,45 +44,42 @@ namespace nemu
 		using reference = typename Iterator::reference;
 		using iterator_category = std::random_access_iterator_tag;
 
-		InternalNESMapperBase(const Iterator &it,
-				      difference_type offset)
-			: it(it), offset(offset)
-		{}
-
 		static constexpr bool ContainsAddress(std::size_t address)
 		{
 			return address < 0x4020;
 		}
 
+		// Implements Iterator
+		// -------------------------------------------------------------
 		reference operator*()
 		{
-			if (offset < 0x2000)
-				return *InternalRAM(it, offset);
-			if (offset < 0x4000)
-				return *PPURegisters(it, offset);
-			return *APUIORegisters(it, offset);
+			if (offsetValue < 0x2000)
+				return *InternalRAM(itValue, offsetValue);
+			if (offsetValue < 0x4000)
+				return *PPURegisters(itValue, offsetValue);
+			return *APUIORegisters(itValue, offsetValue);
 		}
 
-		InternalNESMapperBase<Iterator> &operator++()
+		// Implements OffsetIterator
+		// -------------------------------------------------------------
+		InternalNESMapperBase(const Iterator &it,
+				      difference_type offset)
+			: itValue(it), offsetValue(offset)
+		{}
+
+		constexpr Iterator it() const
 		{
-			++offset;
-			return *this;
+			return itValue;
 		}
 
-		InternalNESMapperBase<Iterator> &operator+=(difference_type n)
+		constexpr std::size_t offset() const
 		{
-			offset += n;
-			return *this;
+			return offsetValue;
 		}
 
-		InternalNESMapperBase<Iterator> operator+(difference_type n)
+		std::size_t &offset()
 		{
-			return NESMapper(it, offset + n);
-		}
-
-		bool operator!=(const InternalNESMapperBase<Iterator> &other)
-		{
-			return it != other.it || offset != other.offset;
+			return offsetValue;
 		}
 	};
 
@@ -113,13 +106,17 @@ namespace nemu
 	///     size: 0x0020 (36 B)
 	///     offset: 0x0808
 	///
-	/// Cartrigde space
-	///     range: (0x4020, 0xFFFF)
-	///
 	struct InternalNESMapper {
 		template <class Storage>
 		using BaseMapper =
 			InternalNESMapperBase<typename Storage::iterator>;
+
+		/// Amount of cells needed to allocate for the internal NES
+		/// memory.
+		static constexpr std::size_t AllocSize()
+		{
+			return 0x0828;
+		}
 	};
 
 } // namespace nemu

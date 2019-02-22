@@ -8,10 +8,11 @@
 #include "Nemu/Mapper/InternalNESMapper.h"
 #include <cstddef>
 #include <vector>
+#include <type_traits>
 
 namespace nemu
 {
-	template <class Storage, class Mapper>
+	template <class Storage, class MapperBase>
 	class NESMemoryBase {
 		Storage memory;
 
@@ -21,19 +22,18 @@ namespace nemu
 
 		typename Storage::reference operator[](std::size_t address)
 		{
-			return *(Mapper(memory.begin(), address));
+			return *(MapperBase(memory.begin(), address));
 		}
 
 		constexpr bool ContainsAddress(std::size_t address) const
 		{
-			return Mapper::ContainsAddress(address);
+			return MapperBase::ContainsAddress(address);
 		}
 	};
 
 	template <class Storage, class Mapper>
 	class NESMemory {
 		using Cell = typename Storage::value_type;
-		using InternalStorage = std::vector<Cell>;
 
 		Cell nullRef;
 
@@ -42,8 +42,9 @@ namespace nemu
 		NESMemoryBase<Storage, Mapper> externalMemory;
 
 	    public:
-		NESMemory(Storage &&externalMemory)
-			: internalMemory(Storage(InternalNESMemorySize())),
+		constexpr NESMemory(Storage &&internalMemory,
+				    Storage &&externalMemory)
+			: internalMemory(std::move(internalMemory)),
 			  externalMemory(std::move(externalMemory))
 		{}
 
@@ -57,13 +58,29 @@ namespace nemu
 		}
 	};
 
-	template <class Storage,
-		  class MapperWrapper,
-		  class Mapper =
-			  typename MapperWrapper::template BaseMapper<Storage>>
-	NESMemory<Storage, Mapper> MakeNESMemory(Storage &&storage)
+	template <class Storage, class MapperBase>
+	NESMemory<Storage, MapperBase> MakeNESMemory(Storage &&internalMemory,
+						     Storage &&externalMemory)
 	{
-		return NESMemory<Storage, Mapper>(std::move(storage));
+		return NESMemory<Storage, MapperBase>(
+			std::move(internalMemory), std::move(externalMemory));
+	}
+
+	/// Creates a container for a NESMemory instance. Uses
+	/// InternalNESMapping for the internal memory and Mapper as mapping for
+	/// the external memory.
+	template <
+		class Storage,
+		class Mapper,
+		class MapperBase = typename Mapper::template BaseMapper<Storage>,
+		typename = typename std::enable_if<std::is_same<
+			Storage,
+			std::vector<typename Storage::value_type>>::value>::type>
+	NESMemory<Storage, MapperBase> MakeNESMemory()
+	{
+		return NESMemory<Storage, MapperBase>(
+			Storage(InternalNESMapper::AllocSize()),
+			Storage(Mapper::AllocSize()));
 	}
 
 } // namespace nemu

@@ -14,7 +14,8 @@ constexpr static std::uint8_t N2 = 22;
 int main(int argc, char **argv)
 {
 	nemu::CPU cpu;
-
+	cpu.GetRAM()[0xFFFD] = 0x80;
+	cpu.GetRAM()[0xFFFC] = 0;
 	cpu.LoadProgram(
 		{
 			// clang-format off

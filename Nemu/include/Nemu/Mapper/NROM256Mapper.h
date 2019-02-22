@@ -41,7 +41,7 @@ namespace nemu
 
 		static constexpr bool ContainsAddress(std::size_t address)
 		{
-			return address > 0x7FFF && address < 0xFFFF;
+			return address > 0x7FFF && address <= 0xFFFF;
 		}
 
 		NROM256Mapper(const Iterator &it,

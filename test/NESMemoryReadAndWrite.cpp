@@ -10,9 +10,9 @@
 #include <cstdint>
 #include <vector>
 
-#include <iostream>
-#include <ios>
-#include <iomanip>
+// #include <iostream>
+// #include <ios>
+// #include <iomanip>
 
 int main(int argc, char **argv)
 {
@@ -22,13 +22,13 @@ int main(int argc, char **argv)
 	auto memory = MakeNESMemory<Storage, NROM256Mapper<Storage::iterator>>(
 		Storage(NROM256MemorySize()));
 
-	for (int i = 0; i < 0xFFFF; ++i) {
+	for (int i = 0; i < 0x10000; ++i) {
 		memory[i] = i + 1;
 		assert(memory[i] == i + 1);
 	}
 
 	// Dump memory
-	// for (int i = 0; i < 0xFFFF; ++i) {
+	// for (int i = 0; i < 0x10000; ++i) {
 	//	std::cout << std::hex << std::setfill('0') << "0x"
 	//		  << std::setw(4) << i << ": 0x" << std::setw(4)
 	//		  << memory[i] << '\n';

@@ -32,20 +32,14 @@ namespace nemu
 
 		// Implementing OffsetIterator
 		// -------------------------------------------------------------
-
 		constexpr MaskIterator(const MaskIterator &other,
 				       std::size_t offset)
-			: MaskIterator(other.it(), other.mask(), offset)
+			: MaskIterator(other.it(), other.maskValue, offset)
 		{}
 
 		constexpr Iterator it() const
 		{
 			return itValue;
-		}
-
-		constexpr std::size_t mask() const
-		{
-			return maskValue;
 		}
 
 		constexpr std::size_t offset() const
@@ -58,7 +52,7 @@ namespace nemu
 			return offsetValue;
 		}
 
-		// Implementing RandomAccessIterator
+		// Implementing Iterator
 		// -------------------------------------------------------------
 		reference operator*()
 		{

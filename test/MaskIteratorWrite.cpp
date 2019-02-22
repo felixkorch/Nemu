@@ -22,11 +22,11 @@ int main(int argc, char **argv)
 
 	// clang-format off
 	std::vector<int> u{ 
-         0,  0,  0,  0,  0,  0,  0,  0, 
-        25, 26, 27, 28, 29, 30, 31, 32, 
-         0,  0,  0,  0,  0,  0,  0,  0,  
-         0,  0,  0,  0,  0,  0,  0,  0,
-    };
+         	 0,  0,  0,  0,  0,  0,  0,  0, 
+        	25, 26, 27, 28, 29, 30, 31, 32, 
+         	 0,  0,  0,  0,  0,  0,  0,  0,  
+         	 0,  0,  0,  0,  0,  0,  0,  0,
+    	};
 	// clang-format on
 
 	assert(std::equal(v.cbegin(), v.cend(), u.cbegin()));

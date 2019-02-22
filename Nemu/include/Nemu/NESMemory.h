@@ -37,8 +37,7 @@ namespace nemu
 
 		Cell nullRef;
 
-		NESMemoryBase<Storage,
-			      InternalNESMapper<typename Storage::iterator>>
+		NESMemoryBase<Storage, InternalNESMapper::BaseMapper<Storage>>
 			internalMemory;
 		NESMemoryBase<Storage, Mapper> externalMemory;
 
@@ -58,7 +57,10 @@ namespace nemu
 		}
 	};
 
-	template <class Storage, class Mapper>
+	template <class Storage,
+		  class MapperWrapper,
+		  class Mapper =
+			  typename MapperWrapper::template BaseMapper<Storage>>
 	NESMemory<Storage, Mapper> MakeNESMemory(Storage &&storage)
 	{
 		return NESMemory<Storage, Mapper>(std::move(storage));

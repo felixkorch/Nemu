@@ -24,7 +24,7 @@ namespace nemu
 							   std::size_t offset)
 		{
 			return MaskIterator<Iterator>(
-				std::next(it, 0x0800), 0x0007, offset - 0x2000);
+				std::next(it, 0x0800), 0x0007, offset);
 		}
 
 		static Iterator APUIORegisters(const Iterator &it,

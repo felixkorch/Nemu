@@ -56,6 +56,10 @@ namespace nemu
 				return externalMemory[address];
 			return nullRef;
 		}
+
+		std::uint16_t Get16At(std::size_t address) {
+			return (*this)[address] | ((*this)[address + 1] << 8);
+		}
 	};
 
 	template <class Storage, class MapperBase>

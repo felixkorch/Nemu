@@ -1,9 +1,10 @@
 set(NEMU_TESTS 
-        EasyAdd 
+        # EasyAdd 
         MaskIteratorRead 
         MaskIteratorWrite
         MemoryPermission
         NESMemoryReadAndWrite
+        NESMemory16Read
 )
 
 foreach (test ${NEMU_TESTS})

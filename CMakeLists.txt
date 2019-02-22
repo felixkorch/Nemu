@@ -8,3 +8,4 @@ endif()
 
 add_subdirectory(Nemu)
 add_subdirectory(Sandbox)
+add_subdirectory(test)

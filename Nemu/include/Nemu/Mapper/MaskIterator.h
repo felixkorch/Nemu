@@ -5,56 +5,65 @@
 
 #pragma once
 
+#include "Nemu/Mapper/OffsetIterator.h"
 #include <cstddef>
 #include <iterator>
 
 namespace nemu
 {
-template <class Iterator> class MaskIterator {
-	const Iterator it;
-	const std::size_t mask;
-	std::size_t offset;
+	template <class Iterator>
+	class MaskIterator : public OffsetIterator<MaskIterator<Iterator>> {
+		const Iterator itValue;
+		const std::size_t maskValue;
+		std::size_t offsetValue;
 
-    public:
-	using difference_type = std::size_t;
-	using value_type = typename Iterator::value_type;
-	using pointer = typename Iterator::pointer;
-	using reference = typename Iterator::reference;
-	using iterator_category = std::random_access_iterator_tag;
+	    public:
+		using difference_type = std::size_t;
+		using value_type = typename Iterator::value_type;
+		using pointer = typename Iterator::pointer;
+		using reference = typename Iterator::reference;
+		using iterator_category = std::random_access_iterator_tag;
 
-	constexpr MaskIterator(const Iterator &it,
-			       std::size_t mask,
-			       std::size_t offset = 0)
-		: it(it), mask(mask), offset(offset)
-	{
-	}
+		constexpr MaskIterator(const Iterator &it,
+				       std::size_t mask,
+				       std::size_t offset = 0)
+			: itValue(it), maskValue(mask), offsetValue(offset)
+		{}
 
-	MaskIterator operator+(difference_type n)
-	{
-		return MaskIterator(it, mask, offset + n);
-	}
+		// Implementing OffsetIterator
+		// -------------------------------------------------------------
 
-	MaskIterator &operator+=(difference_type n)
-	{
-		offset += n;
-		return *this;
-	}
+		constexpr MaskIterator(const MaskIterator &other,
+				       std::size_t offset)
+			: MaskIterator(other.it(), other.mask(), offset)
+		{}
 
-	MaskIterator &operator++()
-	{
-		++offset;
-		return *this;
-	}
+		constexpr Iterator it() const
+		{
+			return itValue;
+		}
 
-	value_type &operator*()
-	{
-		return *std::next(it, offset & mask);
-	}
+		constexpr std::size_t mask() const
+		{
+			return maskValue;
+		}
 
-	bool operator!=(const MaskIterator<Iterator> &other)
-	{
-		return it != other.it || offset != other.offset;
-	}
-};
+		constexpr std::size_t offset() const
+		{
+			return offsetValue;
+		}
+
+		std::size_t &offset()
+		{
+			return offsetValue;
+		}
+
+		// Implementing RandomAccessIterator
+		// -------------------------------------------------------------
+		reference operator*()
+		{
+			return *std::next(itValue, maskValue & offsetValue);
+		}
+	};
 
 } // namespace nemu

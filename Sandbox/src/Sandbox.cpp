@@ -44,12 +44,9 @@ int main()
 	memory[1] = B;
 
 	cpu.Run();
-	while (true) {
-		cpu.Clock(1);
-		std::cin.get();
-		cpu.PrintFlags();
-		cpu.PrintRegisters();
-		cpu.PrintMemory<uint8>(15);
-	}
-
+	cpu.Clock(10);
+	cpu.PrintFlags();
+	cpu.PrintRegisters();
+	cpu.PrintMemory<uint8>(15);
+	std::cin.get();
 }

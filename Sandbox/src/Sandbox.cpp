@@ -10,7 +10,7 @@ int main()
 	std::vector<uint8> program = { // Subtraction(zpg[1] - zpg[0])
 		0xA5, 1,      // lda  zpg[1]
 		0x18,         // clc
-		0xE5, 0,      // sbc  zpg[0]
+		0x65, 0,      // abc  zpg[0]
 		0x85, 2,      // sta  zpg[2]
 	};
 
@@ -30,17 +30,19 @@ int main()
 		0x85, 2,	   // sta  zpg[2]
 	};
 
-	nemu::CPU cpu;
-	std::vector<uint8>& ram = cpu.GetRAM();
-	*(uint16*)(ram.data() + 0xFFFC) = 0x8005; // Set reset-vector to start address
+	using namespace nemu;
+
+	CPU cpu;
+	auto& memory = cpu.GetRAM();
+	AsUInt16(0xFFFC) = 0x8005; // Set reset-vector to start address
 
 	uint8 A = 200;   // A -> zpg[0]
 	uint8 B = 40;    // B -> zpg[1]
-	ram[0] = A;
-	ram[1] = B;
+	memory[0] = A;
+	memory[1] = B;
 
 	cpu.LoadProgram(subroutine, 0x8000);
 	for (int i = 0; i < 15; i++) {
-		std::cout << "[" << i << "] " << +(uint8)ram[i] << std::endl;
+		std::cout << "[" << i << "] " << +(uint8)memory[i] << std::endl;
 	}
 }

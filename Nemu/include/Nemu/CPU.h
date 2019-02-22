@@ -1,5 +1,7 @@
 #pragma once
 #include "Nemu/Stack.h"
+#include "Nemu/NESMemory.h"
+#include "Nemu/Mapper/NROM256Mapper.h"
 #include <cstdint>
 #include <vector>
 #include <array>
@@ -11,12 +13,12 @@ namespace nemu {
 	typedef std::uint16_t uint16;
 	typedef std::int8_t int8;
 	typedef unsigned int uint;
+	#define AsUInt16(x) *(uint16 *)&memory[x]
 
 	class CPU {
 
 	private:
 
-		constexpr static std::size_t RAM_SIZE = 0xFFFF;
 		constexpr static std::size_t STACK_SIZE = 256;
 
 		uint8 reg_X;
@@ -26,7 +28,8 @@ namespace nemu {
 		uint16 reg_PC;
 		std::array<uint8, 8> reg_S;
 
-		std::vector<uint8> memory; // RAM
+		using Storage = std::vector<uint8>;
+		NESMemory<Storage, NROM256Mapper<Storage::iterator>> memory;
 		Stack<uint8, STACK_SIZE> stack;
 
 		// Status bits
@@ -51,13 +54,14 @@ namespace nemu {
 	public:
 
 		CPU() :
-			memory(RAM_SIZE),
+			memory(MakeNESMemory<Storage, NROM256Mapper<Storage::iterator>>(
+			      Storage(0xFFFF))),
 			reg_X(0),
 			reg_Y(0),
 			reg_A(0),
 			reg_PC(0),
 			reg_S{},
-			stack(memory.data() + 0x1FF){} // Stack range 0x100 -> 0x1FF
+			stack(&memory[0] + 0x1FF){} // Stack range 0x100 -> 0x1FF
 
 		uint8 ToBitMask(std::array<uint8, 8> array)
 		{
@@ -107,14 +111,14 @@ namespace nemu {
 				return true;
 			}
 			case 0xAC: { // LDY Absolute
-				uint16 offset = *(uint16*)(memory.data() + reg_PC + 1);
+				uint16 offset = AsUInt16(reg_PC + 1);
 				reg_Y = memory[offset];
 				SetFlags_NZ(reg_Y);
 				reg_PC += 3;
 				return true;
 			}
 			case 0xBC: { // LDY Absolute, X
-				uint16 offset = *(uint16*)(memory.data() + reg_PC + 1) + reg_X;
+				uint16 offset = AsUInt16(reg_PC + 1) + reg_X;
 				reg_Y = memory[offset];
 				SetFlags_NZ(reg_Y);
 				reg_PC += 3;
@@ -142,14 +146,14 @@ namespace nemu {
 				return true;
 			}
 			case 0xAE: { // LDX Absolute
-				uint16 offset = *(uint16*)(memory.data() + reg_PC + 1);
+				uint16 offset = AsUInt16(reg_PC + 1);
 				reg_X = memory[offset];
 				SetFlags_NZ(reg_X);
 				reg_PC += 3;
 				return true;
 			}
 			case 0xBE: { // LDX Absolute, Y
-				uint16 offset = *(uint16*)(memory.data() + reg_PC + 1) + reg_Y;
+				uint16 offset = AsUInt16(reg_PC + 1) + reg_Y;
 				reg_X = memory[offset];
 				SetFlags_NZ(reg_X);
 				reg_PC += 3;
@@ -184,7 +188,7 @@ namespace nemu {
 				reg_PC ++;
 				return true;
 			}
-			case 0xF8: { // SEC
+			case 0xF8: { // SED
 				reg_S[B_BCD] = 1;
 				reg_PC++;
 				return true;
@@ -215,21 +219,21 @@ namespace nemu {
 				return true;
 			}
 			case 0xAD: { // LDA Absolute
-				uint16 offset = *(uint16*)(memory.data() + reg_PC + 1);
+				uint16 offset = AsUInt16(reg_PC + 1);
 				reg_A = memory[offset];
 				SetFlags_NZ(reg_A);
 				reg_PC += 3;
 				return true;
 			}
 			case 0xBD: { // LDA Absolute, X
-				uint16 offset = *(uint16*)(memory.data() + reg_PC + 1) + reg_X;
+				uint16 offset = AsUInt16(reg_PC + 1) + reg_X;
 				reg_A = memory[offset];
 				SetFlags_NZ(reg_A);
 				reg_PC += 3;
 				return true;
 			}
 			case 0xB9: { // LDA Absolute, Y
-				uint16 offset = *(uint16*)(memory.data() + reg_PC + 1) + reg_Y;
+				uint16 offset = AsUInt16(reg_PC + 1) + reg_Y;
 				reg_A = memory[offset];
 				SetFlags_NZ(reg_A);
 				reg_PC += 3;
@@ -237,7 +241,7 @@ namespace nemu {
 			}
 			case 0xA1: { // LDA Indexed Indirect, X (Add first then fetch)
 				uint8 offset = memory[reg_PC + 1] + reg_X;
-				uint16 adr = *(uint16*)(memory.data() + offset);
+				uint16 adr = AsUInt16(offset);
 				reg_A = memory[adr];
 				SetFlags_NZ(reg_A);
 				reg_PC += 2;
@@ -245,7 +249,7 @@ namespace nemu {
 			}
 			case 0xB1: { // LDA Indirect Indexed, Y (Fetch first then add)
 				uint8 offset = memory[reg_PC + 1];
-				uint16 adr = *(uint16*)(memory.data() + offset) + reg_Y;
+				uint16 adr = AsUInt16(offset) + reg_Y;
 				reg_A = memory[adr];
 				SetFlags_NZ(reg_A);
 				reg_PC += 2;
@@ -272,21 +276,21 @@ namespace nemu {
 				return true;
 			}
 			case 0x6D: { // ADC Absolute
-				uint16 offset = *(uint16*)(memory.data() + reg_PC + 1);
+				uint16 offset = AsUInt16(reg_PC + 1);
 				uint8 oper = memory[offset];
 				OP_ADC(oper);
 				reg_PC += 3;
 				return true;
 			}
 			case 0x7D: { // ADC Absolute, X
-				uint16 offset = *(uint16*)(memory.data() + reg_PC + 1) + reg_X;
+				uint16 offset = AsUInt16(reg_PC + 1) + reg_X;
 				uint8 oper = memory[offset];
 				OP_ADC(oper);
 				reg_PC += 3;
 				return true;
 			}
 			case 0x79: { // ADC Absolute, Y
-				uint16 offset = *(uint16*)(memory.data() + reg_PC + 1) + reg_Y;
+				uint16 offset = AsUInt16(reg_PC + 1) + reg_Y;
 				uint8 oper = memory[offset];
 				OP_ADC(oper);
 				reg_PC += 3;
@@ -294,7 +298,7 @@ namespace nemu {
 			}
 			case 0x61: { // ADC Indexed Indirect, X (Add first then fetch)
 				uint8 offset = memory[reg_PC + 1] + reg_X;
-				uint16 adr = *(uint16*)(memory.data() + offset);
+				uint16 adr = AsUInt16(offset);
 				uint8 oper = memory[adr];
 				OP_ADC(oper);
 				reg_PC += 2;
@@ -302,7 +306,7 @@ namespace nemu {
 			}
 			case 0x71: { // ADC Indirect Indexed, Y (Fetch first then add)
 				uint8 offset = memory[reg_PC + 1];
-				uint16 adr = *(uint16*)(memory.data() + offset) + reg_Y;
+				uint16 adr = AsUInt16(offset) + reg_Y;
 				uint8 oper = memory[adr];
 				OP_ADC(oper);
 				reg_PC += 2;
@@ -329,21 +333,21 @@ namespace nemu {
 				return true;
 			}
 			case 0xED: { // SBC Absolute
-				uint16 offset = *(uint16*)(memory.data() + reg_PC + 1);
+				uint16 offset = AsUInt16(reg_PC + 1);
 				uint8 oper = memory[offset];
 				OP_SBC(oper);
 				reg_PC += 3;
 				return true;
 			}
 			case 0xFD: { // SBC Absolute, X
-				uint16 offset = *(uint16*)(memory.data() + reg_PC + 1) + reg_X;
+				uint16 offset = AsUInt16(reg_PC + 1) + reg_X;
 				uint8 oper = memory[offset];
 				OP_SBC(oper);
 				reg_PC += 3;
 				return true;
 			}
 			case 0xF9: { // SBC Absolute, Y
-				uint16 offset = *(uint16*)(memory.data() + reg_PC + 1) + reg_Y;
+				uint16 offset = AsUInt16(reg_PC + 1) + reg_Y;
 				uint8 oper = memory[offset];
 				OP_SBC(oper);
 				reg_PC += 3;
@@ -351,7 +355,7 @@ namespace nemu {
 			}
 			case 0xE1: { // SBC Indexed Indirect, X (Add first then fetch)
 				uint8 offset = memory[reg_PC + 1] + reg_X;
-				uint16 adr = *(uint16*)(memory.data() + offset);
+				uint16 adr = AsUInt16(offset);
 				uint8 oper = memory[adr];
 				OP_SBC(oper);
 				reg_PC += 2;
@@ -359,7 +363,7 @@ namespace nemu {
 			}
 			case 0xF1: { // SBC Indirect Indexed, Y (Fetch first then add)
 				uint8 offset = memory[reg_PC + 1];
-				uint16 adr = *(uint16*)(memory.data() + offset) + reg_Y;
+				uint16 adr = AsUInt16(offset) + reg_Y;
 				uint8 oper = memory[adr];
 				OP_SBC(oper);
 				reg_PC += 2;
@@ -378,33 +382,33 @@ namespace nemu {
 				return true;
 			}
 			case 0x8D: { // STA Absolute
-				uint16 adr = *(uint16*)(memory.data() + reg_PC + 1);
+				uint16 adr = AsUInt16(reg_PC + 1);
 				memory[adr] = reg_A;
 				reg_PC += 3;
 				return true;
 			}
 			case 0x9D: { // STA Absolute, X
-				uint16 adr = *(uint16*)(memory.data() + reg_PC + 1) + reg_X;
+				uint16 adr = AsUInt16(reg_PC + 1) + reg_X;
 				memory[adr] = reg_A;
 				reg_PC += 3;
 				return true;
 			}
 			case 0x99: { // STA Absolute, Y
-				uint16 adr = *(uint16*)(memory.data() + reg_PC + 1) + reg_Y;
+				uint16 adr = AsUInt16(reg_PC + 1) + reg_Y;
 				memory[adr] = reg_A;
 				reg_PC += 3;
 				return true;
 			}
 			case 0x81: { // STA Indexed Indirect, X (Add first then fetch)
 				uint8 offset = memory[reg_PC + 1] + reg_X;
-				uint16 adr = *(uint16*)(memory.data() + offset);
+				uint16 adr = AsUInt16(offset);
 				memory[adr] = reg_A;
 				reg_PC += 2;
 				return true;
 			}
 			case 0x91: { // STA Indirect Indexed, Y (Fetch first then add)
 				uint8 offset = memory[reg_PC + 1];
-				uint16 adr = *(uint16*)(memory.data() + offset) + reg_Y;
+				uint16 adr = AsUInt16(offset) + reg_Y;
 				memory[adr] = reg_A;
 				reg_PC += 2;
 				return true;
@@ -422,7 +426,7 @@ namespace nemu {
 				return true;
 			}
 			case 0x8E: { // STX, Absolute
-				uint16 adr = *(uint16*)(memory.data() + reg_PC + 1);
+				uint16 adr = AsUInt16(reg_PC + 1);
 				memory[adr] = reg_X;
 				reg_PC += 3;
 				return true;
@@ -440,22 +444,22 @@ namespace nemu {
 				return true;
 			}
 			case 0x8C: { // STY Absolute
-				uint16 adr = *(uint16*)(memory.data() + reg_PC + 1);
+				uint16 adr = AsUInt16(reg_PC + 1);
 				memory[adr] = reg_Y;
 				reg_PC += 3;
 				return true;
 			}
 			case 0x4C: { // JMP Absolute
-				reg_PC = *(uint16*)(memory.data() + reg_PC + 1);
+				reg_PC = AsUInt16(reg_PC + 1);
 				return true;
 			}
 			case 0x6C: { // JMP Indirect
-				uint16 offset = *(uint16*)(memory.data() + reg_PC + 1);
+				uint16 offset = AsUInt16(reg_PC + 1);
 				reg_PC = memory[offset];
 				return true;
 			}
 			case 0x20: { // JSR
-				uint16 offset = *(uint16*)(memory.data() + reg_PC + 1);
+				uint16 offset = AsUInt16(reg_PC + 1);
 				uint16 jmp_adr = reg_PC + 2;
 				stack.Push((jmp_adr >> 8));
 				stack.Push(jmp_adr);
@@ -540,7 +544,7 @@ namespace nemu {
 				return true;
 			}
 			case 0x2C: { // BIT Absolute
-				uint16 adr = *(uint16*)(memory.data() + reg_PC + 1);
+				uint16 adr = AsUInt16(reg_PC + 1);
 				uint8 oper = memory[adr];
 				reg_S[B_N]    = (oper & B_7) == B_7;
 				reg_S[B_O]  = (oper & B_6) == B_6;
@@ -581,7 +585,7 @@ namespace nemu {
 				return true;
 			}
 			case 0xCE: { // DEC Absolute
-				uint16 adr = *(uint16*)(memory.data() + reg_PC + 1);
+				uint16 adr = AsUInt16(reg_PC + 1);
 				uint8& oper = memory[adr];
 				oper--;
 				reg_S[B_Z] = oper == 0 ? 1 : 0;
@@ -590,7 +594,7 @@ namespace nemu {
 				return true;
 			}
 			case 0xDE: { // DEC Absolute, X
-				uint16 adr = *(uint16*)(memory.data() + reg_PC + 1) + reg_X;
+				uint16 adr = AsUInt16(reg_PC + 1) + reg_X;
 				uint8& oper = memory[adr];
 				oper--;
 				reg_S[B_Z] = oper == 0 ? 1 : 0;
@@ -659,7 +663,7 @@ namespace nemu {
 				return true;
 			}
 			case 0x0E: { // ASL Absolute
-				uint16 adr = *(uint16*)(memory.data() + reg_PC + 1);
+				uint16 adr = AsUInt16(reg_PC + 1);
 				uint8& oper = memory[adr];
 				reg_S[B_C] = (oper & B_7) == B_7;
 				oper <<= 1;
@@ -668,7 +672,7 @@ namespace nemu {
 				return true;
 			}
 			case 0x1E: { // ASL Absolute, X
-				uint16 adr = *(uint16*)(memory.data() + reg_PC + 1) + reg_X;
+				uint16 adr = AsUInt16(reg_PC + 1) + reg_X;
 				uint8& oper = memory[adr];
 				reg_S[B_C] = (oper & B_7) == B_7;
 				oper <<= 1;
@@ -702,7 +706,7 @@ namespace nemu {
 				return true;
 			}
 			case 0x4E: { // LSR Absolute
-				uint16 adr = *(uint16*)(memory.data() + reg_PC + 1);
+				uint16 adr = AsUInt16(reg_PC + 1);
 				uint8& oper = memory[adr];
 				reg_S[B_C] = (oper & B_0) == B_0;
 				oper >>= 1;
@@ -711,7 +715,7 @@ namespace nemu {
 				return true;
 			}
 			case 0x5E: { // LSR Absolute, X
-				uint16 adr = *(uint16*)(memory.data() + reg_PC + 1) + reg_X;
+				uint16 adr = AsUInt16(reg_PC + 1) + reg_X;
 				uint8& oper = memory[adr];
 				reg_S[B_C] = (oper & B_0) == B_0;
 				oper >>= 1;
@@ -748,7 +752,7 @@ namespace nemu {
 				return true;
 			}
 			case 0x2E: { // ROL Absolute
-				uint16 adr = *(uint16*)(memory.data() + reg_PC + 1);
+				uint16 adr = AsUInt16(reg_PC + 1);
 				uint8& oper = memory[adr];
 				reg_S[B_C] = (oper & B_7) == B_7;
 				oper <<= 1;
@@ -758,7 +762,7 @@ namespace nemu {
 				return true;
 			}
 			case 0x3E: { // ROL Absolute, X
-				uint16 adr = *(uint16*)(memory.data() + reg_PC + 1) + reg_X;
+				uint16 adr = AsUInt16(reg_PC + 1) + reg_X;
 				uint8& oper = memory[adr];
 				reg_S[B_C] = (oper & B_7) == B_7;
 				oper <<= 1;
@@ -796,7 +800,7 @@ namespace nemu {
 				return true;
 			}
 			case 0x6E: { // ROR Absolute
-				uint16 adr = *(uint16*)(memory.data() + reg_PC + 1);
+				uint16 adr = AsUInt16(reg_PC + 1);
 				uint8& oper = memory[adr];
 				reg_S[B_C] = (oper & B_0) == B_0;
 				oper >>= 1;
@@ -806,7 +810,7 @@ namespace nemu {
 				return true;
 			}
 			case 0x7E: { // ROR Absolute, X
-				uint16 adr = *(uint16*)(memory.data() + reg_PC + 1) + reg_X;
+				uint16 adr = AsUInt16(reg_PC + 1) + reg_X;
 				uint8& oper = memory[adr];
 				reg_S[B_C] = (oper & B_0) == B_0;
 				oper >>= 1;
@@ -837,21 +841,21 @@ namespace nemu {
 				return true;
 			}
 			case 0x2D: { // AND Absolute
-				uint16 adr = *(uint16*)(memory.data() + reg_PC + 1);
+				uint16 adr = AsUInt16(reg_PC + 1);
 				reg_A &= memory[adr];
 				SetFlags_NZ(reg_A);
 				reg_PC += 3;
 				return true;
 			}
 			case 0x3D: { // AND Absolute, X
-				uint16 adr = *(uint16*)(memory.data() + reg_PC + 1) + reg_X;
+				uint16 adr = AsUInt16(reg_PC + 1) + reg_X;
 				reg_A &= memory[adr];
 				SetFlags_NZ(reg_A);
 				reg_PC += 3;
 				return true;
 			}
 			case 0x39: { // AND Absolute, Y
-				uint16 adr = *(uint16*)(memory.data() + reg_PC + 1) + reg_Y;
+				uint16 adr = AsUInt16(reg_PC + 1) + reg_Y;
 				reg_A &= memory[adr];
 				SetFlags_NZ(reg_A);
 				reg_PC += 3;
@@ -859,7 +863,7 @@ namespace nemu {
 			}
 			case 0x21: { // AND Indexed Indirect, X (Add first then fetch)
 				uint8 offset = memory[reg_PC + 1] + reg_X;
-				uint16 adr = *(uint16*)(memory.data() + offset);
+				uint16 adr = AsUInt16(offset);
 				reg_A &= memory[adr];
 				SetFlags_NZ(reg_A);
 				reg_PC += 2;
@@ -867,7 +871,7 @@ namespace nemu {
 			}
 			case 0x31: { // AND Indirect Indexed, Y (Fetch first then add)
 				uint8 offset = memory[reg_PC + 1];
-				uint16 adr = *(uint16*)(memory.data() + offset) + reg_Y;
+				uint16 adr = AsUInt16(offset) + reg_Y;
 				reg_A &= memory[adr];
 				SetFlags_NZ(reg_A);
 				reg_PC += 2;
@@ -894,21 +898,21 @@ namespace nemu {
 				return true;
 			}
 			case 0xCD: { // CMP Absolute
-				uint16 adr = *(uint16*)(memory.data() + reg_PC + 1);
+				uint16 adr = AsUInt16(reg_PC + 1);
 				uint8 oper = memory[adr];
 				OP_CMP(oper, reg_A);
 				reg_PC += 3;
 				return true;
 			}
 			case 0xDD: { // CMP Absolute, X
-				uint16 adr = *(uint16*)(memory.data() + reg_PC + 1) + reg_X;
+				uint16 adr = AsUInt16(reg_PC + 1) + reg_X;
 				uint8 oper = memory[adr];
 				OP_CMP(oper, reg_A);
 				reg_PC += 3;
 				return true;
 			}
 			case 0xD9: { // CMP Absolute, Y
-				uint16 adr = *(uint16*)(memory.data() + reg_PC + 1) + reg_Y;
+				uint16 adr = AsUInt16(reg_PC + 1) + reg_Y;
 				uint8 oper = memory[adr];
 				OP_CMP(oper, reg_A);
 				reg_PC += 3;
@@ -916,7 +920,7 @@ namespace nemu {
 			}
 			case 0xC1: { // CMP Indexed Indirect, X (Add first then fetch)
 				uint8 offset = memory[reg_PC + 1] + reg_X;
-				uint16 adr = *(uint16*)(memory.data() + offset);
+				uint16 adr = AsUInt16(offset);
 				uint8 oper = memory[adr];
 				OP_CMP(oper, reg_A);
 				reg_PC += 2;
@@ -924,7 +928,7 @@ namespace nemu {
 			}
 			case 0xD1: { // CMP Indirect Indexed, Y (Fetch first then add)
 				uint8 offset = memory[reg_PC + 1];
-				uint16 adr = *(uint16*)(memory.data() + offset) + reg_Y;
+				uint16 adr = AsUInt16(offset) + reg_Y;
 				uint8 oper = memory[adr];
 				OP_CMP(oper, reg_A);
 				reg_PC += 2;
@@ -944,7 +948,7 @@ namespace nemu {
 				return true;
 			}
 			case 0xEC: { // CPX Absolute
-				uint16 adr = *(uint16*)(memory.data() + reg_PC + 1);
+				uint16 adr = AsUInt16(reg_PC + 1);
 				uint8 oper = memory[adr];
 				OP_CMP(oper, reg_X);
 				reg_PC += 3;
@@ -964,7 +968,7 @@ namespace nemu {
 				return true;
 			}
 			case 0xCC: { // CPY Absolute
-				uint16 adr = *(uint16*)(memory.data() + reg_PC + 1);
+				uint16 adr = AsUInt16(reg_PC + 1);
 				uint8 oper = memory[adr];
 				OP_CMP(oper, reg_Y);
 				reg_PC += 3;
@@ -992,21 +996,21 @@ namespace nemu {
 				return true;
 			}
 			case 0x0D: { // ORA Absolute
-				uint16 adr = *(uint16*)(memory.data() + reg_PC + 1);
+				uint16 adr = AsUInt16(reg_PC + 1);
 				reg_A |= memory[adr];
 				SetFlags_NZ(reg_A);
 				reg_PC += 3;
 				return true;
 			}
 			case 0x1D: { // ORA Absolute, X
-				uint16 adr = *(uint16*)(memory.data() + reg_PC + 1) + reg_X;
+				uint16 adr = AsUInt16(reg_PC + 1) + reg_X;
 				reg_A |= memory[adr];
 				SetFlags_NZ(reg_A);
 				reg_PC += 3;
 				return true;
 			}
 			case 0x19: { // ORA Absolute, Y
-				uint16 adr = *(uint16*)(memory.data() + reg_PC + 1) + reg_Y;
+				uint16 adr = AsUInt16(reg_PC + 1) + reg_Y;
 				reg_A |= memory[adr];
 				SetFlags_NZ(reg_A);
 				reg_PC += 3;
@@ -1014,7 +1018,7 @@ namespace nemu {
 			}
 			case 0x01: { // ORA Indexed Indirect, X (Add first then fetch)
 				uint8 offset = memory[reg_PC + 1] + reg_X;
-				uint16 adr = *(uint16*)(memory.data() + offset);
+				uint16 adr = AsUInt16(offset);
 				reg_A |= memory[adr];
 				SetFlags_NZ(reg_A);
 				reg_PC += 2;
@@ -1022,7 +1026,7 @@ namespace nemu {
 			}
 			case 0x11: { // ORA Indirect Indexed, Y (Fetch first then add)
 				uint8 offset = memory[reg_PC + 1];
-				uint16 adr = *(uint16*)(memory.data() + offset) + reg_Y;
+				uint16 adr = AsUInt16(offset) + reg_Y;
 				reg_A |= memory[adr];
 				SetFlags_NZ(reg_A);
 				reg_PC += 2;
@@ -1050,21 +1054,21 @@ namespace nemu {
 				return true;
 			}
 			case 0x4D: { // EOR Absolute
-				uint16 adr = *(uint16*)(memory.data() + reg_PC + 1);
+				uint16 adr = AsUInt16(reg_PC + 1);
 				reg_A ^= memory[adr];
 				SetFlags_NZ(reg_A);
 				reg_PC += 3;
 				return true;
 			}
 			case 0x5D: { // EOR Absolute, X
-				uint16 adr = *(uint16*)(memory.data() + reg_PC + 1) + reg_X;
+				uint16 adr = AsUInt16(reg_PC + 1) + reg_X;
 				reg_A ^= memory[adr];
 				SetFlags_NZ(reg_A);
 				reg_PC += 3;
 				return true;
 			}
 			case 0x59: { // EOR Absolute, Y
-				uint16 adr = *(uint16*)(memory.data() + reg_PC + 1) + reg_Y;
+				uint16 adr = AsUInt16(reg_PC + 1) + reg_Y;
 				reg_A ^= memory[adr];
 				SetFlags_NZ(reg_A);
 				reg_PC += 3;
@@ -1072,7 +1076,7 @@ namespace nemu {
 			}
 			case 0x41: { // EOR Indexed Indirect, X (Add first then fetch)
 				uint8 offset = memory[reg_PC + 1] + reg_X;
-				uint16 adr = *(uint16*)(memory.data() + offset);
+				uint16 adr = AsUInt16(offset);
 				reg_A ^= memory[adr];
 				SetFlags_NZ(reg_A);
 				reg_PC += 2;
@@ -1080,7 +1084,7 @@ namespace nemu {
 			}
 			case 0x51: { // EOR Indirect Indexed, Y (Fetch first then add)
 				uint8 offset = memory[reg_PC + 1];
-				uint16 adr = *(uint16*)(memory.data() + offset) + reg_Y;
+				uint16 adr = AsUInt16(offset) + reg_Y;
 				reg_A ^= memory[adr];
 				SetFlags_NZ(reg_A);
 				reg_PC += 2;
@@ -1101,14 +1105,14 @@ namespace nemu {
 				return true;
 			}
 			case 0xEE: { // INC Absolute
-				uint16 adr = *(uint16*)(memory.data() + reg_PC + 1);
+				uint16 adr = AsUInt16(reg_PC + 1);
 				memory[adr]++;
 				SetFlags_NZ(memory[adr]);
 				reg_PC += 3;
 				return true;
 			}
 			case 0xFE: { // INC Absolute, X
-				uint16 adr = *(uint16*)(memory.data() + reg_PC + 1) + reg_X;
+				uint16 adr = AsUInt16(reg_PC + 1) + reg_X;
 				memory[adr]++;
 				SetFlags_NZ(memory[adr]);
 				reg_PC += 3;
@@ -1134,18 +1138,18 @@ namespace nemu {
 
 		void LoadProgram(std::vector<uint8> program, uint16 offset)
 		{
-			std::copy(program.begin(), program.end(), memory.begin() + offset); // Copy the program into RAM
-			reg_PC = *(uint16*)(memory.data() + 0xFFFC);                        // Load PC with the reset vector
+			std::copy(program.begin(), program.end(), &memory[offset]);         // Copy the program into RAM
+			reg_PC = AsUInt16(0xFFFC);                                          // Load PC with the reset vector
 
 			while (reg_PC >= 0 && reg_PC < offset + program.size()) {           // Execute while PC is valid
 				if (!Decode()) {
 					std::cout << "Op-code not supported, exiting..." << std::endl;
-					break;
+					return;
 				}
 			}
 		}
 
-		std::vector<uint8>& GetRAM()
+		auto& GetRAM()
 		{
 			return memory;
 		}

@@ -8,6 +8,10 @@ namespace nemu {
 	inline T ReadFile(const std::string& path)
 	{
 		std::ifstream in{ path, std::ios::binary };
+		if(in.fail()) {
+			std::cout << "There was a problem reading the requested file." << std::endl;
+			return T{};
+		}
 		return T{ std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>() };
 	}
 

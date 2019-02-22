@@ -457,8 +457,8 @@ namespace nemu {
 			case 0x20: { // JSR
 				uint16 offset = *(uint16*)(memory.data() + reg_PC + 1);
 				uint16 jmp_adr = reg_PC + 2;
-				stack.Push(jmp_adr);
 				stack.Push((jmp_adr >> 8));
+				stack.Push(jmp_adr);
 				reg_PC = offset;
 				return true;
 			}
@@ -489,8 +489,8 @@ namespace nemu {
 				return true;
 			}
 			case 0x60: { // RTS
-				uint16 reg_PC_high = stack.Pop();
 				uint16 reg_PC_low = stack.Pop();
+				uint16 reg_PC_high = stack.Pop();
 				uint16 return_adr = (reg_PC_high << 8) | reg_PC_low;
 				reg_PC = return_adr + 1;
 				return true;
@@ -1150,7 +1150,7 @@ namespace nemu {
 			return memory;
 		}
 
-		void PrintRegisters()
+		void PrintFlags()
 		{
 			std::cout <<
 				"[C: "  <<  +reg_S[B_C]  << " | " <<
@@ -1158,6 +1158,12 @@ namespace nemu {
 				"N:  "  <<  +reg_S[B_N]  << " | " <<
 				"O:  "  <<  +reg_S[B_O]  <<  "]"  <<
 			std::endl;
+		}
+		void PrintRegisters()
+		{
+			std::cout << "A: " << +reg_A << std::endl;
+			std::cout << "X: " << +reg_X << std::endl;
+			std::cout << "Y: " << +reg_Y << std::endl;
 		}
 
 private:
@@ -1184,7 +1190,7 @@ private:
 		reg_S[B_Z] = reg_A == 0;                                      // Set status zero
 
 		std::cout << "Flags after add:" << std::endl;
-		PrintRegisters();
+		PrintFlags();
 	}
 
 	void OP_CMP(uint8 oper, uint8 reg)
@@ -1206,7 +1212,7 @@ private:
 		reg_S[B_Z] = reg_A == 0;                                              // Set status zero
 
 		std::cout << "Flags after sub:" << std::endl;
-		PrintRegisters();
+		PrintFlags();
 	}
 
 	void SetFlags_NZ(uint8 reg)
@@ -1216,4 +1222,4 @@ private:
 	}
 };
 
-} // namespace
+} // namespace nemu

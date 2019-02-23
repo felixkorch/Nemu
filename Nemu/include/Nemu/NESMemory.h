@@ -63,44 +63,44 @@ namespace nemu
                 return memory[address];
             }
 
-            Iterator & operator++()
+            Iterator &operator++()
             {
                 ++address;
                 return *this;
             }
 
-			Iterator & operator--()
+            Iterator &operator--()
             {
                 --address;
                 return *this;
             }
 
-			Iterator operator+(difference_type offset) const 
-			{
-				return Iterator(memory, address + offset);
-			}
+            Iterator operator+(difference_type offset) const
+            {
+                return Iterator(memory, address + offset);
+            }
 
             Iterator operator-(difference_type offset) const
-			{
-				return Iterator(memory, address - offset);
-			}
+            {
+                return Iterator(memory, address - offset);
+            }
 
-            difference_type operator-(const Iterator& other) const
+            difference_type operator-(const Iterator &other) const
             {
                 return other.address - address;
             }
 
-			Iterator& operator+=(difference_type offset) 
-			{
-				address += offset;
-				return *this;
-			}
+            Iterator &operator+=(difference_type offset)
+            {
+                address += offset;
+                return *this;
+            }
 
-            Iterator& operator-=(difference_type offset) 
-			{
-				address -= offset;
-				return *this;
-			}
+            Iterator &operator-=(difference_type offset)
+            {
+                address -= offset;
+                return *this;
+            }
 
             bool operator!=(const Iterator &other)
             {
@@ -146,20 +146,20 @@ namespace nemu
         using difference_type = std::size_t;
         using size_type = std::size_t;
 
-		constexpr size_type size() const
-		{
-			return InternalNESMapper::AllocSize() + Mapper::AllocSize();
-		}
+        constexpr size_type size() const
+        {
+            return InternalNESMapper::AllocSize() + Mapper::AllocSize();
+        }
 
         iterator begin()
         {
             return Iterator(*this, 0);
         }
 
-		iterator end()
-		{
-			return Iterator(*this, size());
-		}
+        iterator end()
+        {
+            return Iterator(*this, size());
+        }
     };
 
     template <class Storage, class MapperBase>

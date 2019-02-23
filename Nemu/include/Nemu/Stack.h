@@ -7,15 +7,15 @@
 
 namespace nemu
 {
-	/// The stack acts as subset to a underlying container and uses a stack-like
-	/// bevavior in order to manipulate it.
+    /// The stack acts as subset to a underlying container and uses a stack-like
+    /// bevavior in order to manipulate it.
     template <class Iterator>
     class Stack {
         using ValueType = typename Iterator::value_type;
 
-		// TODO:
-		// 	beginAddress is currently unused other then in initialazation.
-		//	Might not be needed as a parameter.
+        // TODO:
+        // 	beginAddress is currently unused other then in initialazation.
+        //	Might not be needed as a parameter.
         const std::size_t beginAddress;
         const Iterator lowerBound;
         const Iterator upperBound;
@@ -69,7 +69,7 @@ namespace nemu
 
         void SetSP(std::uint8_t value)
         {
-			std::advance(it, std::distance(lowerBound, it) + value);
+            std::advance(it, std::distance(lowerBound, it) + value);
         }
     };
 

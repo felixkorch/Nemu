@@ -28,7 +28,7 @@ namespace nemu
 		std::array<uint8, 8> reg_S;
 
 		Memory& memory;
-		Stack<typename Memory::iterator, STACK_SIZE> stack;
+		Stack<typename Memory::iterator> stack;
 		bool running;
 
 		// Status bits
@@ -57,13 +57,18 @@ namespace nemu
 			  reg_A(0),
 			  reg_PC(0),
 			  reg_S{},
-			  stack(std::next(memory.begin(), 0x01FF)), // Stack range 0x100 -> 0x1FF,
+			  stack(memory, STACK_SIZE, 0x0100), // Stack range 0x100 -> 0x1FF,
 			  memory(mem),
 			  running(false) {}
 
 		Memory& GetMemory()
 		{
 			return memory;
+		}
+
+		uint8 GetRegisterA() const
+		{
+			return reg_A;
 		}
 
 		uint8 ToBitMask(std::array<uint8, 8> array)

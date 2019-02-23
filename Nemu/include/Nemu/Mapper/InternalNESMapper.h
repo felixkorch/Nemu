@@ -43,7 +43,7 @@ namespace nemu
 
         // Implements Iterator
         // -------------------------------------------------------------
-        using difference_type = std::size_t;
+        using difference_type = std::ptrdiff_t;
         using value_type = typename Iterator::value_type;
         using pointer = typename Iterator::pointer;
         using reference = typename Iterator::reference;

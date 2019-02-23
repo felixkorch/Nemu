@@ -1,5 +1,6 @@
 set(NEMU_TESTS 
         # EasyAdd 
+        CPUStackPush
         EasyAnd
         MaskIteratorRead 
         MaskIteratorWrite

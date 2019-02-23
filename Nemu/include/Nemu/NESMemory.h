@@ -52,7 +52,7 @@ namespace nemu
 
             // Implementing RandomAccessIterator
             // -----------------------------------------------------------------
-            using difference_type = std::size_t;
+            using difference_type = std::ptrdiff_t;
             using value_type = typename Storage::value_type;
             using pointer = value_type *;
             using reference = value_type &;
@@ -75,10 +75,20 @@ namespace nemu
                 return *this;
             }
 
-			Iterator operator+(difference_type offset) 
+			Iterator operator+(difference_type offset) const 
 			{
 				return Iterator(memory, address + offset);
 			}
+
+            Iterator operator-(difference_type offset) const
+			{
+				return Iterator(memory, address - offset);
+			}
+
+            difference_type operator-(const Iterator& other) const
+            {
+                return other.address - address;
+            }
 
 			Iterator& operator+=(difference_type offset) 
 			{
@@ -86,9 +96,20 @@ namespace nemu
 				return *this;
 			}
 
+            Iterator& operator-=(difference_type offset) 
+			{
+				address -= offset;
+				return *this;
+			}
+
             bool operator!=(const Iterator &other)
             {
                 return &memory != &other.memory || address != other.address;
+            }
+
+            bool operator==(const Iterator &other)
+            {
+                return !((*this) != other);
             }
         };
 

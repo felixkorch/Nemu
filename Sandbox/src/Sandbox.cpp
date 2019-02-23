@@ -1,5 +1,6 @@
 #include "Nemu/CPU.h"
 #include "Nemu/System.h"
+#include <cassert>
 
 using namespace nemu;
 
@@ -32,21 +33,44 @@ int main()
 		0xD0, 0        // while 1
 	};
 
-	CPU<std::vector<uint8>> cpu;
-	auto& memory = cpu.GetMemory();
-	std::copy(subroutine.begin(), subroutine.end(), &memory[0] + 0x8000);
+	std::vector<uint8> easy_and = {
+		0xA5, 0,       // lda  zpg[0]        | Entry point (0x8000)
+		0x29, 0xFF,    // and
+		0x85, 1,       // sta  zpg[0] & 0xFF -> zpg[1]
+		0xA2, 1,       // ldx  #1
+		0xD0, 0        // while 1
+	};
 
-	AsUInt16(0xFFFC) = 0x8005; // Set reset-vector to start address
+	
+	auto nestest = ReadFile<std::vector<uint8>>("nestest.nes");
+	
+	auto memory = MakeNESMemory<std::vector<int32>, NROM256Mapper>();
+	for (int i = 0x8000; i < nestest.size(); i++) {
+		memory[i] = nestest[i];
+	}
+	CPU<decltype(memory)> cpu(memory);
 
-	uint8 A = 200;   // A -> zpg[0]
-	uint8 B = 40;    // B -> zpg[1]
+	memory[0xFFFC] = 0;   // Load reset vector with start address
+	memory[0xFFFD] = 0xC0;
+
+	uint8 A = 200; // A -> zpg[0]
 	memory[0] = A;
-	memory[1] = B;
 
 	cpu.Run();
+	while (1) {
+		cpu.Clock(1);
+	}
+
+
+	/*auto memory = std::vector<uint8>(program);
+	CPU<std::vector<uint8>> cpu(memory);
+	memory[0xFFFC] = 0;   // Load reset vector with start address
+	memory[0xFFFD] = 0x80;
+	uint8 A = 200; // A -> zpg[0]
+	uint8 B = 25;  // B -> zpg[1]
+	memory[0] = A;
+	memory[1] = B;
+	cpu.Run();
 	cpu.Clock(10);
-	cpu.PrintFlags();
-	cpu.PrintRegisters();
-	cpu.PrintMemory<uint8>(15);
-	std::cin.get();
+	cpu.PrintMemory<uint8>(10);*/
 }

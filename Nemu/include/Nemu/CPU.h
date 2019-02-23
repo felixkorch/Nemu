@@ -11,9 +11,9 @@ namespace nemu
 {
 	typedef std::uint8_t uint8;
 	typedef std::uint16_t uint16;
+	typedef std::int32_t int32;
 	typedef std::int8_t int8;
 	typedef unsigned int uint;
-#define AsUInt16(x) *(uint16 *)&memory[x]
 
 	template <class Memory>
 	class CPU {
@@ -27,8 +27,8 @@ namespace nemu
 		uint16 reg_PC;
 		std::array<uint8, 8> reg_S;
 
-		Memory memory;
-		Stack<uint8, STACK_SIZE> stack;
+		Memory& memory;
+		Stack<int32, STACK_SIZE> stack;
 		bool running;
 
 		// Status bits
@@ -57,7 +57,7 @@ namespace nemu
 			  reg_A(0),
 			  reg_PC(0),
 			  reg_S{},
-			  stack(&memory[0] + 0x1FF),             // Stack range 0x100 -> 0x1FF,
+			  stack(&memory[0] + 0x1FF), // Stack range 0x100 -> 0x1FF,
 			  memory(mem),
 			  running(false) {}
 
@@ -112,14 +112,14 @@ namespace nemu
 				return true;
 			}
 			case 0xAC: { // LDY Absolute
-				uint16 offset = AsUInt16(reg_PC + 1);
+				uint16 offset = memory.Get16At(reg_PC + 1);
 				reg_Y = memory[offset];
 				SetFlags_NZ(reg_Y);
 				reg_PC += 3;
 				return true;
 			}
 			case 0xBC: { // LDY Absolute, X
-				uint16 offset = AsUInt16(reg_PC + 1) + reg_X;
+				uint16 offset = memory.Get16At(reg_PC + 1) + reg_X;
 				reg_Y = memory[offset];
 				SetFlags_NZ(reg_Y);
 				reg_PC += 3;
@@ -147,14 +147,14 @@ namespace nemu
 				return true;
 			}
 			case 0xAE: { // LDX Absolute
-				uint16 offset = AsUInt16(reg_PC + 1);
+				uint16 offset = memory.Get16At(reg_PC + 1);
 				reg_X = memory[offset];
 				SetFlags_NZ(reg_X);
 				reg_PC += 3;
 				return true;
 			}
 			case 0xBE: { // LDX Absolute, Y
-				uint16 offset = AsUInt16(reg_PC + 1) + reg_Y;
+				uint16 offset = memory.Get16At(reg_PC + 1) + reg_Y;
 				reg_X = memory[offset];
 				SetFlags_NZ(reg_X);
 				reg_PC += 3;
@@ -220,21 +220,21 @@ namespace nemu
 				return true;
 			}
 			case 0xAD: { // LDA Absolute
-				uint16 offset = AsUInt16(reg_PC + 1);
+				uint16 offset = memory.Get16At(reg_PC + 1);
 				reg_A = memory[offset];
 				SetFlags_NZ(reg_A);
 				reg_PC += 3;
 				return true;
 			}
 			case 0xBD: { // LDA Absolute, X
-				uint16 offset = AsUInt16(reg_PC + 1) + reg_X;
+				uint16 offset = memory.Get16At(reg_PC + 1) + reg_X;
 				reg_A = memory[offset];
 				SetFlags_NZ(reg_A);
 				reg_PC += 3;
 				return true;
 			}
 			case 0xB9: { // LDA Absolute, Y
-				uint16 offset = AsUInt16(reg_PC + 1) + reg_Y;
+				uint16 offset = memory.Get16At(reg_PC + 1) + reg_Y;
 				reg_A = memory[offset];
 				SetFlags_NZ(reg_A);
 				reg_PC += 3;
@@ -243,7 +243,7 @@ namespace nemu
 			case 0xA1: { // LDA Indexed Indirect, X (Add first then
 				     // fetch)
 				uint8 offset = memory[reg_PC + 1] + reg_X;
-				uint16 adr = AsUInt16(offset);
+				uint16 adr = memory.Get16At(offset);
 				reg_A = memory[adr];
 				SetFlags_NZ(reg_A);
 				reg_PC += 2;
@@ -252,7 +252,7 @@ namespace nemu
 			case 0xB1: { // LDA Indirect Indexed, Y (Fetch first
 				     // then add)
 				uint8 offset = memory[reg_PC + 1];
-				uint16 adr = AsUInt16(offset) + reg_Y;
+				uint16 adr = memory.Get16At(offset) + reg_Y;
 				reg_A = memory[adr];
 				SetFlags_NZ(reg_A);
 				reg_PC += 2;
@@ -279,21 +279,21 @@ namespace nemu
 				return true;
 			}
 			case 0x6D: { // ADC Absolute
-				uint16 offset = AsUInt16(reg_PC + 1);
+				uint16 offset = memory.Get16At(reg_PC + 1);
 				uint8 oper = memory[offset];
 				OP_ADC(oper);
 				reg_PC += 3;
 				return true;
 			}
 			case 0x7D: { // ADC Absolute, X
-				uint16 offset = AsUInt16(reg_PC + 1) + reg_X;
+				uint16 offset = memory.Get16At(reg_PC + 1) + reg_X;
 				uint8 oper = memory[offset];
 				OP_ADC(oper);
 				reg_PC += 3;
 				return true;
 			}
 			case 0x79: { // ADC Absolute, Y
-				uint16 offset = AsUInt16(reg_PC + 1) + reg_Y;
+				uint16 offset = memory.Get16At(reg_PC + 1) + reg_Y;
 				uint8 oper = memory[offset];
 				OP_ADC(oper);
 				reg_PC += 3;
@@ -302,7 +302,7 @@ namespace nemu
 			case 0x61: { // ADC Indexed Indirect, X (Add first then
 				     // fetch)
 				uint8 offset = memory[reg_PC + 1] + reg_X;
-				uint16 adr = AsUInt16(offset);
+				uint16 adr = memory.Get16At(offset);
 				uint8 oper = memory[adr];
 				OP_ADC(oper);
 				reg_PC += 2;
@@ -311,7 +311,7 @@ namespace nemu
 			case 0x71: { // ADC Indirect Indexed, Y (Fetch first
 				     // then add)
 				uint8 offset = memory[reg_PC + 1];
-				uint16 adr = AsUInt16(offset) + reg_Y;
+				uint16 adr = memory.Get16At(offset) + reg_Y;
 				uint8 oper = memory[adr];
 				OP_ADC(oper);
 				reg_PC += 2;
@@ -338,21 +338,21 @@ namespace nemu
 				return true;
 			}
 			case 0xED: { // SBC Absolute
-				uint16 offset = AsUInt16(reg_PC + 1);
+				uint16 offset = memory.Get16At(reg_PC + 1);
 				uint8 oper = memory[offset];
 				OP_SBC(oper);
 				reg_PC += 3;
 				return true;
 			}
 			case 0xFD: { // SBC Absolute, X
-				uint16 offset = AsUInt16(reg_PC + 1) + reg_X;
+				uint16 offset = memory.Get16At(reg_PC + 1) + reg_X;
 				uint8 oper = memory[offset];
 				OP_SBC(oper);
 				reg_PC += 3;
 				return true;
 			}
 			case 0xF9: { // SBC Absolute, Y
-				uint16 offset = AsUInt16(reg_PC + 1) + reg_Y;
+				uint16 offset = memory.Get16At(reg_PC + 1) + reg_Y;
 				uint8 oper = memory[offset];
 				OP_SBC(oper);
 				reg_PC += 3;
@@ -361,7 +361,7 @@ namespace nemu
 			case 0xE1: { // SBC Indexed Indirect, X (Add first then
 				     // fetch)
 				uint8 offset = memory[reg_PC + 1] + reg_X;
-				uint16 adr = AsUInt16(offset);
+				uint16 adr = memory.Get16At(offset);
 				uint8 oper = memory[adr];
 				OP_SBC(oper);
 				reg_PC += 2;
@@ -370,7 +370,7 @@ namespace nemu
 			case 0xF1: { // SBC Indirect Indexed, Y (Fetch first
 				     // then add)
 				uint8 offset = memory[reg_PC + 1];
-				uint16 adr = AsUInt16(offset) + reg_Y;
+				uint16 adr = memory.Get16At(offset) + reg_Y;
 				uint8 oper = memory[adr];
 				OP_SBC(oper);
 				reg_PC += 2;
@@ -389,19 +389,19 @@ namespace nemu
 				return true;
 			}
 			case 0x8D: { // STA Absolute
-				uint16 adr = AsUInt16(reg_PC + 1);
+				uint16 adr = memory.Get16At(reg_PC + 1);
 				memory[adr] = reg_A;
 				reg_PC += 3;
 				return true;
 			}
 			case 0x9D: { // STA Absolute, X
-				uint16 adr = AsUInt16(reg_PC + 1) + reg_X;
+				uint16 adr = memory.Get16At(reg_PC + 1) + reg_X;
 				memory[adr] = reg_A;
 				reg_PC += 3;
 				return true;
 			}
 			case 0x99: { // STA Absolute, Y
-				uint16 adr = AsUInt16(reg_PC + 1) + reg_Y;
+				uint16 adr = memory.Get16At(reg_PC + 1) + reg_Y;
 				memory[adr] = reg_A;
 				reg_PC += 3;
 				return true;
@@ -409,7 +409,7 @@ namespace nemu
 			case 0x81: { // STA Indexed Indirect, X (Add first then
 				     // fetch)
 				uint8 offset = memory[reg_PC + 1] + reg_X;
-				uint16 adr = AsUInt16(offset);
+				uint16 adr = memory.Get16At(offset);
 				memory[adr] = reg_A;
 				reg_PC += 2;
 				return true;
@@ -417,7 +417,7 @@ namespace nemu
 			case 0x91: { // STA Indirect Indexed, Y (Fetch first
 				     // then add)
 				uint8 offset = memory[reg_PC + 1];
-				uint16 adr = AsUInt16(offset) + reg_Y;
+				uint16 adr = memory.Get16At(offset) + reg_Y;
 				memory[adr] = reg_A;
 				reg_PC += 2;
 				return true;
@@ -435,7 +435,7 @@ namespace nemu
 				return true;
 			}
 			case 0x8E: { // STX, Absolute
-				uint16 adr = AsUInt16(reg_PC + 1);
+				uint16 adr = memory.Get16At(reg_PC + 1);
 				memory[adr] = reg_X;
 				reg_PC += 3;
 				return true;
@@ -453,22 +453,22 @@ namespace nemu
 				return true;
 			}
 			case 0x8C: { // STY Absolute
-				uint16 adr = AsUInt16(reg_PC + 1);
+				uint16 adr = memory.Get16At(reg_PC + 1);
 				memory[adr] = reg_Y;
 				reg_PC += 3;
 				return true;
 			}
 			case 0x4C: { // JMP Absolute
-				reg_PC = AsUInt16(reg_PC + 1);
+				reg_PC = memory.Get16At(reg_PC + 1);
 				return true;
 			}
 			case 0x6C: { // JMP Indirect
-				uint16 offset = AsUInt16(reg_PC + 1);
+				uint16 offset = memory.Get16At(reg_PC + 1);
 				reg_PC = memory[offset];
 				return true;
 			}
 			case 0x20: { // JSR
-				uint16 offset = AsUInt16(reg_PC + 1);
+				uint16 offset = memory.Get16At(reg_PC + 1);
 				uint16 jmp_adr = reg_PC + 2;
 				stack.Push((jmp_adr >> 8));
 				stack.Push(jmp_adr);
@@ -554,7 +554,7 @@ namespace nemu
 				return true;
 			}
 			case 0x2C: { // BIT Absolute
-				uint16 adr = AsUInt16(reg_PC + 1);
+				uint16 adr = memory.Get16At(reg_PC + 1);
 				uint8 oper = memory[adr];
 				reg_S[B_N] = (oper & B_7) == B_7;
 				reg_S[B_O] = (oper & B_6) == B_6;
@@ -578,7 +578,7 @@ namespace nemu
 			}
 			case 0xC6: { // DEC Zeropage
 				uint8 offset = memory[reg_PC + 1];
-				uint8 &oper = memory[offset];
+				uint8 &oper = (uint8&)memory[offset];
 				oper--;
 				reg_S[B_Z] = oper == 0 ? 1 : 0;
 				reg_S[B_N] = (oper & B_7) == B_7 ? 1 : 0;
@@ -587,7 +587,7 @@ namespace nemu
 			}
 			case 0xD6: { // DEC Zeropage, X
 				uint8 offset = memory[reg_PC + 1] + reg_X;
-				uint8 &oper = memory[offset];
+				uint8 &oper = (uint8&)memory[offset];
 				oper--;
 				reg_S[B_Z] = oper == 0 ? 1 : 0;
 				reg_S[B_N] = (oper & B_7) == B_7 ? 1 : 0;
@@ -595,8 +595,8 @@ namespace nemu
 				return true;
 			}
 			case 0xCE: { // DEC Absolute
-				uint16 adr = AsUInt16(reg_PC + 1);
-				uint8 &oper = memory[adr];
+				uint16 adr = memory.Get16At(reg_PC + 1);
+				uint8 &oper = (uint8&)memory[adr];
 				oper--;
 				reg_S[B_Z] = oper == 0 ? 1 : 0;
 				reg_S[B_N] = (oper & B_7) == B_7 ? 1 : 0;
@@ -604,8 +604,8 @@ namespace nemu
 				return true;
 			}
 			case 0xDE: { // DEC Absolute, X
-				uint16 adr = AsUInt16(reg_PC + 1) + reg_X;
-				uint8 &oper = memory[adr];
+				uint16 adr = memory.Get16At(reg_PC + 1) + reg_X;
+				uint8 &oper = (uint8&)memory[adr];
 				oper--;
 				reg_S[B_Z] = oper == 0 ? 1 : 0;
 				reg_S[B_N] = (oper & B_7) == B_7 ? 1 : 0;
@@ -656,7 +656,7 @@ namespace nemu
 			}
 			case 0x06: { // ASL Zeropage
 				uint8 offset = memory[reg_PC + 1];
-				uint8 &oper = memory[offset];
+				uint8 &oper = (uint8&)memory[offset];
 				reg_S[B_C] = (oper & B_7) == B_7;
 				oper <<= 1;
 				SetFlags_NZ(oper);
@@ -665,7 +665,7 @@ namespace nemu
 			}
 			case 0x16: { // ASL Zeropage, X
 				uint8 offset = memory[reg_PC + 1] + reg_X;
-				uint8 &oper = memory[offset];
+				uint8 &oper = (uint8&)memory[offset];
 				reg_S[B_C] = (oper & B_7) == B_7;
 				oper <<= 1;
 				SetFlags_NZ(oper);
@@ -673,8 +673,8 @@ namespace nemu
 				return true;
 			}
 			case 0x0E: { // ASL Absolute
-				uint16 adr = AsUInt16(reg_PC + 1);
-				uint8 &oper = memory[adr];
+				uint16 adr = memory.Get16At(reg_PC + 1);
+				uint8 &oper = (uint8&)memory[adr];
 				reg_S[B_C] = (oper & B_7) == B_7;
 				oper <<= 1;
 				SetFlags_NZ(oper);
@@ -682,8 +682,8 @@ namespace nemu
 				return true;
 			}
 			case 0x1E: { // ASL Absolute, X
-				uint16 adr = AsUInt16(reg_PC + 1) + reg_X;
-				uint8 &oper = memory[adr];
+				uint16 adr = memory.Get16At(reg_PC + 1) + reg_X;
+				uint8 &oper = (uint8&)memory[adr];
 				reg_S[B_C] = (oper & B_7) == B_7;
 				oper <<= 1;
 				SetFlags_NZ(oper);
@@ -699,7 +699,7 @@ namespace nemu
 			}
 			case 0x46: { // LSR Zeropage
 				uint8 offset = memory[reg_PC + 1];
-				uint8 &oper = memory[offset];
+				uint8 &oper = (uint8&)memory[offset];
 				reg_S[B_C] = (oper & B_0) == B_0;
 				oper >>= 1;
 				reg_S[B_Z] = oper == 0;
@@ -708,7 +708,7 @@ namespace nemu
 			}
 			case 0x56: { // LSR Zeropage, X
 				uint8 offset = memory[reg_PC + 1] + reg_X;
-				uint8 &oper = memory[offset];
+				uint8 &oper = (uint8&)memory[offset];
 				reg_S[B_C] = (oper & B_0) == B_0;
 				oper >>= 1;
 				reg_S[B_Z] = oper == 0;
@@ -716,8 +716,8 @@ namespace nemu
 				return true;
 			}
 			case 0x4E: { // LSR Absolute
-				uint16 adr = AsUInt16(reg_PC + 1);
-				uint8 &oper = memory[adr];
+				uint16 adr = memory.Get16At(reg_PC + 1);
+				uint8 &oper = (uint8&)memory[adr];
 				reg_S[B_C] = (oper & B_0) == B_0;
 				oper >>= 1;
 				reg_S[B_Z] = oper == 0;
@@ -725,8 +725,8 @@ namespace nemu
 				return true;
 			}
 			case 0x5E: { // LSR Absolute, X
-				uint16 adr = AsUInt16(reg_PC + 1) + reg_X;
-				uint8 &oper = memory[adr];
+				uint16 adr = memory.Get16At(reg_PC + 1) + reg_X;
+				uint8 &oper = (uint8&)memory[adr];
 				reg_S[B_C] = (oper & B_0) == B_0;
 				oper >>= 1;
 				reg_S[B_Z] = oper == 0;
@@ -743,7 +743,7 @@ namespace nemu
 			}
 			case 0x26: { // ROL Zeropage
 				uint8 offset = memory[reg_PC + 1];
-				uint8 &oper = memory[offset];
+				uint8 &oper = (uint8&)memory[offset];
 				reg_S[B_C] = (oper & B_7) == B_7;
 				oper <<= 1;
 				oper ^= (-reg_S[B_C] ^ oper) & B_0;
@@ -753,7 +753,7 @@ namespace nemu
 			}
 			case 0x36: { // ROL Zeropage, X
 				uint8 offset = memory[reg_PC + 1] + reg_X;
-				uint8 &oper = memory[offset];
+				uint8 &oper = (uint8&)memory[offset];
 				reg_S[B_C] = (oper & B_7) == B_7;
 				oper <<= 1;
 				oper ^= (-reg_S[B_C] ^ oper) & B_0;
@@ -762,8 +762,8 @@ namespace nemu
 				return true;
 			}
 			case 0x2E: { // ROL Absolute
-				uint16 adr = AsUInt16(reg_PC + 1);
-				uint8 &oper = memory[adr];
+				uint16 adr = memory.Get16At(reg_PC + 1);
+				uint8 &oper = (uint8&)memory[adr];
 				reg_S[B_C] = (oper & B_7) == B_7;
 				oper <<= 1;
 				oper ^= (-reg_S[B_C] ^ oper) & B_0;
@@ -772,8 +772,8 @@ namespace nemu
 				return true;
 			}
 			case 0x3E: { // ROL Absolute, X
-				uint16 adr = AsUInt16(reg_PC + 1) + reg_X;
-				uint8 &oper = memory[adr];
+				uint16 adr = memory.Get16At(reg_PC + 1) + reg_X;
+				uint8 &oper = (uint8&)memory[adr];
 				reg_S[B_C] = (oper & B_7) == B_7;
 				oper <<= 1;
 				oper ^= (-reg_S[B_C] ^ oper) & B_0;
@@ -791,7 +791,7 @@ namespace nemu
 			}
 			case 0x66: { // ROR Zeropage
 				uint8 offset = memory[reg_PC + 1];
-				uint8 &oper = memory[offset];
+				uint8 &oper = (uint8&)memory[offset];
 				reg_S[B_C] = (oper & B_0) == B_0;
 				oper >>= 1;
 				oper ^= (-reg_S[B_C] ^ oper) & B_7;
@@ -801,7 +801,7 @@ namespace nemu
 			}
 			case 0x76: { // ROR Zeropage, X
 				uint8 offset = memory[reg_PC + 1] + reg_X;
-				uint8 &oper = memory[offset];
+				uint8 &oper = (uint8&)memory[offset];
 				reg_S[B_C] = (oper & B_0) == B_0;
 				oper >>= 1;
 				oper ^= (-reg_S[B_C] ^ oper) & B_7;
@@ -810,8 +810,8 @@ namespace nemu
 				return true;
 			}
 			case 0x6E: { // ROR Absolute
-				uint16 adr = AsUInt16(reg_PC + 1);
-				uint8 &oper = memory[adr];
+				uint16 adr = memory.Get16At(reg_PC + 1);
+				uint8 &oper = (uint8&)memory[adr];
 				reg_S[B_C] = (oper & B_0) == B_0;
 				oper >>= 1;
 				oper ^= (-reg_S[B_C] ^ oper) & B_7;
@@ -820,8 +820,8 @@ namespace nemu
 				return true;
 			}
 			case 0x7E: { // ROR Absolute, X
-				uint16 adr = AsUInt16(reg_PC + 1) + reg_X;
-				uint8 &oper = memory[adr];
+				uint16 adr = memory.Get16At(reg_PC + 1) + reg_X;
+				uint8 &oper = (uint8&)memory[adr];
 				reg_S[B_C] = (oper & B_0) == B_0;
 				oper >>= 1;
 				oper ^= (-reg_S[B_C] ^ oper) & B_7;
@@ -851,21 +851,21 @@ namespace nemu
 				return true;
 			}
 			case 0x2D: { // AND Absolute
-				uint16 adr = AsUInt16(reg_PC + 1);
+				uint16 adr = memory.Get16At(reg_PC + 1);
 				reg_A &= memory[adr];
 				SetFlags_NZ(reg_A);
 				reg_PC += 3;
 				return true;
 			}
 			case 0x3D: { // AND Absolute, X
-				uint16 adr = AsUInt16(reg_PC + 1) + reg_X;
+				uint16 adr = memory.Get16At(reg_PC + 1) + reg_X;
 				reg_A &= memory[adr];
 				SetFlags_NZ(reg_A);
 				reg_PC += 3;
 				return true;
 			}
 			case 0x39: { // AND Absolute, Y
-				uint16 adr = AsUInt16(reg_PC + 1) + reg_Y;
+				uint16 adr = memory.Get16At(reg_PC + 1) + reg_Y;
 				reg_A &= memory[adr];
 				SetFlags_NZ(reg_A);
 				reg_PC += 3;
@@ -873,7 +873,7 @@ namespace nemu
 			}
 			case 0x21: { // AND Indexed Indirect, X (Add first then fetch)
 				uint8 offset = memory[reg_PC + 1] + reg_X;
-				uint16 adr = AsUInt16(offset);
+				uint16 adr = memory.Get16At(offset);
 				reg_A &= memory[adr];
 				SetFlags_NZ(reg_A);
 				reg_PC += 2;
@@ -881,7 +881,7 @@ namespace nemu
 			}
 			case 0x31: { // AND Indirect Indexed, Y (Fetch first then add)
 				uint8 offset = memory[reg_PC + 1];
-				uint16 adr = AsUInt16(offset) + reg_Y;
+				uint16 adr = memory.Get16At(offset) + reg_Y;
 				reg_A &= memory[adr];
 				SetFlags_NZ(reg_A);
 				reg_PC += 2;
@@ -908,21 +908,21 @@ namespace nemu
 				return true;
 			}
 			case 0xCD: { // CMP Absolute
-				uint16 adr = AsUInt16(reg_PC + 1);
+				uint16 adr = memory.Get16At(reg_PC + 1);
 				uint8 oper = memory[adr];
 				OP_CMP(oper, reg_A);
 				reg_PC += 3;
 				return true;
 			}
 			case 0xDD: { // CMP Absolute, X
-				uint16 adr = AsUInt16(reg_PC + 1) + reg_X;
+				uint16 adr = memory.Get16At(reg_PC + 1) + reg_X;
 				uint8 oper = memory[adr];
 				OP_CMP(oper, reg_A);
 				reg_PC += 3;
 				return true;
 			}
 			case 0xD9: { // CMP Absolute, Y
-				uint16 adr = AsUInt16(reg_PC + 1) + reg_Y;
+				uint16 adr = memory.Get16At(reg_PC + 1) + reg_Y;
 				uint8 oper = memory[adr];
 				OP_CMP(oper, reg_A);
 				reg_PC += 3;
@@ -930,7 +930,7 @@ namespace nemu
 			}
 			case 0xC1: { // CMP Indexed Indirect, X (Add first then fetch)
 				uint8 offset = memory[reg_PC + 1] + reg_X;
-				uint16 adr = AsUInt16(offset);
+				uint16 adr = memory.Get16At(offset);
 				uint8 oper = memory[adr];
 				OP_CMP(oper, reg_A);
 				reg_PC += 2;
@@ -938,7 +938,7 @@ namespace nemu
 			}
 			case 0xD1: { // CMP Indirect Indexed, Y (Fetch first then add)
 				uint8 offset = memory[reg_PC + 1];
-				uint16 adr = AsUInt16(offset) + reg_Y;
+				uint16 adr = memory.Get16At(offset) + reg_Y;
 				uint8 oper = memory[adr];
 				OP_CMP(oper, reg_A);
 				reg_PC += 2;
@@ -958,7 +958,7 @@ namespace nemu
 				return true;
 			}
 			case 0xEC: { // CPX Absolute
-				uint16 adr = AsUInt16(reg_PC + 1);
+				uint16 adr = memory.Get16At(reg_PC + 1);
 				uint8 oper = memory[adr];
 				OP_CMP(oper, reg_X);
 				reg_PC += 3;
@@ -978,7 +978,7 @@ namespace nemu
 				return true;
 			}
 			case 0xCC: { // CPY Absolute
-				uint16 adr = AsUInt16(reg_PC + 1);
+				uint16 adr = memory.Get16At(reg_PC + 1);
 				uint8 oper = memory[adr];
 				OP_CMP(oper, reg_Y);
 				reg_PC += 3;
@@ -1006,21 +1006,21 @@ namespace nemu
 				return true;
 			}
 			case 0x0D: { // ORA Absolute
-				uint16 adr = AsUInt16(reg_PC + 1);
+				uint16 adr = memory.Get16At(reg_PC + 1);
 				reg_A |= memory[adr];
 				SetFlags_NZ(reg_A);
 				reg_PC += 3;
 				return true;
 			}
 			case 0x1D: { // ORA Absolute, X
-				uint16 adr = AsUInt16(reg_PC + 1) + reg_X;
+				uint16 adr = memory.Get16At(reg_PC + 1) + reg_X;
 				reg_A |= memory[adr];
 				SetFlags_NZ(reg_A);
 				reg_PC += 3;
 				return true;
 			}
 			case 0x19: { // ORA Absolute, Y
-				uint16 adr = AsUInt16(reg_PC + 1) + reg_Y;
+				uint16 adr = memory.Get16At(reg_PC + 1) + reg_Y;
 				reg_A |= memory[adr];
 				SetFlags_NZ(reg_A);
 				reg_PC += 3;
@@ -1028,7 +1028,7 @@ namespace nemu
 			}
 			case 0x01: { // ORA Indexed Indirect, X (Add first then fetch)
 				uint8 offset = memory[reg_PC + 1] + reg_X;
-				uint16 adr = AsUInt16(offset);
+				uint16 adr = memory.Get16At(offset);
 				reg_A |= memory[adr];
 				SetFlags_NZ(reg_A);
 				reg_PC += 2;
@@ -1036,7 +1036,7 @@ namespace nemu
 			}
 			case 0x11: { // ORA Indirect Indexed, Y (Fetch first then add)
 				uint8 offset = memory[reg_PC + 1];
-				uint16 adr = AsUInt16(offset) + reg_Y;
+				uint16 adr = memory.Get16At(offset) + reg_Y;
 				reg_A |= memory[adr];
 				SetFlags_NZ(reg_A);
 				reg_PC += 2;
@@ -1064,21 +1064,21 @@ namespace nemu
 				return true;
 			}
 			case 0x4D: { // EOR Absolute
-				uint16 adr = AsUInt16(reg_PC + 1);
+				uint16 adr = memory.Get16At(reg_PC + 1);
 				reg_A ^= memory[adr];
 				SetFlags_NZ(reg_A);
 				reg_PC += 3;
 				return true;
 			}
 			case 0x5D: { // EOR Absolute, X
-				uint16 adr = AsUInt16(reg_PC + 1) + reg_X;
+				uint16 adr = memory.Get16At(reg_PC + 1) + reg_X;
 				reg_A ^= memory[adr];
 				SetFlags_NZ(reg_A);
 				reg_PC += 3;
 				return true;
 			}
 			case 0x59: { // EOR Absolute, Y
-				uint16 adr = AsUInt16(reg_PC + 1) + reg_Y;
+				uint16 adr = memory.Get16At(reg_PC + 1) + reg_Y;
 				reg_A ^= memory[adr];
 				SetFlags_NZ(reg_A);
 				reg_PC += 3;
@@ -1087,7 +1087,7 @@ namespace nemu
 			case 0x41: { // EOR Indexed Indirect, X (Add first then
 				     // fetch)
 				uint8 offset = memory[reg_PC + 1] + reg_X;
-				uint16 adr = AsUInt16(offset);
+				uint16 adr = memory.Get16At(offset);
 				reg_A ^= memory[adr];
 				SetFlags_NZ(reg_A);
 				reg_PC += 2;
@@ -1096,7 +1096,7 @@ namespace nemu
 			case 0x51: { // EOR Indirect Indexed, Y (Fetch first
 				     // then add)
 				uint8 offset = memory[reg_PC + 1];
-				uint16 adr = AsUInt16(offset) + reg_Y;
+				uint16 adr = memory.Get16At(offset) + reg_Y;
 				reg_A ^= memory[adr];
 				SetFlags_NZ(reg_A);
 				reg_PC += 2;
@@ -1117,14 +1117,14 @@ namespace nemu
 				return true;
 			}
 			case 0xEE: { // INC Absolute
-				uint16 adr = AsUInt16(reg_PC + 1);
+				uint16 adr = memory.Get16At(reg_PC + 1);
 				memory[adr]++;
 				SetFlags_NZ(memory[adr]);
 				reg_PC += 3;
 				return true;
 			}
 			case 0xFE: { // INC Absolute, X
-				uint16 adr = AsUInt16(reg_PC + 1) + reg_X;
+				uint16 adr = memory.Get16At(reg_PC + 1) + reg_X;
 				memory[adr]++;
 				SetFlags_NZ(memory[adr]);
 				reg_PC += 3;
@@ -1161,7 +1161,7 @@ namespace nemu
 		void Run()
 		{
 			running = true;
-			reg_PC = AsUInt16(0xFFFC); // Load PC with the reset vector
+			reg_PC = memory.Get16At(0xFFFC); // Load PC with the reset vector
 		}
 
 		void PrintFlags()

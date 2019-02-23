@@ -28,7 +28,7 @@ namespace nemu
 		std::array<uint8, 8> reg_S;
 
 		Memory& memory;
-		Stack<int32, STACK_SIZE> stack;
+		Stack<typename Memory::iterator, STACK_SIZE> stack;
 		bool running;
 
 		// Status bits
@@ -51,13 +51,13 @@ namespace nemu
 		constexpr static uint16 B_8 = (1 << 8);
 
 	    public:
-		CPU(Memory mem = std::vector<uint8>(0xFFFF)) // Defaults to the whole address-space
+		CPU(Memory& mem) // Defaults to the whole address-space
 			: reg_X(0),
 			  reg_Y(0),
 			  reg_A(0),
 			  reg_PC(0),
 			  reg_S{},
-			  stack(&memory[0] + 0x1FF), // Stack range 0x100 -> 0x1FF,
+			  stack(std::next(memory.begin(), 0x01FF)), // Stack range 0x100 -> 0x1FF,
 			  memory(mem),
 			  running(false) {}
 

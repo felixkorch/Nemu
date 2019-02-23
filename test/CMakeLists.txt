@@ -1,5 +1,6 @@
 set(NEMU_TESTS 
         # EasyAdd 
+        EasyAnd
         MaskIteratorRead 
         MaskIteratorWrite
         MemoryPermission

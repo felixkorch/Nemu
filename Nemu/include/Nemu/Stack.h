@@ -3,37 +3,40 @@
 #include <iostream>
 #include <cstdint>
 #include <stdexcept>
+#include <iterator>
 
 namespace nemu
 {
-	template <class T, unsigned int size>
+	template <class Iterator, unsigned int size>
 	class Stack {
-	    private:
+		using ValueType = typename Iterator::value_type;
+
 		unsigned int sp;
-		T *memory;
+		Iterator it;
 
 	    public:
-		Stack(T *mem) : sp(size), memory(mem)
+		Stack(Iterator it) : sp(size), it(it)
 		{}
 
-		bool Push(T data)
+		bool Push(const ValueType& data)
 		{
 			if (sp == 0) {
 				std::cout << "Stack Overflow" << std::endl;
 				return false;
 			}
-			*memory-- = data;
+			*it = data;
+			--it;
 			--sp;
 			return true;
 		}
 
-		T Pop()
+		ValueType Pop()
 		{
 			if (sp == size) {
 				throw std::underflow_error("Nothing on stack");
 			}
 			++sp;
-			return *++memory;
+			return *++it;
 		}
 
 		bool isEmpty()
@@ -48,6 +51,7 @@ namespace nemu
 
 		void SetSP(std::uint8_t val)
 		{
+			std::advance(it, val - sp);
 			sp = val;
 		}
 	};

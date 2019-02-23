@@ -28,6 +28,11 @@ namespace nemu
 			return address > 0x7FFF && address <= 0xFFFF;
 		}
 
+		static constexpr std::size_t AllocSize()
+		{
+			return 0x7FFF;
+		}
+
 		// Implements Iterator
 		// -------------------------------------------------------------
 		reference operator*()

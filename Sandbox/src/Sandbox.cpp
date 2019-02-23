@@ -46,7 +46,7 @@ int main()
 	
 	auto memory = MakeNESMemory<std::vector<int32>, NROM256Mapper>();
 	for (int i = 0; i < nestest.size(); i++) {
-		memory[0x8000 + i] = nestest[i];
+		memory[0xC000 + i] = nestest[i];
 	}
 	CPU<decltype(memory)> cpu(memory);
 

@@ -13,30 +13,24 @@ namespace nemu
     class Stack {
         using ValueType = typename Iterator::value_type;
 
-        // TODO:
-        // 	beginAddress is currently unused other then in initialazation.
-        //	Might not be needed as a parameter.
+	private:
         const std::size_t beginAddress;
         const Iterator lowerBound;
         const Iterator upperBound;
         Iterator it;
 
     public:
-        constexpr Stack(const Iterator &lowerBound,
-                        const Iterator &upperBound,
-                        std::size_t beginAddress = 0x0100)
-                : lowerBound(lowerBound), upperBound(upperBound),
-                  it(upperBound), beginAddress(beginAddress)
-        {}
+        constexpr Stack(const Iterator& lowerBound, const Iterator& upperBound, std::size_t beginAddress = 0x0100)
+                : lowerBound(lowerBound),
+				  upperBound(upperBound),
+                  it(upperBound),
+				  beginAddress(beginAddress) {}
 
         template <class Memory>
-        constexpr Stack(Memory &memory,
-                        std::size_t size,
-                        std::size_t beginAddress = 0x0100)
+        constexpr Stack(Memory& memory, std::size_t size, std::size_t beginAddress = 0x0100)
                 : Stack(std::next(memory.begin(), beginAddress),
-                        std::next(memory.begin(), beginAddress + size),
-                        beginAddress)
-        {}
+					    std::next(memory.begin(), beginAddress + size),
+					    beginAddress) {}
 
         bool Push(const ValueType &data)
         {

@@ -9,16 +9,28 @@
 
 namespace nemu
 {
-	typedef std::uint8_t uint8;
-	typedef std::uint16_t uint16;
-	typedef std::int32_t int32;
-	typedef std::int8_t int8;
-	typedef unsigned int uint;
+	template <class T>
+	class VectorMemory : public std::vector<T> { // Temporary class to use standard vector as memory
+	public:
+		VectorMemory(const std::vector<T> vec)
+			: std::vector<T>(vec) {}
+
+		std::uint16_t Get16At(std::size_t offset)
+		{
+			return *((std::uint16_t*)(this->data() + offset));
+		}
+	};
 
 	template <class Memory>
 	class CPU {
 	    private:
 		constexpr static std::size_t STACK_SIZE = 256;
+		typedef unsigned int uint;
+		typedef std::int32_t int32;
+		typedef std::uint32_t uint32;
+		typedef std::uint16_t uint16;
+		typedef std::uint8_t uint8;
+		typedef std::int8_t int8;
 
 		uint8 reg_X;
 		uint8 reg_Y;
@@ -51,7 +63,7 @@ namespace nemu
 		constexpr static uint16 B_8 = (1 << 8);
 
 	    public:
-		CPU(Memory& mem) // Defaults to the whole address-space
+		CPU(Memory& mem)
 			: reg_X(0),
 			  reg_Y(0),
 			  reg_A(0),
@@ -71,7 +83,7 @@ namespace nemu
 			return reg_A;
 		}
 
-		uint8 ToBitMask(std::array<uint8, 8> array)
+		static uint8 ToBitMask(const std::array<uint8, 8>& array)
 		{
 			uint8 mask = 0;
 			for (uint i = 0; i < 8; i++)
@@ -79,7 +91,7 @@ namespace nemu
 			return mask;
 		}
 
-		void FromBitMask(uint8 mask, std::array<uint8, 8> &to)
+		static void FromBitMask(uint8 mask, std::array<uint8, 8>& to)
 		{
 			for (uint i = 0; i < 8; i++)
 				to[i] = ((1 << i) & mask) == (1 << i);
@@ -88,6 +100,8 @@ namespace nemu
 		bool Decode()
 		{
 			std::cout << "Executing op-code: " << std::hex << "0x" << +memory[reg_PC] << std::dec << std::endl;
+			std::cout << "Offset: " << reg_PC << std::endl;
+
 			switch (memory[reg_PC]) {
 			case 0x0: { // BRK
 				reg_S[B_I] = 1;
@@ -265,42 +279,42 @@ namespace nemu
 			}
 			case 0x69: { // ADC Immediate
 				uint8 oper = memory[reg_PC + 1];
-				OP_ADC(oper);
+				Op_ADC(oper);
 				reg_PC += 2;
 				return true;
 			}
 			case 0x65: { // ADC Zeropage
 				uint8 offset = memory[reg_PC + 1];
 				uint8 oper = memory[offset];
-				OP_ADC(oper);
+				Op_ADC(oper);
 				reg_PC += 2;
 				return true;
 			}
 			case 0x75: { // ADC Zeropage, X
 				uint8 offset = memory[reg_PC + 1] + reg_X;
 				uint8 oper = memory[offset];
-				OP_ADC(oper);
+				Op_ADC(oper);
 				reg_PC += 2;
 				return true;
 			}
 			case 0x6D: { // ADC Absolute
 				uint16 offset = memory.Get16At(reg_PC + 1);
 				uint8 oper = memory[offset];
-				OP_ADC(oper);
+				Op_ADC(oper);
 				reg_PC += 3;
 				return true;
 			}
 			case 0x7D: { // ADC Absolute, X
 				uint16 offset = memory.Get16At(reg_PC + 1) + reg_X;
 				uint8 oper = memory[offset];
-				OP_ADC(oper);
+				Op_ADC(oper);
 				reg_PC += 3;
 				return true;
 			}
 			case 0x79: { // ADC Absolute, Y
 				uint16 offset = memory.Get16At(reg_PC + 1) + reg_Y;
 				uint8 oper = memory[offset];
-				OP_ADC(oper);
+				Op_ADC(oper);
 				reg_PC += 3;
 				return true;
 			}
@@ -309,7 +323,7 @@ namespace nemu
 				uint8 offset = memory[reg_PC + 1] + reg_X;
 				uint16 adr = memory.Get16At(offset);
 				uint8 oper = memory[adr];
-				OP_ADC(oper);
+				Op_ADC(oper);
 				reg_PC += 2;
 				return true;
 			}
@@ -318,48 +332,48 @@ namespace nemu
 				uint8 offset = memory[reg_PC + 1];
 				uint16 adr = memory.Get16At(offset) + reg_Y;
 				uint8 oper = memory[adr];
-				OP_ADC(oper);
+				Op_ADC(oper);
 				reg_PC += 2;
 				return true;
 			}
 			case 0xE9: { // SBC Immediate
 				uint8 oper = memory[reg_PC + 1];
-				OP_SBC(oper);
+				Op_SBC(oper);
 				reg_PC += 2;
 				return true;
 			}
 			case 0xE5: { // SBC Zeropage
 				uint8 offset = memory[reg_PC + 1];
 				uint8 oper = memory[offset];
-				OP_SBC(oper);
+				Op_SBC(oper);
 				reg_PC += 2;
 				return true;
 			}
 			case 0xF5: { // SBC Zeropage, X
 				uint8 offset = memory[reg_PC + 1] + reg_X;
 				uint8 oper = memory[offset];
-				OP_SBC(oper);
+				Op_SBC(oper);
 				reg_PC += 2;
 				return true;
 			}
 			case 0xED: { // SBC Absolute
 				uint16 offset = memory.Get16At(reg_PC + 1);
 				uint8 oper = memory[offset];
-				OP_SBC(oper);
+				Op_SBC(oper);
 				reg_PC += 3;
 				return true;
 			}
 			case 0xFD: { // SBC Absolute, X
 				uint16 offset = memory.Get16At(reg_PC + 1) + reg_X;
 				uint8 oper = memory[offset];
-				OP_SBC(oper);
+				Op_SBC(oper);
 				reg_PC += 3;
 				return true;
 			}
 			case 0xF9: { // SBC Absolute, Y
 				uint16 offset = memory.Get16At(reg_PC + 1) + reg_Y;
 				uint8 oper = memory[offset];
-				OP_SBC(oper);
+				Op_SBC(oper);
 				reg_PC += 3;
 				return true;
 			}
@@ -368,7 +382,7 @@ namespace nemu
 				uint8 offset = memory[reg_PC + 1] + reg_X;
 				uint16 adr = memory.Get16At(offset);
 				uint8 oper = memory[adr];
-				OP_SBC(oper);
+				Op_SBC(oper);
 				reg_PC += 2;
 				return true;
 			}
@@ -377,7 +391,7 @@ namespace nemu
 				uint8 offset = memory[reg_PC + 1];
 				uint16 adr = memory.Get16At(offset) + reg_Y;
 				uint8 oper = memory[adr];
-				OP_SBC(oper);
+				Op_SBC(oper);
 				reg_PC += 2;
 				return true;
 			}
@@ -894,42 +908,42 @@ namespace nemu
 			}
 			case 0xC9: { // CMP Immediate
 				uint8 oper = memory[reg_PC + 1];
-				OP_CMP(oper, reg_A);
+				Op_CMP(oper, reg_A);
 				reg_PC += 2;
 				return true;
 			}
 			case 0xC5: { // CMP Zeropage
 				uint8 offset = memory[reg_PC + 1];
 				uint8 oper = memory[offset];
-				OP_CMP(oper, reg_A);
+				Op_CMP(oper, reg_A);
 				reg_PC += 2;
 				return true;
 			}
 			case 0xD5: { // CMP Zeropage, X
 				uint8 offset = memory[reg_PC + 1] + reg_X;
 				uint8 oper = memory[offset];
-				OP_CMP(oper, reg_A);
+				Op_CMP(oper, reg_A);
 				reg_PC += 2;
 				return true;
 			}
 			case 0xCD: { // CMP Absolute
 				uint16 adr = memory.Get16At(reg_PC + 1);
 				uint8 oper = memory[adr];
-				OP_CMP(oper, reg_A);
+				Op_CMP(oper, reg_A);
 				reg_PC += 3;
 				return true;
 			}
 			case 0xDD: { // CMP Absolute, X
 				uint16 adr = memory.Get16At(reg_PC + 1) + reg_X;
 				uint8 oper = memory[adr];
-				OP_CMP(oper, reg_A);
+				Op_CMP(oper, reg_A);
 				reg_PC += 3;
 				return true;
 			}
 			case 0xD9: { // CMP Absolute, Y
 				uint16 adr = memory.Get16At(reg_PC + 1) + reg_Y;
 				uint8 oper = memory[adr];
-				OP_CMP(oper, reg_A);
+				Op_CMP(oper, reg_A);
 				reg_PC += 3;
 				return true;
 			}
@@ -937,7 +951,7 @@ namespace nemu
 				uint8 offset = memory[reg_PC + 1] + reg_X;
 				uint16 adr = memory.Get16At(offset);
 				uint8 oper = memory[adr];
-				OP_CMP(oper, reg_A);
+				Op_CMP(oper, reg_A);
 				reg_PC += 2;
 				return true;
 			}
@@ -945,47 +959,47 @@ namespace nemu
 				uint8 offset = memory[reg_PC + 1];
 				uint16 adr = memory.Get16At(offset) + reg_Y;
 				uint8 oper = memory[adr];
-				OP_CMP(oper, reg_A);
+				Op_CMP(oper, reg_A);
 				reg_PC += 2;
 				return true;
 			}
 			case 0xE0: { // CPX Immediate
 				uint8 oper = memory[reg_PC + 1];
-				OP_CMP(oper, reg_X);
+				Op_CMP(oper, reg_X);
 				reg_PC += 2;
 				return true;
 			}
 			case 0xE4: { // CPX Zeropage
 				uint8 offset = memory[reg_PC + 1];
 				uint8 oper = memory[offset];
-				OP_CMP(oper, reg_X);
+				Op_CMP(oper, reg_X);
 				reg_PC += 2;
 				return true;
 			}
 			case 0xEC: { // CPX Absolute
 				uint16 adr = memory.Get16At(reg_PC + 1);
 				uint8 oper = memory[adr];
-				OP_CMP(oper, reg_X);
+				Op_CMP(oper, reg_X);
 				reg_PC += 3;
 				return true;
 			}
 			case 0xC0: { // CPY Immediate
 				uint8 oper = memory[reg_PC + 1];
-				OP_CMP(oper, reg_Y);
+				Op_CMP(oper, reg_Y);
 				reg_PC += 2;
 				return true;
 			}
 			case 0xC4: { // CPY Zeropage
 				uint8 offset = memory[reg_PC + 1];
 				uint8 oper = memory[offset];
-				OP_CMP(oper, reg_Y);
+				Op_CMP(oper, reg_Y);
 				reg_PC += 2;
 				return true;
 			}
 			case 0xCC: { // CPY Absolute
 				uint16 adr = memory.Get16At(reg_PC + 1);
 				uint8 oper = memory[adr];
-				OP_CMP(oper, reg_Y);
+				Op_CMP(oper, reg_Y);
 				reg_PC += 3;
 				return true;
 			}
@@ -1153,7 +1167,7 @@ namespace nemu
 			};
 		}
 
-		void Clock(int n)
+		void Clock(int n) // TODO: One clock is a complete instruction (varying number of cycles)
 		{
 			for (int i = 0; i < n; i++) {
 				if (!Decode()) {
@@ -1205,7 +1219,7 @@ namespace nemu
 		/// occur if the operands have different signs, since it will
 		/// always be less than the positive one.
 		///
-		/// The formula for addition is: { A + B + C }.
+		/// The formula for addition is   : { A + B + C }.
 		/// The formula for subtraction is: { A + ~B + C }. In other
 		/// words if C = 1 it simply results in A - B since - ~B + C is
 		/// the two's complement of B. If C = 0 is results in A - B - 1
@@ -1213,7 +1227,7 @@ namespace nemu
 		/// logic can be applied to subtraction with the difference
 		/// being B is swapped for ~B.
 
-		void OP_ADC(uint8 oper)
+		void Op_ADC(uint8 oper)
 		{
 			uint result = reg_A + oper + reg_S[B_C];
 			reg_S[B_C] = (result & B_8) == B_8 ? 1 : 0;						// If 8th bit is 1, set carry
@@ -1223,15 +1237,7 @@ namespace nemu
 			reg_S[B_Z] = reg_A == 0;										// Set status zero
 		}
 
-		void OP_CMP(uint8 oper, uint8 reg)
-		{
-			uint16 result = reg - oper;
-			reg_S[B_Z] = oper == reg;
-			reg_S[B_N] = (result & B_7) == B_7;
-			reg_S[B_C] = (result & B_8) == B_8;
-		}
-
-		void OP_SBC(uint8 oper)
+		void Op_SBC(uint8 oper)
 		{
 			uint8 complement = -oper;
 			uint result = reg_A + complement + reg_S[B_C];
@@ -1240,6 +1246,14 @@ namespace nemu
 			reg_S[B_N] = (result & B_7) == B_7 ? 1 : 0;							// If 7th bit is 1, set negative
 			reg_A = result & 0xFF;												// 8 LSB -> A
 			reg_S[B_Z] = reg_A == 0;											// Set status zero
+		}
+
+		void Op_CMP(uint oper, uint reg)
+		{
+			reg_S[B_Z] = oper == reg;
+			uint result = reg - oper;
+			reg_S[B_N] = (result & B_7) == B_7;
+			reg_S[B_C] = (result & B_8) == B_8;
 		}
 
 		void SetFlags_NZ(uint8 reg)

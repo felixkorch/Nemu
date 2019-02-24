@@ -6,7 +6,7 @@ using namespace nemu;
 
 int main()
 {
-	std::vector<uint8> program = { // Subtraction(zpg[1] - zpg[0])
+	std::vector<std::uint8_t> program = { // Subtraction(zpg[1] - zpg[0])
 		0xA5, 1,      // lda  zpg[1]
 		0x18,         // clc
 		0x65, 0,      // adc  zpg[0]
@@ -15,7 +15,7 @@ int main()
 		0xD0, 0       // while 1
 	};
 
-	std::vector<uint8> subroutine = {
+	std::vector<std::uint8_t> subroutine = {
 		0xA2, 0xFF,    // ldx  0xFF     | Sub routine start
 		0x86, 0x0A,    // stx  zpg[10]  
 		0x60,          //               | Return to (label A)
@@ -33,7 +33,7 @@ int main()
 		0xD0, 0        // while 1
 	};
 
-	std::vector<uint8> easy_and = {
+	std::vector<std::uint8_t> easy_and = {
 		0xA5, 0,       // lda  zpg[0]        | Entry point (0x8000)
 		0x29, 0xFF,    // and
 		0x85, 1,       // sta  zpg[0] & 0xFF -> zpg[1]
@@ -41,36 +41,18 @@ int main()
 		0xD0, 0        // while 1
 	};
 
-	
-	auto nestest = ReadFile<std::vector<uint8>>("nestest.nes");
-	
-	auto memory = MakeNESMemory<std::vector<int32>, NROM256Mapper>();
-	for (int i = 0; i < nestest.size(); i++) {
-		memory[0xC000 + i] = nestest[i];
-	}
+		
+	auto nestest = ReadFile<std::vector<std::uint8_t>>("C:/dev/VS/Nemu/Sandbox/programs/6502_functional_test.bin");
+	std::cout << "Size of nestest: " << nestest.size() << std::endl;
+	VectorMemory<std::uint8_t> memory(nestest);
+
 	CPU<decltype(memory)> cpu(memory);
 
 	memory[0xFFFC] = 0;   // Load reset vector with start address
-	memory[0xFFFD] = 0xC0;
-
-	uint8 A = 200; // A -> zpg[0]
-	memory[0] = A;
+	memory[0xFFFD] = 0x10;
 
 	cpu.Run();
 	while (1) {
 		cpu.Clock(1);
 	}
-
-
-	/*auto memory = std::vector<uint8>(program);
-	CPU<std::vector<uint8>> cpu(memory);
-	memory[0xFFFC] = 0;   // Load reset vector with start address
-	memory[0xFFFD] = 0x80;
-	uint8 A = 200; // A -> zpg[0]
-	uint8 B = 25;  // B -> zpg[1]
-	memory[0] = A;
-	memory[1] = B;
-	cpu.Run();
-	cpu.Clock(10);
-	cpu.PrintMemory<uint8>(10);*/
 }

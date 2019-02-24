@@ -33,20 +33,12 @@ namespace nemu
 
     template <class Storage, class Mapper>
     class NESMemory {
-        using Cell = typename Storage::value_type;
-
-        Cell nullRef;
-
-        NESMemoryBase<Storage, InternalNESMapper::BaseMapper<Storage>>
-                internalMemory;
-        NESMemoryBase<Storage, Mapper> externalMemory;
-
         class Iterator {
             NESMemory &memory;
             std::size_t address;
 
         public:
-            Iterator(NESMemory &memory, std::size_t address = 0)
+            constexpr Iterator(NESMemory &memory, std::size_t address = 0)
                     : memory(memory), address(address)
             {}
 
@@ -75,17 +67,17 @@ namespace nemu
                 return *this;
             }
 
-            Iterator operator+(difference_type offset) const
+            constexpr Iterator operator+(difference_type offset) const
             {
                 return Iterator(memory, address + offset);
             }
 
-            Iterator operator-(difference_type offset) const
+            constexpr Iterator operator-(difference_type offset) const
             {
                 return Iterator(memory, address - offset);
             }
 
-            difference_type operator-(const Iterator &other) const
+            constexpr difference_type operator-(const Iterator &other) const
             {
                 return other.address - address;
             }
@@ -102,24 +94,33 @@ namespace nemu
                 return *this;
             }
 
-            bool operator!=(const Iterator &other)
+            constexpr bool operator!=(const Iterator &other) const
             {
                 return &memory != &other.memory || address != other.address;
             }
 
-            bool operator==(const Iterator &other)
+            constexpr bool operator==(const Iterator &other) const
             {
                 return !((*this) != other);
             }
-        };
-
+        }; // class Iterator
     public:
-        constexpr NESMemory(Storage &&internalMemory, Storage &&externalMemory)
-                : internalMemory(std::move(internalMemory)),
-                  externalMemory(std::move(externalMemory))
-        {}
+        using value_type = typename Storage::value_type;
+        using reference = value_type &;
+        using const_reference = const value_type &;
+        using iterator = Iterator;
+        using const_iterator = const iterator;
+        using difference_type = std::ptrdiff_t;
+        using size_type = std::size_t;
 
-        Cell &operator[](std::size_t address)
+    private:
+        value_type nullRef;
+
+        NESMemoryBase<Storage, InternalNESMapper::BaseMapper<Storage>>
+                internalMemory;
+        NESMemoryBase<Storage, Mapper> externalMemory;
+
+        value_type &GetRef(std::size_t address)
         {
             if (internalMemory.ContainsAddress(address))
                 return internalMemory[address];
@@ -127,6 +128,12 @@ namespace nemu
                 return externalMemory[address];
             return nullRef;
         }
+
+    public:
+        constexpr NESMemory(Storage &&internalMemory, Storage &&externalMemory)
+                : internalMemory(std::move(internalMemory)),
+                  externalMemory(std::move(externalMemory))
+        {}
 
         std::uint16_t Get16At(std::size_t address)
         {
@@ -138,13 +145,20 @@ namespace nemu
         // TODO:
         //	Complete implementation.
         // ---------------------------------------------------------------------
-        using value_type = typename Storage::value_type;
-        using reference = value_type &;
-        using const_reference = const value_type &;
-        using iterator = Iterator;
-        using const_iterator = const iterator;
-        using difference_type = std::size_t;
-        using size_type = std::size_t;
+
+        value_type &operator[](std::size_t address)
+        {
+            return GetRef(address);
+        }
+
+        // TODO:
+        //   Not very important but it would be convinient to have a const
+        //   operator[].
+        //
+        // const value_type &operator[](std::size_t address) const
+        // {
+        //     return GetRef(address);
+        // }
 
         constexpr size_type size() const
         {
@@ -160,11 +174,21 @@ namespace nemu
         {
             return Iterator(*this, size());
         }
+
+        constexpr const_iterator cbegin() const
+        {
+            return begin();
+        }
+
+        constexpr const_iterator cend() const
+        {
+            return end();
+        }
     };
 
     template <class Storage, class MapperBase>
-    NESMemory<Storage, MapperBase> MakeNESMemory(Storage &&internalMemory,
-                                                 Storage &&externalMemory)
+    constexpr NESMemory<Storage, MapperBase>
+    MakeNESMemory(Storage &&internalMemory, Storage &&externalMemory)
     {
         return NESMemory<Storage, MapperBase>(std::move(internalMemory),
                                               std::move(externalMemory));
@@ -173,6 +197,9 @@ namespace nemu
     /// Creates a container for a NESMemory instance. Uses
     /// InternalNESMapping for the internal memory and Mapper as mapping for
     /// the external memory.
+    ///
+    /// TODO:
+    ///   Allow for more storage types than std::vector.
     template <class Storage,
               class Mapper,
               class MapperBase = typename Mapper::template BaseMapper<Storage>,

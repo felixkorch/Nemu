@@ -24,7 +24,7 @@ namespace nemu
 	template <class Memory>
 	class CPU {
 	    private:
-		constexpr static std::size_t STACK_SIZE = 255;
+		constexpr static std::size_t STACK_SIZE = 256;
 		typedef unsigned int uint;
 		typedef std::int32_t int32;
 		typedef std::uint32_t uint32;

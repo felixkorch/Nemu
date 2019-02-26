@@ -46,13 +46,14 @@ int main()
 	std::cout << "Size of nestest: " << nestest.size() << std::endl;
 	VectorMemory<std::uint8_t> memory(nestest);
 
+	memory[0xFFFC] = 0x00;   // Load reset vector with start address
+	memory[0xFFFD] = 0x04;   // 05d4
+
 	CPU<decltype(memory)> cpu(memory);
 
-	memory[0xFFFC] = 0;   // Load reset vector with start address
-	memory[0xFFFD] = 0x10;
-
-	cpu.Run();
-	while (1) {
+	while (true) {
 		cpu.Clock(1);
+		cpu.PrintRegisters();
+		cpu.PrintFlags();
 	}
 }

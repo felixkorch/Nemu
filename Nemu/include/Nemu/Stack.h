@@ -14,32 +14,29 @@ namespace nemu
         using ValueType = typename Iterator::value_type;
 
 	private:
-        const std::size_t beginAddress;
         const Iterator lowerBound;
         const Iterator upperBound;
         Iterator it;
 
     public:
-        constexpr Stack(const Iterator& lowerBound, const Iterator& upperBound, std::size_t beginAddress = 0x0100)
+        constexpr Stack(const Iterator& lowerBound, const Iterator& upperBound)
                 : lowerBound(lowerBound),
 				  upperBound(upperBound),
-                  it(upperBound),
-				  beginAddress(beginAddress) {}
+                  it(upperBound) {}
 
         template <class Memory>
         constexpr Stack(Memory& memory, std::size_t size, std::size_t beginAddress = 0x0100)
                 : Stack(std::next(memory.begin(), beginAddress),
-					    std::next(memory.begin(), beginAddress + size),
-					    beginAddress) {}
+					    std::next(memory.begin(), beginAddress + size - 1)) {}
 
-        bool Push(const ValueType &data)
+        bool Push(const ValueType& data)
         {
-            if (std::distance(it, lowerBound) < 0) {
+            if (std::distance(lowerBound, it) == 0) {
                 std::cout << "Stack Overflow" << std::endl;
                 return false;
             }
-            *it = data;
-            --it;
+			*it = data;
+			--it;
             return true;
         }
 
@@ -58,12 +55,12 @@ namespace nemu
 
         std::uint8_t GetSP()
         {
-            return std::distance(it, upperBound);
+            return std::distance(lowerBound, it);
         }
 
         void SetSP(std::uint8_t value)
         {
-            std::advance(it, std::distance(lowerBound, it) + value);
+			it = lowerBound + value;
         }
     };
 

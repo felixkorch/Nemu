@@ -2,8 +2,7 @@
 #include "Nemu/Stack.h"
 #include "Nemu/NESMemory.h"
 #include "Nemu/Mapper/NROM256Mapper.h"
-#include <cstdint>
-#include <stdint.h>
+#include "Nemu/Bitset.h"
 #include <vector>
 #include <array>
 #include <iostream>
@@ -19,44 +18,6 @@ namespace nemu
 		std::uint16_t Get16At(std::size_t offset)
 		{
 			return *((std::uint16_t*)(this->data() + offset));
-		}
-	};
-
-
-	template <int size>
-	class BitSet {
-
-	};
-
-	template <>
-	class BitSet<8> { // Template specialization for 8 bit
-	private:
-		std::uint8_t mask;
-	public:
-		std::uint8_t operator[](unsigned int index)
-		{
-			return IsSet(index);
-		}
-
-		void Set(unsigned int index)
-		{
-			if (index > 7)
-				throw std::out_of_range("Error: bitset out of range!");
-			mask |= (1 << index);
-		}
-
-		void Reset(unsigned int index)
-		{
-			if (index > 7)
-				throw std::out_of_range("Error: bitset out of range!");
-			mask &= ~(1 << index);
-		}
-
-		bool IsSet(unsigned int index)
-		{
-			if (index > 7)
-				throw std::out_of_range("Error: bitset out of range!");
-			return (mask & (1 << index)) != 0;
 		}
 	};
 
@@ -76,7 +37,6 @@ namespace nemu
 
 		uint16 regPC;
 		BitSet<8> regStatus;
-		//std::array<uint8, 8> regStatus;
 
 		Memory& memory;
 		Stack<typename Memory::iterator> stack;
@@ -88,7 +48,7 @@ namespace nemu
 		constexpr static uint8 Flag_I         = 2;
 		constexpr static uint8 Flag_D         = 3; // Disabled on the NES (decimal).
 		constexpr static uint8 Flag_B         = 4; // Bits 4 and 5 are used to indicate whether a -
-		constexpr static uint8 Flag_Unused    = 5; // software/hardware interrupt occured
+		constexpr static uint8 Flag_Unused    = 5; // software or hardware interrupt occured
 		constexpr static uint8 Flag_O         = 6;
 		constexpr static uint8 Flag_N         = 7;
 
@@ -118,7 +78,6 @@ namespace nemu
 			  running(true)
 		{
 			regPC = memory.Get16At(ResetVector);  // Load PC with the reset vector.
-			//stack.SetSP(0xFD);                    // Initialize stack pointer with reset value.
 		}
 
 		/// -------------------------------------------PUBLIC FUNCTIONS------------------------------------------------------- ///
@@ -130,7 +89,8 @@ namespace nemu
 
 		void InvokeNMI()
 		{
-			stack.Push(regPC + 2);
+			stack.Push((regPC >> 8) & 0xFF); // Push PC_High
+			stack.Push(regPC & 0xFF);        // Push PC_Low
 			stack.Push(regStatus);
 			regStatus.Set(Flag_I);
 			regPC = memory.Get16At(NMIVector);
@@ -138,9 +98,10 @@ namespace nemu
 
 		void InvokeIRQ()
 		{
-			stack.Push(regPC + 2);
+			stack.Push((regPC >> 8) & 0xFF); // Push PC_High
+			stack.Push(regPC & 0xFF);        // Push PC_Low
 			stack.Push(regStatus);
-			regStatus[Flag_I] = 1;
+			regStatus.Set(Flag_I);
 			regPC = memory.Get16At(IRQVector);
 		}
 
@@ -163,6 +124,10 @@ namespace nemu
 		{
 			std::cout << "[C: " << +regStatus[Flag_C] << " | "
 				      << "Z:  " << +regStatus[Flag_Z] << " | "
+				      << "I:  " << +regStatus[Flag_I] << " | "
+				      << "B:  " << +regStatus[Flag_B] << " | "
+				      << "U:  " << +regStatus[Flag_Unused] << " | "
+				      << "D:  " << +regStatus[Flag_D] << " | "
 				      << "N:  " << +regStatus[Flag_N] << " | "
 				      << "O:  " << +regStatus[Flag_O] << "]" << std::endl;
 		}
@@ -193,14 +158,11 @@ namespace nemu
 
 			switch (memory[regPC]) {
 			case 0x0: { // BRK
-				regPC++;
+				regPC += 2;
 				stack.Push((regPC >> 8) & 0xFF); // Push PC_High
 				stack.Push(regPC & 0xFF);        // Push PC_Low
-				auto sr = regStatus;
-				sr[Flag_B] = 1;
-				sr[Flag_Unused] = 1;
-				stack.Push(ToBitMask(sr));
-				regStatus[Flag_I] = 1;
+				stack.Push(regStatus | (1 << Flag_B) | (1 << Flag_Unused));
+				regStatus.Set(Flag_I);
 				regPC = memory.Get16At(IRQVector);
 				return true;
 			}
@@ -278,37 +240,37 @@ namespace nemu
 				return true;
 			}
 			case 0x18: { // CLC
-				regStatus[Flag_C] = 0;
+				regStatus.Reset(Flag_C);
 				regPC++;
 				return true;
 			}
 			case 0xD8: { // CLD
-				regStatus[Flag_D] = 0;
+				regStatus.Reset(Flag_D);
 				regPC++;
 				return true;
 			}
 			case 0x58: { // CLI
-				regStatus[Flag_I] = 0;
+				regStatus.Reset(Flag_I);
 				regPC++;
 				return true;
 			}
 			case 0xB8: { // CLV
-				regStatus[Flag_C] = 0;
+				regStatus.Reset(Flag_O);
 				regPC++;
 				return true;
 			}
 			case 0x38: { // SEC
-				regStatus[Flag_C] = 1;
+				regStatus.Set(Flag_C);
 				regPC++;
 				return true;
 			}
 			case 0xF8: { // SED
-				regStatus[Flag_D] = 1;
+				regStatus.Set(Flag_D);
 				regPC++;
 				return true;
 			}
 			case 0x78: { // SEI
-				regStatus[Flag_I] = 1;
+				regStatus.Set(Flag_I);
 				regPC++;
 				return true;
 			}
@@ -575,11 +537,12 @@ namespace nemu
 				return true;
 			}
 			case 0x20: { // JSR
-				uint16 offset = memory.Get16At(regPC + 1);
-				uint16 jmp_adr = regPC + 2;
-				stack.Push((jmp_adr >> 8));
-				stack.Push(jmp_adr);
-				regPC = offset;
+				uint16 addr = memory.Get16At(regPC + 1);
+				regPC += 2;
+				stack.Push((regPC >> 8) & 0xFF); // Push PC_High
+				stack.Push(regPC & 0xFF);        // Push PC_Low
+				std::cout << "PC LOW PUSHED: 0x" << std::hex << +memory[0x01fe] << std::dec << std::endl;
+				regPC = addr;
 				return true;
 			}
 			case 0x48: { // PHA
@@ -588,10 +551,7 @@ namespace nemu
 				return true;
 			}
 			case 0x08: { // PHP
-				auto sr = regStatus;
-				sr[Flag_B] = 1;
-				sr[Flag_Unused] = 1;
-				stack.Push(regStatus);
+				stack.Push(regStatus | (1 << Flag_B) | (1 << Flag_Unused));
 				regPC++;
 				return true;
 			}
@@ -602,23 +562,26 @@ namespace nemu
 				return true;
 			}
 			case 0x28: { // PLP
-				FromBitMask(stack.Pop());
+				regStatus = stack.Pop();
 				regPC++;
 				return true;
 			}
 			case 0x40: { // RTI
-				FromBitMask(stack.Pop());
-				uint16 regPC_low = stack.Pop();
-				uint16 regPC_high = stack.Pop();
-				uint16 return_adr = (regPC_high << 8) | regPC_low;
-				regPC = return_adr;
+				regStatus = stack.Pop();
+				uint16 PC_low = stack.Pop();
+				uint16 PC_high = stack.Pop();
+				regPC = (PC_high << 8) | PC_low;
 				return true;
 			}
 			case 0x60: { // RTS
-				uint16 regPC_low = stack.Pop();
-				uint16 regPC_high = stack.Pop();
-				uint16 return_adr = (regPC_high << 8) | regPC_low;
-				regPC = return_adr + 1;
+				uint16 PC_low = stack.Pop();
+				uint16 PC_high = stack.Pop();
+				regPC = ((PC_high << 8) | PC_low) + 1;
+				return true;
+			}
+			case 0x10: { // BPL, Branch on result plus
+				int8 oper = memory[regPC + 1];
+				regPC += regStatus[Flag_N] == 0 ? oper + 2 : 2;
 				return true;
 			}
 			case 0xF0: { // BEQ
@@ -659,18 +622,18 @@ namespace nemu
 			case 0x24: { // BIT Zeropage
 				uint8 offset = memory[regPC + 1];
 				uint8 oper = memory[offset];
-				regStatus[Flag_N] = (oper & Bit7) == Bit7;
-				regStatus[Flag_O] = (oper & Bit6) == Bit6;
-				regStatus[Flag_Z] = oper & regA;
+				regStatus.Set(Flag_N, (oper & Bit7) == Bit7);
+				regStatus.Set(Flag_O, (oper & Bit6) == Bit6);
+				regStatus.Set(Flag_Z, oper & regA);
 				regPC += 2;
 				return true;
 			}
 			case 0x2C: { // BIT Absolute
 				uint16 adr = memory.Get16At(regPC + 1);
 				uint8 oper = memory[adr];
-				regStatus[Flag_N] = (oper & Bit7) == Bit7;
-				regStatus[Flag_O] = (oper & Bit6) == Bit6;
-				regStatus[Flag_Z] = oper & regA;
+				regStatus.Set(Flag_N, (oper & Bit7) == Bit7);
+				regStatus.Set(Flag_O, (oper & Bit6) == Bit6);
+				regStatus.Set(Flag_Z, oper & regA);
 				regPC += 3;
 				return true;
 			}
@@ -682,8 +645,8 @@ namespace nemu
 			}
 			case 0x88: { // DEY, Decrement Y by 1
 				regY--;
-				regStatus[Flag_Z] = regY == 0 ? 1 : 0;
-				regStatus[Flag_N] = (regY & Bit7) == Bit7 ? 1 : 0;
+				regStatus.Set(Flag_Z, regY == 0);
+				regStatus.Set(Flag_N, (regY & Bit7) == Bit7);
 				regPC++;
 				return true;
 			}
@@ -691,8 +654,8 @@ namespace nemu
 				uint8 offset = memory[regPC + 1];
 				uint8 &oper = (uint8&)memory[offset];
 				oper--;
-				regStatus[Flag_Z] = oper == 0 ? 1 : 0;
-				regStatus[Flag_N] = (oper & Bit7) == Bit7 ? 1 : 0;
+				regStatus.Set(Flag_Z, oper == 0);
+				regStatus.Set(Flag_N, (oper & Bit7) == Bit7);
 				regPC += 2;
 				return true;
 			}
@@ -700,8 +663,8 @@ namespace nemu
 				uint8 offset = memory[regPC + 1] + regX;
 				uint8 &oper = (uint8&)memory[offset];
 				oper--;
-				regStatus[Flag_Z] = oper == 0 ? 1 : 0;
-				regStatus[Flag_N] = (oper & Bit7) == Bit7 ? 1 : 0;
+				regStatus.Set(Flag_Z, oper == 0);
+				regStatus.Set(Flag_N, (oper & Bit7) == Bit7);
 				regPC += 2;
 				return true;
 			}
@@ -709,8 +672,8 @@ namespace nemu
 				uint16 adr = memory.Get16At(regPC + 1);
 				uint8 &oper = (uint8&)memory[adr];
 				oper--;
-				regStatus[Flag_Z] = oper == 0 ? 1 : 0;
-				regStatus[Flag_N] = (oper & Bit7) == Bit7 ? 1 : 0;
+				regStatus.Set(Flag_Z, oper == 0);
+				regStatus.Set(Flag_N, (oper & Bit7) == Bit7);
 				regPC += 3;
 				return true;
 			}
@@ -718,8 +681,8 @@ namespace nemu
 				uint16 adr = memory.Get16At(regPC + 1) + regX;
 				uint8 &oper = (uint8&)memory[adr];
 				oper--;
-				regStatus[Flag_Z] = oper == 0 ? 1 : 0;
-				regStatus[Flag_N] = (oper & Bit7) == Bit7 ? 1 : 0;
+				regStatus.Set(Flag_Z, oper == 0);
+				regStatus.Set(Flag_N, (oper & Bit7) == Bit7);
 				regPC += 3;
 				return true;
 			}
@@ -753,13 +716,9 @@ namespace nemu
 				regPC++;
 				return true;
 			}
-			case 0x10: { // BPL, Branch on result plus
-				int8 oper = memory[regPC + 1];
-				regPC += (regStatus[Flag_N] == 0) ? oper + 2 : 2;
-				return true;
-			}
+
 			case 0x0A: { // ASL Accumulator (shift left)
-				regStatus[Flag_C] = (regA & Bit7) == Bit7;
+				regStatus.Set(Flag_C, (regA & Bit7) == Bit7);
 				regA <<= 1;
 				SetFlagsNZ(regA);
 				regPC++;
@@ -768,7 +727,7 @@ namespace nemu
 			case 0x06: { // ASL Zeropage
 				uint8 offset = memory[regPC + 1];
 				uint8 &oper = (uint8&)memory[offset];
-				regStatus[Flag_C] = (oper & Bit7) == Bit7;
+				regStatus.Set(Flag_C, (oper & Bit7) == Bit7);
 				oper <<= 1;
 				SetFlagsNZ(oper);
 				regPC += 2;
@@ -777,7 +736,7 @@ namespace nemu
 			case 0x16: { // ASL Zeropage, X
 				uint8 offset = memory[regPC + 1] + regX;
 				uint8 &oper = (uint8&)memory[offset];
-				regStatus[Flag_C] = (oper & Bit7) == Bit7;
+				regStatus.Set(Flag_C, (oper & Bit7) == Bit7);
 				oper <<= 1;
 				SetFlagsNZ(oper);
 				regPC += 2;
@@ -786,7 +745,7 @@ namespace nemu
 			case 0x0E: { // ASL Absolute
 				uint16 adr = memory.Get16At(regPC + 1);
 				uint8 &oper = (uint8&)memory[adr];
-				regStatus[Flag_C] = (oper & Bit7) == Bit7;
+				regStatus.Set(Flag_C, (oper & Bit7) == Bit7);
 				oper <<= 1;
 				SetFlagsNZ(oper);
 				regPC += 3;
@@ -795,59 +754,59 @@ namespace nemu
 			case 0x1E: { // ASL Absolute, X
 				uint16 adr = memory.Get16At(regPC + 1) + regX;
 				uint8 &oper = (uint8&)memory[adr];
-				regStatus[Flag_C] = (oper & Bit7) == Bit7;
+				regStatus.Set(Flag_C, (oper & Bit7) == Bit7);
 				oper <<= 1;
 				SetFlagsNZ(oper);
 				regPC += 3;
 				return true;
 			}
 			case 0x4A: { // LSR Accumulator (shift right)
-				regStatus[Flag_C] = (regA & Bit0) == Bit0;
+				regStatus.Set(Flag_C, (regA & Bit0) == Bit0);
 				regA >>= 1;
-				regStatus[Flag_Z] = regA == 0;
+				regStatus.Set(Flag_Z, regA == 0);
 				regPC++;
 				return true;
 			}
 			case 0x46: { // LSR Zeropage
 				uint8 offset = memory[regPC + 1];
 				uint8 &oper = (uint8&)memory[offset];
-				regStatus[Flag_C] = (oper & Bit0) == Bit0;
+				regStatus.Set(Flag_C, (oper & Bit0) == Bit0);
 				oper >>= 1;
-				regStatus[Flag_Z] = oper == 0;
+				regStatus.Set(Flag_Z, oper == 0);
 				regPC += 2;
 				return true;
 			}
 			case 0x56: { // LSR Zeropage, X
 				uint8 offset = memory[regPC + 1] + regX;
 				uint8 &oper = (uint8&)memory[offset];
-				regStatus[Flag_C] = (oper & Bit0) == Bit0;
+				regStatus.Set(Flag_C, (oper & Bit0) == Bit0);
 				oper >>= 1;
-				regStatus[Flag_Z] = oper == 0;
+				regStatus.Set(Flag_Z, oper == 0);
 				regPC += 2;
 				return true;
 			}
 			case 0x4E: { // LSR Absolute
 				uint16 adr = memory.Get16At(regPC + 1);
 				uint8 &oper = (uint8&)memory[adr];
-				regStatus[Flag_C] = (oper & Bit0) == Bit0;
+				regStatus.Set(Flag_C, (oper & Bit0) == Bit0);
 				oper >>= 1;
-				regStatus[Flag_Z] = oper == 0;
+				regStatus.Set(Flag_Z, oper == 0);
 				regPC += 3;
 				return true;
 			}
 			case 0x5E: { // LSR Absolute, X
 				uint16 adr = memory.Get16At(regPC + 1) + regX;
 				uint8 &oper = (uint8&)memory[adr];
-				regStatus[Flag_C] = (oper & Bit0) == Bit0;
+				regStatus.Set(Flag_C, (oper & Bit0) == Bit0);
 				oper >>= 1;
-				regStatus[Flag_Z] = oper == 0;
+				regStatus.Set(Flag_Z, oper == 0);
 				regPC += 3;
 				return true;
 			}
 			case 0x2A: { // ROL Accumulator (rotate left)
-				regStatus[Flag_C] = (regA & Bit7) == Bit7;    // Sets carry flag to whatever bit 7 is
-				regA <<= 1;                          // Shifts left one bit
-				regA ^= (-regStatus[Flag_C] ^ regA) & Bit0; // Changes bit 0 to whatever carry is
+				regStatus.Set(Flag_C, (regA & Bit7) == Bit7);  // Sets carry flag to whatever bit 7 is
+				regA <<= 1;                                    // Shifts left one bit
+				regA ^= (-regStatus[Flag_C] ^ regA) & Bit0;    // Changes bit 0 to whatever carry is
 				SetFlagsNZ(regA);
 				regPC++;
 				return true;
@@ -855,7 +814,7 @@ namespace nemu
 			case 0x26: { // ROL Zeropage
 				uint8 offset = memory[regPC + 1];
 				uint8 &oper = (uint8&)memory[offset];
-				regStatus[Flag_C] = (oper & Bit7) == Bit7;
+				regStatus.Set(Flag_C, (oper & Bit7) == Bit7);
 				oper <<= 1;
 				oper ^= (-regStatus[Flag_C] ^ oper) & Bit0;
 				SetFlagsNZ(oper);
@@ -865,7 +824,7 @@ namespace nemu
 			case 0x36: { // ROL Zeropage, X
 				uint8 offset = memory[regPC + 1] + regX;
 				uint8 &oper = (uint8&)memory[offset];
-				regStatus[Flag_C] = (oper & Bit7) == Bit7;
+				regStatus.Set(Flag_C, (oper & Bit7) == Bit7);
 				oper <<= 1;
 				oper ^= (-regStatus[Flag_C] ^ oper) & Bit0;
 				SetFlagsNZ(oper);
@@ -875,7 +834,7 @@ namespace nemu
 			case 0x2E: { // ROL Absolute
 				uint16 adr = memory.Get16At(regPC + 1);
 				uint8 &oper = (uint8&)memory[adr];
-				regStatus[Flag_C] = (oper & Bit7) == Bit7;
+				regStatus.Set(Flag_C, (oper & Bit7) == Bit7);
 				oper <<= 1;
 				oper ^= (-regStatus[Flag_C] ^ oper) & Bit0;
 				SetFlagsNZ(oper);
@@ -885,7 +844,7 @@ namespace nemu
 			case 0x3E: { // ROL Absolute, X
 				uint16 adr = memory.Get16At(regPC + 1) + regX;
 				uint8 &oper = (uint8&)memory[adr];
-				regStatus[Flag_C] = (oper & Bit7) == Bit7;
+				regStatus.Set(Flag_C, (oper & Bit7) == Bit7);
 				oper <<= 1;
 				oper ^= (-regStatus[Flag_C] ^ oper) & Bit0;
 				SetFlagsNZ(oper);
@@ -893,9 +852,9 @@ namespace nemu
 				return true;
 			}
 			case 0x6A: { // ROR Accumulator (rotate right)
-				regStatus[Flag_C] = (regA & Bit0) == Bit0;    // Sets carry flag to whatever bit 0 is
-				regA >>= 1;						  // Shifts right one bit
-				regA ^= (-regStatus[Flag_C] ^ regA) & Bit7; // Changes bit 7 to whatever carry bit is
+				regStatus.Set(Flag_C, (regA & Bit0) == Bit0); // Sets carry flag to whatever bit 0 is
+				regA >>= 1;						              // Shifts right one bit
+				regA ^= (-regStatus[Flag_C] ^ regA) & Bit7;   // Changes bit 7 to whatever carry bit is
 				SetFlagsNZ(regA);
 				regPC++;
 				return true;
@@ -903,7 +862,7 @@ namespace nemu
 			case 0x66: { // ROR Zeropage
 				uint8 offset = memory[regPC + 1];
 				uint8 &oper = (uint8&)memory[offset];
-				regStatus[Flag_C] = (oper & Bit0) == Bit0;
+				regStatus.Set(Flag_C, (oper & Bit0) == Bit0);
 				oper >>= 1;
 				oper ^= (-regStatus[Flag_C] ^ oper) & Bit7;
 				SetFlagsNZ(oper);
@@ -913,7 +872,7 @@ namespace nemu
 			case 0x76: { // ROR Zeropage, X
 				uint8 offset = memory[regPC + 1] + regX;
 				uint8 &oper = (uint8&)memory[offset];
-				regStatus[Flag_C] = (oper & Bit0) == Bit0;
+				regStatus.Set(Flag_C, (oper & Bit0) == Bit0);
 				oper >>= 1;
 				oper ^= (-regStatus[Flag_C] ^ oper) & Bit7;
 				SetFlagsNZ(oper);
@@ -923,7 +882,7 @@ namespace nemu
 			case 0x6E: { // ROR Absolute
 				uint16 adr = memory.Get16At(regPC + 1);
 				uint8 &oper = (uint8&)memory[adr];
-				regStatus[Flag_C] = (oper & Bit0) == Bit0;
+				regStatus.Set(Flag_C, (oper & Bit0) == Bit0);
 				oper >>= 1;
 				oper ^= (-regStatus[Flag_C] ^ oper) & Bit7;
 				SetFlagsNZ(oper);
@@ -933,7 +892,7 @@ namespace nemu
 			case 0x7E: { // ROR Absolute, X
 				uint16 adr = memory.Get16At(regPC + 1) + regX;
 				uint8 &oper = (uint8&)memory[adr];
-				regStatus[Flag_C] = (oper & Bit0) == Bit0;
+				regStatus.Set(Flag_C, (oper & Bit0) == Bit0);
 				oper >>= 1;
 				oper ^= (-regStatus[Flag_C] ^ oper) & Bit7;
 				SetFlagsNZ(oper);
@@ -1281,37 +1240,39 @@ namespace nemu
 		void OpADC(uint8 oper)
 		{
 			uint result = regA + oper + regStatus[Flag_C];
-			regStatus[Flag_C] = (result & Bit8) == Bit8 ? 1 : 0;				  // If 8th bit is 1, set carry
-			regStatus[Flag_O] = ((regA ^ result) & (oper ^ result) & Bit7) != 0;  // If the signs of both operands != the sign of the result, set overflow
-			regStatus[Flag_N] = (result & Bit7) == Bit7 ? 1 : 0;			    // If 7th bit is 1, set negative
-			regA = result & 0xFF;											  // 8 LSB -> A
-			regStatus[Flag_Z] = regA == 0;										  // Set status zero
+			bool overflow = ((regA ^ result) & (oper ^ result) & Bit7) != 0;
+			regStatus.Set(Flag_C, (result & Bit8) == Bit8);			           // If 8th bit is 1, set carry
+			regStatus.Set(Flag_O, overflow);                                   // If the signs of both operands != the sign of the result, set overflow
+			regStatus.Set(Flag_N, (result & Bit7) == Bit7);		               // If 7th bit is 1, set negative
+			regA = result & 0xFF;											   // 8 LSB -> A
+			regStatus.Set(Flag_Z, regA == 0);								   // Set status zero
 		}
 
 		void OpSBC(uint8 oper)
 		{
 			uint8 complement = -oper;
 			uint result = regA + complement + regStatus[Flag_C];
-			regStatus[Flag_C] = (result & Bit8) == Bit8 ? 1 : 0;                        // If 8th bit is 1, set carry
-			regStatus[Flag_O] = ((regA ^ result) & (complement ^ result) & Bit7) != 0; // Same logic as add
-			regStatus[Flag_N] = (result & Bit7) == Bit7 ? 1 : 0;						   // If 7th bit is 1, set negative
+			bool overflow = ((regA ^ result) & (complement ^ result) & Bit7) != 0;
+			regStatus.Set(Flag_C, (result & Bit8) == Bit8);                        // If 8th bit is 1, set carry
+			regStatus.Set(Flag_O, overflow);                                       // Same logic as add
+			regStatus.Set(Flag_N, (result & Bit7) == Bit7);						   // If 7th bit is 1, set negative
 			regA = result & 0xFF;												   // 8 LSB -> A
-			regStatus[Flag_Z] = regA == 0;											   // Set status zero
+			regStatus.Set(Flag_Z, regA == 0);									   // Set status zero
 		}
 
 		void OpCMP(uint8 oper, uint8 reg)
 		{
 			uint result = reg - oper;
-			regStatus[Flag_Z] = reg == oper;
-			regStatus[Flag_N] = (result & Bit7) == Bit7;
-			regStatus[Flag_C] = result < Bit8;
+			regStatus.Set(Flag_Z, diff == 0);
+			regStatus.Set(Flag_N, (diff & 0x80) ? 1 : 0);
+			regStatus.Set(Flag_C, result < 0x100);
 
 		}
 
 		void SetFlagsNZ(uint8 reg)
 		{
-			regStatus[Flag_N] = (reg & Bit7) == Bit7 ? 1 : 0; // If 7th bit is 1, set negative
-			regStatus[Flag_Z] = reg == 0;					 // If register is 0, set zero
+			regStatus.Set(Flag_N, (reg & Bit7) ? 1 : 0);   // If 7th bit is 1, set negative
+			regStatus.Set(Flag_Z, reg == 0);  		       // If register is 0, set zero
 		}
 	};
 

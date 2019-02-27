@@ -9,9 +9,9 @@ namespace nemu
 {
     /// The stack acts as subset to a underlying container and uses a stack-like
     /// bevavior in order to manipulate it.
-	/// The stack is of the type empty stack and uses a wrap-around mechanism.
-	///
-	/// TODO: Implement Stack under/overflow.
+    /// The stack is of the type empty stack and uses a wrap-around mechanism.
+    ///
+    /// TODO: Implement Stack under/overflow.
 
     template <class Iterator>
     class Stack {

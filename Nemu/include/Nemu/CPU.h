@@ -12,6 +12,10 @@ namespace nemu
 	template <class T>
 	class VectorMemory : public std::vector<T> { // Temporary class to use standard vector as memory
 	public:
+
+		VectorMemory()
+			: std::vector<T>(0xFFFF) {}
+
 		VectorMemory(const std::vector<T> vec)
 			: std::vector<T>(vec) {}
 
@@ -42,15 +46,14 @@ namespace nemu
 		Stack<typename Memory::iterator> stack;
 		bool running;
 
-		// Status bits
-		constexpr static uint8 Flag_C         = 0;
-		constexpr static uint8 Flag_Z         = 1;
-		constexpr static uint8 Flag_I         = 2;
-		constexpr static uint8 Flag_D         = 3; // Disabled on the NES (decimal).
-		constexpr static uint8 Flag_B         = 4; // Bits 4 and 5 are used to indicate whether a -
-		constexpr static uint8 Flag_Unused    = 5; // software or hardware interrupt occured
-		constexpr static uint8 Flag_V         = 6;
-		constexpr static uint8 Flag_N         = 7;
+		constexpr static uint8 Flag_C      = 0;
+		constexpr static uint8 Flag_Z      = 1;
+		constexpr static uint8 Flag_I      = 2;
+		constexpr static uint8 Flag_D      = 3; // Disabled on the NES (decimal).
+		constexpr static uint8 Flag_B      = 4; // Bits 4 and 5 are used to indicate whether a
+		constexpr static uint8 Flag_Unused = 5; // software or hardware interrupt occured
+		constexpr static uint8 Flag_V      = 6;
+		constexpr static uint8 Flag_N      = 7;
 
 		constexpr static uint8  Bit0 = (1 << 0);
 		constexpr static uint8  Bit1 = (1 << 1);
@@ -113,10 +116,7 @@ namespace nemu
 		void Execute(int n)
 		{
 			for (int i = 0; i < n; i++) {
-				if (!Decode()) {
-					std::cout << "Error: Illegal op-code" << std::endl;
-					return;
-				}
+				Decode();
 			}
 		}
 
@@ -129,7 +129,7 @@ namespace nemu
 				      << "U:  " << +regStatus[Flag_Unused] << " | "
 				      << "D:  " << +regStatus[Flag_D] << " | "
 				      << "N:  " << +regStatus[Flag_N] << " | "
-				      << "O:  " << +regStatus[Flag_V] << "]" << std::endl;
+				      << "V:  " << +regStatus[Flag_V] << "]" << std::endl;
 		}
 
 		void PrintRegisters()
@@ -153,9 +153,6 @@ namespace nemu
 	private:
 		void Decode() // Fetches & decodes an instruction
 		{
-			std::cout << "Executing op-code: " << std::hex << "0x" << +memory[regPC] << std::endl;
-			std::cout << "Offset: 0x" << regPC << std::dec << std::endl;
-
 			switch (memory[regPC]) {
 			case 0x0: { // BRK
 				regPC += 2;
@@ -813,10 +810,10 @@ namespace nemu
 				break;
 			}
 			case 0x2A: { // ROL Accumulator (rotate left)
-				uint16 temp = regA;                            // Holds carry in bit 8
-				temp <<= 1;                                    // Shifts left one bit
-				temp ^= (-regStatus[Flag_C] ^ temp) & Bit0;    // Changes bit 0 to whatever carry is
-				regStatus.Set(Flag_C, temp & Bit8);            // Sets carry flag to whatever bit 8 is
+				uint16 temp = regA;                                      // Holds carry in bit 8
+				temp <<= 1;                                              // Shifts left one bit
+				temp = regStatus[Flag_C] ? temp | Bit0 : temp & ~Bit0;   // Changes bit 0 to whatever carry is
+				regStatus.Set(Flag_C, temp & Bit8);                      // Sets carry flag to whatever bit 8 is
 				regA = temp & 0xFF;
 				SetFlagsNZ(regA);
 				regPC++;
@@ -827,7 +824,7 @@ namespace nemu
 				uint8 &oper = memory[offset];
 				uint16 temp = oper;
 				temp <<= 1;
-				temp ^= (-regStatus[Flag_C] ^ temp) & Bit0;
+				temp = regStatus[Flag_C] ? temp | Bit0 : temp & ~Bit0;
 				regStatus.Set(Flag_C, temp & Bit8);
 				oper = temp & 0xFF;
 				SetFlagsNZ(oper);
@@ -839,7 +836,7 @@ namespace nemu
 				uint8 &oper = memory[offset];
 				uint16 temp = oper;
 				temp <<= 1;
-				temp ^= (-regStatus[Flag_C] ^ temp) & Bit0;
+				temp = regStatus[Flag_C] ? temp | Bit0 : temp & ~Bit0;
 				regStatus.Set(Flag_C, temp & Bit8);
 				oper = temp & 0xFF;
 				SetFlagsNZ(oper);
@@ -851,7 +848,7 @@ namespace nemu
 				uint8 &oper = memory[adr];
 				uint16 temp = oper;
 				temp <<= 1;
-				temp ^= (-regStatus[Flag_C] ^ temp) & Bit0;
+				temp = regStatus[Flag_C] ? temp | Bit0 : temp & ~Bit0;
 				regStatus.Set(Flag_C, temp & Bit8);
 				oper = temp & 0xFF;
 				SetFlagsNZ(oper);
@@ -863,7 +860,7 @@ namespace nemu
 				uint8 &oper = memory[adr];
 				uint16 temp = oper;
 				temp <<= 1;
-				temp ^= (-regStatus[Flag_C] ^ temp) & Bit0;
+				temp = regStatus[Flag_C] ? temp | Bit0 : temp & ~Bit0;
 				regStatus.Set(Flag_C, temp & Bit8);
 				oper = temp & 0xFF;
 				SetFlagsNZ(oper);
@@ -872,7 +869,7 @@ namespace nemu
 			}
 			case 0x6A: { // ROR Accumulator (rotate right)
 				uint16 temp = regA;
-				temp ^= (-regStatus[Flag_C] ^ temp) & Bit8;
+				temp = regStatus[Flag_C] ? temp | Bit8 : temp & ~Bit8;
 				regStatus.Set(Flag_C, temp & Bit0);
 				temp >>= 1;
 				regA = temp & 0xFF;
@@ -884,7 +881,7 @@ namespace nemu
 				uint8 offset = memory[regPC + 1];
 				uint8 &oper = memory[offset];
 				uint16 temp = oper;
-				temp ^= (-regStatus[Flag_C] ^ temp) & Bit8;
+				temp = regStatus[Flag_C] ? temp | Bit8 : temp & ~Bit8;
 				regStatus.Set(Flag_C, temp & Bit0);
 				temp >>= 1;
 				oper = temp & 0xFF;
@@ -896,7 +893,7 @@ namespace nemu
 				uint8 offset = memory[regPC + 1] + regX;
 				uint8 &oper = memory[offset];
 				uint16 temp = oper;
-				temp ^= (-regStatus[Flag_C] ^ temp) & Bit8;
+				temp = regStatus[Flag_C] ? temp | Bit8 : temp & ~Bit8;
 				regStatus.Set(Flag_C, temp & Bit0);
 				temp >>= 1;
 				oper = temp & 0xFF;
@@ -908,7 +905,7 @@ namespace nemu
 				uint16 adr = memory.Get16At(regPC + 1);
 				uint8 &oper = memory[adr];
 				uint16 temp = oper;
-				temp ^= (-regStatus[Flag_C] ^ temp) & Bit8;
+				temp = regStatus[Flag_C] ? temp | Bit8 : temp & ~Bit8;
 				regStatus.Set(Flag_C, temp & Bit0);
 				temp >>= 1;
 				oper = temp & 0xFF;
@@ -920,7 +917,7 @@ namespace nemu
 				uint16 adr = memory.Get16At(regPC + 1) + regX;
 				uint8 &oper = memory[adr];
 				uint16 temp = oper;
-				temp ^= (-regStatus[Flag_C] ^ temp) & Bit8;
+				temp = regStatus[Flag_C] ? temp | Bit8 : temp & ~Bit8;
 				regStatus.Set(Flag_C, temp & Bit0);
 				temp >>= 1;
 				oper = temp & 0xFF;
@@ -1183,8 +1180,7 @@ namespace nemu
 				regPC += 3;
 				break;
 			}
-			case 0x41: { // EOR Indexed Indirect, X (Add first then
-				     // fetch)
+			case 0x41: { // EOR Indexed Indirect, X (Add first then fetch)
 				uint8 offset = memory[regPC + 1] + regX;
 				uint16 adr = memory.Get16At(offset);
 				regA ^= memory[adr];
@@ -1192,8 +1188,7 @@ namespace nemu
 				regPC += 2;
 				break;
 			}
-			case 0x51: { // EOR Indirect Indexed, Y (Fetch first
-				     // then add)
+			case 0x51: { // EOR Indirect Indexed, Y (Fetch first then add)
 				uint8 offset = memory[regPC + 1];
 				uint16 adr = memory.Get16At(offset) + regY;
 				regA ^= memory[adr];
@@ -1262,21 +1257,21 @@ namespace nemu
 		void OpADC(uint8 oper)
 		{
 			uint result = regA + oper + regStatus[Flag_C];
-			bool overflow = !((regA ^ oper) & 0x80) && ((regA ^ result) & 0x80);
+			bool overflow = !((regA ^ oper) & Bit7) && ((regA ^ result) & Bit7);
 			regStatus.Set(Flag_Z, (result & 0xFF) == 0);
 			regStatus.Set(Flag_C, result > 0xFF);	           
-			regStatus.Set(Flag_V, overflow);                // If the signs of both operands != the sign of the result, set overflow
+			regStatus.Set(Flag_V, overflow);
 			regStatus.Set(Flag_N, result & Bit7);
 			regA = result & 0xFF;
 		}
 
 		void OpSBC(uint8 oper)
 		{
-			uint result = regA - oper - !regStatus[Flag_C];
+			uint result = regA - oper + regStatus[Flag_C];
 			bool overflow = ((regA ^ result) & Bit7) && ((regA ^ oper) & Bit7);
 			regStatus.Set(Flag_Z, (result & 0xFF) == 0);
 			regStatus.Set(Flag_C, result < Bit8);
-			regStatus.Set(Flag_V, overflow);                                      
+			regStatus.Set(Flag_V, overflow);
 			regStatus.Set(Flag_N, result & Bit7);
 			regA = result & 0xFF;
 		}

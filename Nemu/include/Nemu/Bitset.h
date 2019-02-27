@@ -14,6 +14,7 @@ namespace nemu
 	class Bitset<8> { // Template specialization for 8 bit
 	private:
 		std::uint8_t mask;
+		static constexpr unsigned int Size = 8;
 	public:
 
 		Bitset()
@@ -22,14 +23,9 @@ namespace nemu
 		Bitset(std::uint8_t val)
 			: mask(val) {}
 
-		template <typename... Args, typename = typename std::enable_if<sizeof...(Args) == 8>::type>
-		Bitset(Args&&... args)
-		{
-		}
-
 		bool operator[](unsigned int index)
 		{
-			return IsSet(index);
+			return At(index);
 		}
 
 		void operator=(std::uint8_t val)
@@ -44,7 +40,7 @@ namespace nemu
 
 		void Set(unsigned int index)
 		{
-			if (index > 7)
+			if (index > Size - 1)
 				throw std::out_of_range("Error: Bitset out of range!");
 			mask |= (1 << index);
 		}
@@ -60,14 +56,14 @@ namespace nemu
 
 		void Clear(unsigned int index)
 		{
-			if (index > 7)
+			if (index > Size - 1)
 				throw std::out_of_range("Error: Bitset out of range!");
 			mask &= ~(1 << index);
 		}
 
-		bool IsSet(unsigned int index)
+		bool At(unsigned int index)
 		{
-			if (index > 7)
+			if (index > Size - 1)
 				throw std::out_of_range("Error: Bitset out of range!");
 			return (mask & (1 << index)) != 0;
 		}
@@ -75,7 +71,7 @@ namespace nemu
 		friend std::ostream& operator<<(std::ostream &out, Bitset<8>& set)
 		{
 			for (int i = 0; i < 8; i++) {
-				out << +set.IsSet(i);
+				out << +set.At(i);
 			}
 			return out;
 		}

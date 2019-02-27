@@ -9,6 +9,10 @@ namespace nemu
 {
     /// The stack acts as subset to a underlying container and uses a stack-like
     /// bevavior in order to manipulate it.
+	/// The stack is of the type empty stack and uses a wrap-around mechanism.
+	///
+	/// TODO: Implement Stack under/overflow.
+
     template <class Iterator>
     class Stack {
         using ValueType = typename Iterator::value_type;
@@ -31,20 +35,20 @@ namespace nemu
 
         bool Push(const ValueType& data)
         {
-            if (std::distance(lowerBound, it) == 0) {
-                std::cout << "Stack Overflow" << std::endl;
-                return false;
-            }
 			*it = data;
-			--it;
+			if (it == lowerBound)
+				it = upperBound;
+			else
+				--it;
             return true;
         }
 
         ValueType Pop()
         {
-            if (IsEmpty()) {
-                throw std::underflow_error("Nothing on stack");
-            }
+			if (it == upperBound) {
+				it = lowerBound;
+				return *it;
+			}
             return *++it;
         }
 

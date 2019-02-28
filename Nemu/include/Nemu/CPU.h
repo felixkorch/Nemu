@@ -44,7 +44,6 @@ namespace nemu
 
 		Memory& memory;
 		Stack<typename Memory::iterator> stack;
-		bool running;
 
 		constexpr static uint8 Flag_C      = 0;
 		constexpr static uint8 Flag_Z      = 1;
@@ -77,40 +76,36 @@ namespace nemu
 			  regPC(0),
 			  regStatus{},
 			  stack(mem.begin() + 0x0100, mem.begin() + 0x01FF), // Stack range 0x0100 -> 0x01FF.
-			  memory(mem),
-			  running(true)
+			  memory(mem)
 		{
-			regPC = memory.Get16At(ResetVector);  // Load PC with the reset vector.
+			Reset();
 		}
 
 		/// -------------------------------------------PUBLIC FUNCTIONS------------------------------------------------------- ///
 
-		void ForceStop()
+		void Reset()
 		{
-			running = false;
+			regPC = memory.Get16At(ResetVector);  // Load PC with the reset vector.
 		}
 
 		void InvokeNMI()
 		{
-			stack.Push((regPC >> 8) & 0xFF); // Push PC_High
-			stack.Push(regPC & 0xFF);        // Push PC_Low
-			stack.Push(regStatus);
+			stack.Push((regPC >> 8) & 0xFF);
+			stack.Push(regPC & 0xFF);
+			stack.Push(regStatus & ~(1 << Flag_B) | (1 << Flag_Unused));
 			regStatus.Set(Flag_I);
 			regPC = memory.Get16At(NMIVector);
 		}
 
 		void InvokeIRQ()
 		{
-			stack.Push((regPC >> 8) & 0xFF); // Push PC_High
-			stack.Push(regPC & 0xFF);        // Push PC_Low
-			stack.Push(regStatus);
-			regStatus.Set(Flag_I);
-			regPC = memory.Get16At(IRQVector);
-		}
-
-		Memory& GetMemory()
-		{
-			return memory;
+			if (!regStatus[Flag_I]) {
+				stack.Push((regPC >> 8) & 0xFF);
+				stack.Push(regPC & 0xFF);
+				stack.Push(regStatus & ~(1 << Flag_B) | (1 << Flag_Unused));
+				regStatus.Set(Flag_I);
+				regPC = memory.Get16At(IRQVector);
+			}
 		}
 
 		void Execute()
@@ -135,16 +130,6 @@ namespace nemu
 			std::cout << "A: " << +regA << std::endl;
 			std::cout << "X: " << +regX << std::endl;
 			std::cout << "Y: " << +regY << std::endl;
-		}
-
-		template <class Type>
-		void PrintMemory(int n)
-		{
-			std::cout << "Memory: [ ";
-			for (int i = 0; i < n; i++) {
-				std::cout << +(Type)memory[i] << " ";
-			}
-			std::cout << "]" << std::endl;
 		}
 
 		/// -------------------------------------------PRIVATE FUNCTIONS------------------------------------------------------- ///
@@ -207,23 +192,23 @@ namespace nemu
 			return memory[regPC + 1];
 		}
 		template <>
-		uint8& GetOperand<IndirectX>()
+		uint8& GetOperand<IndirectX>() // Add first then fetch
 		{
-			uint8 offset = memory[regPC + 1];
-			uint16 adr = memory.Get16At(offset + regX);
+			uint8 offset = memory[regPC + 1] + regX;
+			uint16 adr = memory.Get16At(offset);
 			return memory[adr];
 		}
 		template <>
-		uint8& GetOperand<IndirectY>()
+		uint8& GetOperand<IndirectY>() // Fetch first then add
 		{
-			uint8& offset = memory[regPC + 1];
+			uint8 offset = memory[regPC + 1];
 			uint16 adr = memory.Get16At(offset) + regY;
 			return memory[adr];
 		}
 		template <>
 		uint8& GetOperand<Zeropage>()
 		{
-			uint8& offset = memory[regPC + 1];
+			uint8 offset = memory[regPC + 1];
 			return memory[offset];
 		}
 		template <>
@@ -246,12 +231,7 @@ namespace nemu
 
 			switch (memory[regPC]) {
 			case 0x0: { // BRK is 2 bytes even though it's implied.
-				regPC += 2;
-				stack.Push((regPC >> 8) & 0xFF);  // Push PC_High
-				stack.Push(regPC & 0xFF);         // Push PC_Low
-				stack.Push(regStatus | (1 << Flag_B) | (1 << Flag_Unused));
-				regStatus.Set(Flag_I);
-				regPC = memory.Get16At(IRQVector);
+				OpBRK();
 				break;
 			}
 			case 0xA0: { // LDY Immediate
@@ -358,11 +338,11 @@ namespace nemu
 				OpLD<AbsoluteY>(regA);
 				break;
 			}
-			case 0xA1: { // LDA Indexed Indirect, X (Add first then fetch)
+			case 0xA1: { // LDA Indexed Indirect, X 
 				OpLD<IndirectX>(regA);
 				break;
 			}
-			case 0xB1: { // LDA Indirect Indexed, Y (Fetch first then add)
+			case 0xB1: { // LDA Indirect Indexed, Y 
 				OpLD<IndirectY>(regA);
 				break;
 			}
@@ -390,11 +370,11 @@ namespace nemu
 				OpADC<AbsoluteY>();
 				break;
 			}
-			case 0x61: { // ADC Indexed Indirect, X (Add first then fetch)
+			case 0x61: { // ADC Indexed Indirect, X 
 				OpADC<IndirectX>();
 				break;
 			}
-			case 0x71: { // ADC Indirect Indexed, Y (Fetch first then add)
+			case 0x71: { // ADC Indirect Indexed, Y 
 				OpADC<IndirectY>();
 				break;
 			}
@@ -422,11 +402,11 @@ namespace nemu
 				OpSBC<AbsoluteY>();
 				break;
 			}
-			case 0xE1: { // SBC Indexed Indirect, X (Add first then fetch)
+			case 0xE1: { // SBC Indexed Indirect, X 
 				OpSBC<IndirectX>();
 				break;
 			}
-			case 0xF1: { // SBC Indirect Indexed, Y (Fetch first then add)
+			case 0xF1: { // SBC Indirect Indexed, Y 
 				OpSBC<IndirectY>();
 				break;
 			}
@@ -450,11 +430,11 @@ namespace nemu
 				OpST<AbsoluteY>(regA);
 				break;
 			}
-			case 0x81: { // STA Indexed Indirect, X (Add first then fetch)
+			case 0x81: { // STA Indexed Indirect, X 
 				OpST<IndirectX>(regA);
 				break;
 			}
-			case 0x91: { // STA Indirect Indexed, Y (Fetch first then add)
+			case 0x91: { // STA Indirect Indexed, Y 
 				OpST<IndirectY>(regA);
 				break;
 			}
@@ -764,11 +744,11 @@ namespace nemu
 				OpAND<AbsoluteY>();
 				break;
 			}
-			case 0x21: { // AND Indexed Indirect, X (Add first then fetch)
+			case 0x21: { // AND Indexed Indirect, X 
 				OpAND<IndirectX>();
 				break;
 			}
-			case 0x31: { // AND Indirect Indexed, Y (Fetch first then add)
+			case 0x31: { // AND Indirect Indexed, Y 
 				OpAND<IndirectY>();
 				break;
 			}
@@ -796,11 +776,11 @@ namespace nemu
 				OpCMP<AbsoluteY>(regA);
 				break;
 			}
-			case 0xC1: { // CMP Indexed Indirect, X (Add first then fetch)
+			case 0xC1: { // CMP Indexed Indirect, X 
 				OpCMP<IndirectX>(regA);
 				break;
 			}
-			case 0xD1: { // CMP Indirect Indexed, Y (Fetch first then add)
+			case 0xD1: { // CMP Indirect Indexed, Y 
 				OpCMP<IndirectY>(regA);
 				break;
 			}
@@ -852,11 +832,11 @@ namespace nemu
 				OpORA<AbsoluteY>();
 				break;
 			}
-			case 0x01: { // ORA Indexed Indirect, X (Add first then fetch)
+			case 0x01: { // ORA Indexed Indirect, X 
 				OpORA<IndirectX>();
 				break;
 			}
-			case 0x11: { // ORA Indirect Indexed, Y (Fetch first then add)
+			case 0x11: { // ORA Indirect Indexed, Y 
 				OpORA<IndirectY>();
 				break;
 			}
@@ -884,11 +864,11 @@ namespace nemu
 				OpEOR<AbsoluteY>();
 				break;
 			}
-			case 0x41: { // EOR Indexed Indirect, X (Add first then fetch)
+			case 0x41: { // EOR Indexed Indirect, X 
 				OpEOR<IndirectX>();
 				break;
 			}
-			case 0x51: { // EOR Indirect Indexed, Y (Fetch first then add)
+			case 0x51: { // EOR Indirect Indexed, Y 
 				OpEOR<IndirectY>();
 				break;
 			}
@@ -958,7 +938,7 @@ namespace nemu
 		void OpSBC()
 		{
 			uint8& oper = GetOperand<Mode>();
-			uint result = regA - oper + regStatus[Flag_C];
+			uint result = regA - oper - !regStatus[Flag_C];
 			bool overflow = ((regA ^ result) & Bit7) && ((regA ^ oper) & Bit7);
 			regStatus.Set(Flag_Z, (result & 0xFF) == 0);
 			regStatus.Set(Flag_C, result < Bit8);
@@ -1057,7 +1037,7 @@ namespace nemu
 			regPC += InstructionSize<Mode>();
 		}
 		template <Addressmode Mode>
-		void OpST(uint8 reg) // Store operations
+		void OpST(uint8& reg) // Store operations
 		{
 			uint8& oper = GetOperand<Mode>();
 			oper = reg;
@@ -1080,10 +1060,10 @@ namespace nemu
 		template <Addressmode Mode>
 		void OpINC() // Increase operations
 		{
-			uint8& offset = GetOperand<Mode>();
-			memory[offset]++;
-			SetFlagNegative(memory[offset]);
-			SetFlagZero(memory[offset]);
+			uint8& oper = GetOperand<Mode>();
+			oper++;
+			SetFlagNegative(oper);
+			SetFlagZero(oper);
 			regPC += InstructionSize<Mode>();
 		}
 		template <Addressmode Mode>
@@ -1095,6 +1075,15 @@ namespace nemu
 			regStatus.Set(Flag_Z, (oper & regA) == 0);
 			regPC += InstructionSize<Mode>();
 		}
+		void OpBRK()
+		{
+			regPC += 2;
+			stack.Push((regPC >> 8) & 0xFF);
+			stack.Push(regPC & 0xFF);
+			stack.Push(regStatus | (1 << Flag_B) | (1 << Flag_Unused));
+			regStatus.Set(Flag_I);
+			regPC = memory.Get16At(IRQVector);
+		}
 
 		void SetFlagNegative(uint8& reg)
 		{
@@ -1104,6 +1093,7 @@ namespace nemu
 		{
 			regStatus.Set(Flag_Z, reg == 0);  	 // If register is 0, set zero
 		}
+
 	};
 
 } // namespace nemu

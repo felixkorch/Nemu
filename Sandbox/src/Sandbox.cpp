@@ -21,7 +21,19 @@ int main()
 	while (true) {
 		cpu.Execute();
 		cpu.PrintFlags();
-		cpu.PrintMemory<std::uint8_t>(10);
 		cpu.PrintRegisters();
 	}
+
+	/*int a = 10;
+	int b = 20;
+	int& a_ref = a;
+	int& b_ref = b;
+
+	a_ref = b_ref;
+	
+	std::cout << a_ref << std::endl;
+
+	b = 25;
+
+	std::cout << a_ref << std::endl;*/
 }

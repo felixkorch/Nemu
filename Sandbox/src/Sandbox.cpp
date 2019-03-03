@@ -7,6 +7,7 @@
 
 using namespace nemu;
 
+
 int main()
 {
 	auto nestest = ReadFile<std::vector<std::uint8_t>>("C:/dev/VS/Nemu/test/asm/6502_functional_test.bin");
@@ -18,22 +19,11 @@ int main()
 
 	CPU<decltype(memory)> cpu(memory);
 
+
+	std::size_t count = 0;
 	while (true) {
 		cpu.Execute();
-		cpu.PrintFlags();
-		cpu.PrintRegisters();
+		//++count;
+		//std::cout << std::dec << count << std::endl;
 	}
-
-	/*int a = 10;
-	int b = 20;
-	int& a_ref = a;
-	int& b_ref = b;
-
-	a_ref = b_ref;
-	
-	std::cout << a_ref << std::endl;
-
-	b = 25;
-
-	std::cout << a_ref << std::endl;*/
 }

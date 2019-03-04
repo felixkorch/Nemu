@@ -6,7 +6,7 @@ namespace nemu
             int &data;
 
         public:
-            Bit(int &data)
+            constexpr Bit(int &data)
                     : data(data)
             {}
 
@@ -17,7 +17,7 @@ namespace nemu
                 return data &= ~(1 << N);
             }
 
-            operator bool() const
+            constexpr operator bool() const
             {
                 return data & (1 << N);
             }
@@ -26,7 +26,6 @@ namespace nemu
         int data;
 
     public:
-
         Bit<0> c;
         Bit<1> z;
         Bit<2> i;
@@ -36,7 +35,7 @@ namespace nemu
         Bit<6> v;
         Bit<7> n;
 
-        FlagRegister()
+        constexpr FlagRegister()
                 : data(0)
                 , c(data)
                 , z(data)
@@ -48,7 +47,7 @@ namespace nemu
                 , n(data)
         {}
 
-        operator int() const
+        constexpr operator int() const
         {
             return data;
         }

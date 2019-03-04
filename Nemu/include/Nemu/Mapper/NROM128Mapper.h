@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------* C++ *-
-// NROM256Mapper.h
+// NROM128Mapper.h
 //
 // -----------------------------------------------------------------------------
 
@@ -10,14 +10,15 @@
 
 namespace nemu
 {
-    /// Provides mapping layout for the NROM-256 cartridge.
+    /// Provides mapping for the NROM-128 cartridge layout.
     ///
     /// Mapping:
     ///     Block0:
     ///             range: (0x8000, 0xFFFF)
-    ///             size: 0x8000 (32kB)
+    ///             size: 0x8000 (16kB)
+    ///             modulus: 0x4000
     ///
-    struct NROM256MapperLayout {
+    struct NROM128MapperLayout {
         constexpr bool ContainsAddress(std::size_t address) const
         {
             return address >= 0x8000 && address <= 0xFFFF;
@@ -25,28 +26,27 @@ namespace nemu
 
         constexpr std::size_t AllocSize() const
         {
-            return 0x8000;
+            return 0x4000;
         }
 
         template <class Iterator>
         constexpr Iterator Next(const Iterator &iterator, std::size_t address) const
         {
-            return std::next(iterator, (address - 0x8000) % 0x8000);
+            return std::next(iterator, (address - 0x8000) % 0x4000);
         }
     };
 
     template <class Iterator>
-    struct NROM256MapperBase : public Mapper<Iterator, NROM256MapperLayout> {
-        NROM256MapperBase(const Iterator &iterator)
-                : Mapper<Iterator, NROM256MapperLayout>(iterator, NROM256MapperLayout(), 0x8000)
+    struct NROM128MapperBase : public Mapper<Iterator, NROM128MapperLayout> {
+        NROM128MapperBase(const Iterator &iterator)
+                : Mapper<Iterator, NROM128MapperLayout>(iterator, NROM128MapperLayout(), 0x8000)
         {}
     };
 
-    struct NROM256Mapper {
-        using Layout = NROM256MapperLayout;
+    struct NROM128Mapper {
+        using Layout = NROM128MapperLayout;
 
         template <class Storage>
-        using BaseMapper = NROM256MapperBase<typename Storage::iterator>;
+        using BaseMapper = NROM128MapperBase<typename Storage::iterator>;
     };
-
 } // namespace nemu

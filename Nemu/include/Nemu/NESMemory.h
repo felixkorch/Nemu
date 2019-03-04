@@ -9,25 +9,33 @@
 #include <cstddef>
 #include <vector>
 #include <type_traits>
+#include <iostream>
+#include <ios>
+#include <iomanip>
 
 namespace nemu
 {
-    template <class Storage, class MapperBase>
+    template <class Storage, class Mapper>
     class NESMemoryBase {
+        using BaseMapper = typename Mapper::template BaseMapper<Storage>;
+        using Layout = typename Mapper::Layout;
+
         Storage memory;
 
     public:
-        NESMemoryBase(Storage &&memory) : memory(std::move(memory))
+        NESMemoryBase(const Layout &layout)
+                : memory(layout.AllocSize())
         {}
 
+        // TODO: Should not use class based mapper and layout.
         typename Storage::reference operator[](std::size_t address)
         {
-            return *(MapperBase(memory.begin(), address));
+            return *std::next(BaseMapper(memory.begin()), address);
         }
 
         constexpr bool ContainsAddress(std::size_t address) const
         {
-            return MapperBase::ContainsAddress(address);
+            return Layout().ContainsAddress(address);
         }
     };
 
@@ -39,7 +47,8 @@ namespace nemu
 
         public:
             constexpr Iterator(NESMemory &memory, std::size_t address = 0)
-                    : memory(memory), address(address)
+                    : memory(memory)
+                    , address(address)
             {}
 
             // Implementing RandomAccessIterator
@@ -116,8 +125,7 @@ namespace nemu
     private:
         value_type nullRef;
 
-        NESMemoryBase<Storage, InternalNESMapper::BaseMapper<Storage>>
-                internalMemory;
+        NESMemoryBase<Storage, InternalNESMapper> internalMemory;
         NESMemoryBase<Storage, Mapper> externalMemory;
 
         value_type &GetRef(std::size_t address)
@@ -130,14 +138,25 @@ namespace nemu
         }
 
     public:
-        constexpr NESMemory(Storage &&internalMemory, Storage &&externalMemory)
-                : internalMemory(std::move(internalMemory)),
-                  externalMemory(std::move(externalMemory))
+        NESMemory()
+                : internalMemory(InternalNESMapperLayout())
+                , externalMemory(typename Mapper::Layout())
         {}
 
         std::uint16_t Get16At(std::size_t address)
         {
             return (*this)[address] | ((*this)[address + 1] << 8);
+        }
+
+        void Dump()
+        {
+            int i = 0;
+
+            for (const auto &element : *this) {
+                std::cout << std::hex << std::setfill('0') << "0x" << std::setw(4) << i << ": 0x"
+                          << std::setw(4) << element << '\n';
+                ++i;
+            }
         }
 
         // Implementing Container
@@ -162,7 +181,7 @@ namespace nemu
 
         constexpr size_type size() const
         {
-            return InternalNESMapper::AllocSize() + Mapper::AllocSize();
+            return 0x00010000;
         }
 
         iterator begin()
@@ -185,32 +204,5 @@ namespace nemu
             return end();
         }
     };
-
-    template <class Storage, class MapperBase>
-    constexpr NESMemory<Storage, MapperBase>
-    MakeNESMemory(Storage &&internalMemory, Storage &&externalMemory)
-    {
-        return NESMemory<Storage, MapperBase>(std::move(internalMemory),
-                                              std::move(externalMemory));
-    }
-
-    /// Creates a container for a NESMemory instance. Uses
-    /// InternalNESMapping for the internal memory and Mapper as mapping for
-    /// the external memory.
-    ///
-    /// TODO:
-    ///   Allow for more storage types than std::vector.
-    template <class Storage,
-              class Mapper,
-              class MapperBase = typename Mapper::template BaseMapper<Storage>,
-              typename = typename std::enable_if<std::is_same<
-                      Storage,
-                      std::vector<typename Storage::value_type>>::value>::type>
-    NESMemory<Storage, MapperBase> MakeNESMemory()
-    {
-        return NESMemory<Storage, MapperBase>(
-                Storage(InternalNESMapper::AllocSize()),
-                Storage(Mapper::AllocSize()));
-    }
 
 } // namespace nemu

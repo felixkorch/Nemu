@@ -14,5 +14,10 @@ int main(int argc, char **argv)
     assert(reg.c == 0);
     assert(reg.i == 1);
 
+    reg = 0x40;
+    assert(reg.v == 1);
+    assert(reg.b == 0);
+    assert(reg = 0x40);
+
     return 0;
 }

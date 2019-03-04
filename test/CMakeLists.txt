@@ -1,12 +1,12 @@
 set(NEMU_TESTS 
         # EasyAdd 
-        CPUStackPush
-        EasyAnd
-        MaskIteratorRead 
-        MaskIteratorWrite
-        MemoryPermission
+        # CPUStackPush
+        # EasyAnd
+        # MemoryPermission
         NESMemoryReadAndWrite
         NESMemory16Read
+        FlagRegister
+        NROM128ReadWrite
 )
 
 foreach (test ${NEMU_TESTS})

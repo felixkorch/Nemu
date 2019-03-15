@@ -19,11 +19,10 @@ int main()
 
 	CPU<decltype(memory)> cpu(memory);
 
-
-	std::size_t count = 0;
-	while (true) {
+	auto begin = std::chrono::steady_clock::now();
+	for (int i = 0; i < 5000; i++) {
 		cpu.Execute();
-		//++count;
-		//std::cout << std::dec << count << std::endl;
 	}
+	auto end = std::chrono::steady_clock::now();
+	std::cout << std::chrono::duration_cast<std::chrono::duration<double, std::ratio<1, 1>>>(end - begin).count() << std::endl;
 }

@@ -226,7 +226,7 @@ namespace nemu
 
 		void Decode() // Fetches & decodes an instruction
 		{
-			std::cout << "0x" << std::hex << regPC << std::endl;
+			//std::cout << "0x" << std::hex << regPC << std::endl;
 			switch (memory[regPC]) {
 			case 0x00: OpBRK();                       break;
 			case 0xA0: OpLD<Immediate>(regY);         break;

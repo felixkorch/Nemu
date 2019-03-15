@@ -6,6 +6,5 @@ if(!MSVC)
     set(THREADS_PREFER_PTHREAD_FLAG ON)
 endif()
 
+add_subdirectory(deps/Sgl)
 add_subdirectory(Nemu)
-add_subdirectory(Sandbox)
-add_subdirectory(test)

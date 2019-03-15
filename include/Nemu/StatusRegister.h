@@ -1,6 +1,8 @@
 namespace nemu
 {
-    class FlagRegister {
+    class StatusRegister {
+	private:
+
         template <int N>
         class Bit {
             int &data;
@@ -23,28 +25,28 @@ namespace nemu
             }
         };
 
-        int data;
-
+	private:
+		int data;
     public:
-        Bit<0> c;
-        Bit<1> z;
-        Bit<2> i;
-        Bit<3> d;
-        Bit<4> b;
-        Bit<5> unused;
-        Bit<6> v;
-        Bit<7> n;
+        Bit<0> C;
+        Bit<1> Z;
+        Bit<2> I;
+        Bit<3> D;
+        Bit<4> B;
+        Bit<5> Unused;
+        Bit<6> V;
+        Bit<7> N;
 
-        constexpr FlagRegister()
+        constexpr StatusRegister()
                 : data(0)
-                , c(data)
-                , z(data)
-                , i(data)
-                , d(data)
-                , b(data)
-                , unused(data)
-                , v(data)
-                , n(data)
+                , C(data)
+                , Z(data)
+                , I(data)
+                , D(data)
+                , B(data)
+                , Unused(data)
+                , V(data)
+                , N(data)
         {}
 
         constexpr operator int() const
@@ -52,7 +54,7 @@ namespace nemu
             return data;
         }
 
-        int &operator=(int newValue)
+		int &operator=(int newValue)
         {
             return data = newValue;
         }

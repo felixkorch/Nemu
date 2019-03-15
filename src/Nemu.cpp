@@ -1,3 +1,4 @@
+#include "Nemu/CPU.h"
 #include "NESKeys.h"
 #include <Sgl.h>
 #include <ctime>

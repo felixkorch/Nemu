@@ -2,7 +2,7 @@
 #include "Nemu/Stack.h"
 #include "Nemu/NESMemory.h"
 #include "Nemu/Mapper/NROM256Mapper.h"
-#include "Nemu/Bitset.h"
+#include "Nemu/StatusRegister.h"
 #include <vector>
 #include <array>
 #include <iostream>
@@ -28,19 +28,18 @@ namespace nemu
 	template <class Memory>
 	class CPU {
 	private:
-		typedef unsigned int uint;
-		typedef std::int32_t int32;
-		typedef std::uint32_t uint32;
-		typedef std::uint16_t uint16;
-		typedef std::uint8_t uint8;
-		typedef std::int8_t int8;
+		using uint   = std::uint32_t;
+		using int32  = std::int32_t;
+		using uint32 = std::uint32_t;
+		using uint16 = std::uint16_t;
+		using uint8  = std::uint8_t;
+		using int8   = std::int8_t;
 
 		uint8 regX;
 		uint8 regY;
 		uint8 regA;
-
 		uint16 regPC;
-		Bitset<8> regStatus;
+		StatusRegister regStatus<2>a; // TODO: Update all refs
 
 		Memory& memory;
 		Stack<typename Memory::iterator> stack;
@@ -50,7 +49,7 @@ namespace nemu
 		constexpr static unsigned int Flag_I      = 2;
 		constexpr static unsigned int Flag_D      = 3; // Disabled on the NES (decimal).
 		constexpr static unsigned int Flag_B      = 4; // Bits 4 and 5 are used to indicate whether a
-		constexpr static unsigned int Flag_Unused = 5; // software or hardware interrupt occured
+		constexpr static unsigned int Flag_Unused = 5; // Software or hardware interrupt occured
 		constexpr static unsigned int Flag_V      = 6;
 		constexpr static unsigned int Flag_N      = 7;
 
@@ -74,7 +73,7 @@ namespace nemu
 			  regY(0),
 			  regA(0),
 			  regPC(0),
-			  regStatus{},
+			  regStatus(),
 			  stack(mem.begin() + 0x0100, mem.begin() + 0x01FF), // Stack range 0x0100 -> 0x01FF.
 			  memory(mem)
 		{

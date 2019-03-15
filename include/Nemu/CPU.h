@@ -39,7 +39,7 @@ namespace nemu
 		uint8 regY;
 		uint8 regA;
 		uint16 regPC;
-		StatusRegister regStatus<2>a; // TODO: Update all refs
+		StatusRegister regStatus<; // TODO: Update all refs
 
 		Memory& memory;
 		Stack<typename Memory::iterator> stack;

@@ -39,19 +39,19 @@ namespace nemu
 		uint8 regY;
 		uint8 regA;
 		uint16 regPC;
-		StatusRegister regStatus; // TODO: Update all refs
+        StatusRegister regStatus;
 
 		Memory& memory;
 		Stack<typename Memory::iterator> stack;
 
-		constexpr static unsigned int Flag_C      = 0;
-		constexpr static unsigned int Flag_Z      = 1;
-		constexpr static unsigned int Flag_I      = 2;
-		constexpr static unsigned int Flag_D      = 3; // Disabled on the NES (decimal).
-		constexpr static unsigned int Flag_B      = 4; // Bits 4 and 5 are used to indicate whether a
-		constexpr static unsigned int Flag_Unused = 5; // Software or hardware interrupt occured
-		constexpr static unsigned int Flag_V      = 6;
-		constexpr static unsigned int Flag_N      = 7;
+        constexpr static int Flag_C      = (1 << 0);
+        constexpr static int Flag_Z      = (1 << 1);
+        constexpr static int Flag_I      = (1 << 2);
+        constexpr static int Flag_D      = (1 << 3); // Disabled on the NES (decimal).
+        constexpr static int Flag_B      = (1 << 4); // Bits 4 and 5 are used to indicate whether a
+        constexpr static int Flag_Unused = (1 << 5); // Software or hardware interrupt occured
+        constexpr static int Flag_V      = (1 << 6);
+        constexpr static int Flag_N      = (1 << 7);
 
 		constexpr static uint8  Bit0 = (1 << 0);
 		constexpr static uint8  Bit1 = (1 << 1);
@@ -91,18 +91,18 @@ namespace nemu
 		{
 			stack.Push((regPC >> 8) & 0xFF);
 			stack.Push(regPC & 0xFF);
-			stack.Push(regStatus & ~(1 << Flag_B) | (1 << Flag_Unused));
-			regStatus.Set(Flag_I);
+            stack.Push((regStatus & ~Flag_B) | Flag_Unused);
+            regStatus.I = 1;
 			regPC = memory.Get16At(NMIVector);
 		}
 
 		void InvokeIRQ()
 		{
-			if (!regStatus[Flag_I]) {
+            if (!regStatus.I) {
 				stack.Push((regPC >> 8) & 0xFF);
 				stack.Push(regPC & 0xFF);
-				stack.Push(regStatus & ~(1 << Flag_B) | (1 << Flag_Unused));
-				regStatus.Set(Flag_I);
+                stack.Push((regStatus & ~Flag_B) | Flag_Unused);
+                regStatus.I = 1;
 				regPC = memory.Get16At(IRQVector);
 			}
 		}
@@ -114,14 +114,14 @@ namespace nemu
 
 		void PrintFlags()
 		{
-			std::cout << "[C: " << +regStatus[Flag_C]      << " | "
-				      << "Z:  " << +regStatus[Flag_Z]      << " | "
-				      << "I:  " << +regStatus[Flag_I]      << " | "
-				      << "B:  " << +regStatus[Flag_B]      << " | "
-				      << "U:  " << +regStatus[Flag_Unused] << " | "
-				      << "D:  " << +regStatus[Flag_D]      << " | "
-				      << "N:  " << +regStatus[Flag_N]      << " | "
-				      << "V:  " << +regStatus[Flag_V]      << "]  " << std::endl;
+            std::cout << "[C: " << +regStatus.C      << " | "
+                      << "Z:  " << +regStatus.Z      << " | "
+                      << "I:  " << +regStatus.I      << " | "
+                      << "B:  " << +regStatus.B      << " | "
+                      << "U:  " << +regStatus.Unused << " | "
+                      << "D:  " << +regStatus.D      << " | "
+                      << "N:  " << +regStatus.N      << " | "
+                      << "V:  " << +regStatus.V      << " ] " << std::endl;
 		}
 
 		void PrintRegisters()
@@ -148,19 +148,19 @@ namespace nemu
 		uint8& GetOperand();
 
 		template <Addressmode Mode>
-		constexpr unsigned int InstructionSize();
-		template<> constexpr unsigned int InstructionSize <Immediate>() { return 2; }
-		template<> constexpr unsigned int InstructionSize <Absolute>()  { return 3; }
-		template<> constexpr unsigned int InstructionSize <AbsoluteX>() { return 3; }
-		template<> constexpr unsigned int InstructionSize <AbsoluteY>() { return 3; }
-		template<> constexpr unsigned int InstructionSize <Indirect>()  { return 3; }
-		template<> constexpr unsigned int InstructionSize <Relative>()  { return 2; }
-		template<> constexpr unsigned int InstructionSize <Zeropage>()  { return 2; }
-		template<> constexpr unsigned int InstructionSize <ZeropageX>() { return 2; }
-		template<> constexpr unsigned int InstructionSize <ZeropageY>() { return 2; }
-		template<> constexpr unsigned int InstructionSize <IndirectX>() { return 2; }
-		template<> constexpr unsigned int InstructionSize <IndirectY>() { return 2; }
-		template<> constexpr unsigned int InstructionSize <Implied>()   { return 1; }
+        constexpr int InstructionSize();
+        template<> constexpr int InstructionSize <Immediate>() { return 2; }
+        template<> constexpr int InstructionSize <Absolute>()  { return 3; }
+        template<> constexpr int InstructionSize <AbsoluteX>() { return 3; }
+        template<> constexpr int InstructionSize <AbsoluteY>() { return 3; }
+        template<> constexpr int InstructionSize <Indirect>()  { return 3; }
+        template<> constexpr int InstructionSize <Relative>()  { return 2; }
+        template<> constexpr int InstructionSize <Zeropage>()  { return 2; }
+        template<> constexpr int InstructionSize <ZeropageX>() { return 2; }
+        template<> constexpr int InstructionSize <ZeropageY>() { return 2; }
+        template<> constexpr int InstructionSize <IndirectX>() { return 2; }
+        template<> constexpr int InstructionSize <IndirectY>() { return 2; }
+        template<> constexpr int InstructionSize <Implied>()   { return 1; }
 
 		template <>
 		uint8& GetOperand<Immediate>()
@@ -292,14 +292,14 @@ namespace nemu
 			case 0x28: OpPLP();                       break;
 			case 0x40: OpRTI();                       break;
 			case 0x60: OpRTS();                       break;
-			case 0x10: OpBRA(!regStatus[Flag_N]);     break;
-			case 0xF0: OpBRA(regStatus[Flag_Z]);      break;
-			case 0x90: OpBRA(!regStatus[Flag_C]);     break;
-			case 0xB0: OpBRA(regStatus[Flag_C]);      break;
-			case 0x30: OpBRA(regStatus[Flag_N]);      break;
-			case 0xD0: OpBRA(!regStatus[Flag_Z]);     break;
-			case 0x50: OpBRA(!regStatus[Flag_V]);     break;
-			case 0x70: OpBRA(regStatus[Flag_V]);      break;
+            case 0x10: OpBRA(!regStatus.N);           break;
+            case 0xF0: OpBRA(regStatus.Z);            break;
+            case 0x90: OpBRA(!regStatus.C);           break;
+            case 0xB0: OpBRA(regStatus.C);            break;
+            case 0x30: OpBRA(regStatus.N);            break;
+            case 0xD0: OpBRA(!regStatus.Z);           break;
+            case 0x50: OpBRA(!regStatus.V);           break;
+            case 0x70: OpBRA(regStatus.V);            break;
 			case 0x24: OpBIT<Zeropage>();             break;
 			case 0x2C: OpBIT<Absolute>();             break;
 			case 0x88: OpDEY();                       break;
@@ -399,12 +399,12 @@ namespace nemu
 		void OpADC()
 		{
 			uint8& oper = GetOperand<Mode>();
-			uint result = regA + oper + regStatus[Flag_C];
+            uint result = regA + oper + regStatus.C;
 			bool overflow = !((regA ^ oper) & Bit7) && ((regA ^ result) & Bit7);
-			regStatus.Set(Flag_Z, (result & 0xFF) == 0);
-			regStatus.Set(Flag_C, result > 0xFF);	           
-			regStatus.Set(Flag_V, overflow);
-			regStatus.Set(Flag_N, result & Bit7);
+            regStatus.Z = (result & 0xFF) == 0;
+            regStatus.C = result > 0xFF;
+            regStatus.V = overflow;
+            regStatus.N = result & Bit7;
 			regA = result & 0xFF;
 			regPC += InstructionSize<Mode>();
 		}
@@ -413,12 +413,12 @@ namespace nemu
 		void OpSBC()
 		{
 			uint8& oper = GetOperand<Mode>();
-			uint result = regA - oper - !regStatus[Flag_C];
+            uint result = regA - oper - !regStatus.C;
 			bool overflow = ((regA ^ result) & Bit7) && ((regA ^ oper) & Bit7);
-			regStatus.Set(Flag_Z, (result & 0xFF) == 0);
-			regStatus.Set(Flag_C, result < Bit8);
-			regStatus.Set(Flag_V, overflow);
-			regStatus.Set(Flag_N, result & Bit7);
+            regStatus.Z = (result & 0xFF) == 0;
+            regStatus.C = result < Bit8;
+            regStatus.V = overflow;
+            regStatus.N = result & Bit7;
 			regA = result & 0xFF;
 			regPC += InstructionSize<Mode>();
 		}
@@ -427,9 +427,9 @@ namespace nemu
 		{
 			uint8& oper = GetOperand<Mode>();
 			uint result = reg - oper;
-			regStatus.Set(Flag_Z, reg == oper);
-			regStatus.Set(Flag_N, result & Bit7);
-			regStatus.Set(Flag_C, result < Bit8);
+            regStatus.Z = reg == oper;
+            regStatus.N = result & Bit7;
+            regStatus.C = result < Bit8;
 			regPC += InstructionSize<Mode>();
 		}
 		template <Addressmode Mode>
@@ -454,10 +454,10 @@ namespace nemu
 		void OpROL()
 		{
 			uint8& oper = GetOperand<Mode>();
-			uint16 temp = oper;                                      // Holds carry in bit 8
-			temp <<= 1;                                              // Shifts left one bit
-			temp = regStatus[Flag_C] ? temp | Bit0 : temp & ~Bit0;   // Changes bit 0 to whatever carry is
-			regStatus.Set(Flag_C, temp & Bit8);                      // Sets carry flag to whatever bit 8 is
+            uint16 temp = oper;                                // Holds carry in bit 8
+            temp <<= 1;                                        // Shifts left one bit
+            temp = regStatus.C ? temp | Bit0 : temp & ~Bit0;   // Changes bit 0 to whatever carry is
+            regStatus.C = temp & Bit8;                         // Sets carry flag to whatever bit 8 is
 			oper = temp & 0xFF;
 			SetFlagNegative(oper);
 			SetFlagZero(oper);
@@ -468,8 +468,8 @@ namespace nemu
 		{
 			uint16 temp = regA;
 			temp <<= 1;
-			temp = regStatus[Flag_C] ? temp | Bit0 : temp & ~Bit0;
-			regStatus.Set(Flag_C, temp & Bit8);
+            temp = regStatus.C ? temp | Bit0 : temp & ~Bit0;
+            regStatus.C = temp & Bit8;
 			regA = temp & 0xFF;
 			SetFlagNegative(regA);
 			SetFlagZero(regA);
@@ -480,8 +480,8 @@ namespace nemu
 		{
 			uint8& oper = GetOperand<Mode>();
 			uint16 temp = oper;
-			temp = regStatus[Flag_C] ? temp | Bit8 : temp & ~Bit8;
-			regStatus.Set(Flag_C, temp & Bit0);
+            temp = regStatus.C ? temp | Bit8 : temp & ~Bit8;
+            regStatus.C = temp & Bit0;
 			temp >>= 1;
 			oper = temp & 0xFF;
 			SetFlagNegative(oper);
@@ -492,8 +492,8 @@ namespace nemu
 		void OpROR<Implied>() // Special case for Accumulator ROR
 		{
 			uint16 temp = regA;
-			temp = regStatus[Flag_C] ? temp | Bit8 : temp & ~Bit8;
-			regStatus.Set(Flag_C, temp & Bit0);
+            temp = regStatus.C ? temp | Bit8 : temp & ~Bit8;
+            regStatus.C = temp & Bit0;
 			temp >>= 1;
 			regA = temp & 0xFF;
 			SetFlagNegative(regA);
@@ -504,7 +504,7 @@ namespace nemu
 		void OpASL()
 		{
 			uint8& oper = GetOperand<Mode>();
-			regStatus.Set(Flag_C, oper & Bit7);
+            regStatus.C = oper & Bit7;
 			oper <<= 1;
 			SetFlagNegative(oper);
 			SetFlagZero(oper);
@@ -512,8 +512,8 @@ namespace nemu
 		}
 		template <>
 		void OpASL<Implied>() // Special case for Accumulator ASL
-		{
-			regStatus.Set(Flag_C, regA & Bit7);
+        {
+            regStatus.C = regA & Bit7;
 			regA <<= 1;
 			SetFlagNegative(regA);
 			SetFlagZero(regA);
@@ -523,19 +523,19 @@ namespace nemu
 		void OpLSR()
 		{
 			uint8& oper = GetOperand<Mode>();
-			regStatus.Set(Flag_C, oper & Bit0);
+            regStatus.C = oper & Bit0;
 			oper >>= 1;
-			regStatus.Set(Flag_Z, oper == 0);
-			regStatus.Clear(Flag_N);
+            regStatus.Z = oper == 0;
+            regStatus.N = 0;
 			regPC += InstructionSize<Mode>();
 		}
 		template <>
 		void OpLSR<Implied>() // Special case for Accumulator LSR
-		{
-			regStatus.Set(Flag_C, regA & Bit0);
+        {
+            regStatus.C = regA & Bit0;
 			regA >>= 1;
-			regStatus.Set(Flag_Z, regA == 0);
-			regStatus.Clear(Flag_N);
+            regStatus.Z = regA == 0;
+            regStatus.N = 0;
 			regPC += InstructionSize<Implied>();
 		}
 
@@ -545,8 +545,8 @@ namespace nemu
 		{
 			uint8& oper = GetOperand<Mode>();
 			oper--;
-			regStatus.Set(Flag_Z, oper == 0);
-			regStatus.Set(Flag_N, oper & Bit7);
+            regStatus.Z = oper == 0;
+            regStatus.N = oper & Bit7;
 			regPC += InstructionSize<Mode>();
 		}
 		void OpDEX()
@@ -559,8 +559,8 @@ namespace nemu
 		void OpDEY()
 		{
 			regY--;
-			regStatus.Set(Flag_Z, regY == 0);
-			regStatus.Set(Flag_N, regY & Bit7);
+            regStatus.Z = regY == 0;
+            regStatus.N = regY & Bit7;
 			regPC++;
 		}
 
@@ -660,24 +660,25 @@ namespace nemu
 		void OpBIT()
 		{
 			uint8& oper = GetOperand<Mode>();
-			regStatus.Set(Flag_N, oper & Bit7);
-			regStatus.Set(Flag_V, oper & Bit6);
-			regStatus.Set(Flag_Z, (oper & regA) == 0);
+            regStatus.N = oper & Bit7;
+            regStatus.V = oper & Bit6;
+            regStatus.Z = (oper & regA) == 0;
 			regPC += InstructionSize<Mode>();
 		}
-		void OpCLR(unsigned int flag)
+        void OpCLR(int flag)
 		{
-			regStatus.Clear(flag);
+            regStatus &= ~flag;
 			regPC++;
 		}
-		void OpSET(unsigned int flag)
+        void OpSET(int flag)
 		{
-			regStatus.Set(flag);
+            regStatus |= flag;
 			regPC++;
 		}
 
 		/* Jump operations */
 		template <Addressmode Mode> void OpJMP();
+
 		template <>
 		void OpJMP<Absolute>()
 		{
@@ -753,18 +754,19 @@ namespace nemu
 			stack.Push((regPC >> 8) & 0xFF);
 			stack.Push(regPC & 0xFF);
 			stack.Push(regStatus | (1 << Flag_B) | (1 << Flag_Unused));
-			regStatus.Set(Flag_I);
+            regStatus.I = 1;
 			regPC = memory.Get16At(IRQVector);
 		}
 
 		/* Flag operations */
 		void SetFlagNegative(uint8& reg)
 		{
-			regStatus.Set(Flag_N, reg & Bit7);   // If 7th bit is 1, set negative
+            regStatus.N = reg & Bit7; // If 7th bit is 1, set negative
 		}
+
 		void SetFlagZero(uint8& reg)
-		{
-			regStatus.Set(Flag_Z, reg == 0);  	 // If register is 0, set zero
+        {
+            regStatus.Z = reg == 0;   // If register is 0, set zero
 		}
 
 	};

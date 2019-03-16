@@ -1,4 +1,4 @@
-//#include "Nemu/PPU.h"
+#include "Nemu/PPU.h"
 #include "Nemu/CPU.h"
 #include "Nemu/NESKeys.h"
 #include <Sgl.h>

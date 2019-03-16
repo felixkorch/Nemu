@@ -4,6 +4,7 @@
 *.lua
 bin-int/
 bin/
+build*
 
 # Non-generated ignores
 *.sln

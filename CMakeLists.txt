@@ -12,6 +12,18 @@ add_subdirectory(deps/Sgl)
 
 set(sources
     src/Nemu.cpp
+    include/Nemu/CPU.h
+    include/Nemu/PPU.h
+    include/Nemu/MemoryPermission.h
+    include/Nemu/NESKeys.h
+    include/Nemu/NESMemory.h
+    include/Nemu/Stack.h
+    include/Nemu/StatusRegister.h
+    include/Nemu/System.h
+    include/Nemu/Mapper/InternalNESMapper.h
+    include/Nemu/Mapper/Mapper.h
+    include/Nemu/Mapper/NROM128Mapper.h
+    include/Nemu/Mapper/NROM256Mapper.h
 )
 
 find_package(Threads REQUIRED)

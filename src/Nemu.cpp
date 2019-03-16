@@ -15,6 +15,7 @@
 #define TexHeight 240
 
 using namespace sgl;
+using namespace nemu;
 
 class MainLayer : public Layer {
 private:
@@ -43,7 +44,7 @@ public:
 
 		for (i = 0; i < TexWidth; i++) {
 			for (j = 0; j < TexHeight; j++) {
-				auto c = HexToRgb(PPU::nesRGB[rand() % 64]);
+				auto c = HexToRgb(ppu::nesRGB[rand() % 64]);
 				pixels[i * TexHeight * 4 + j * 4 + 0] = (std::uint8_t)c.x;
 				pixels[i * TexHeight * 4 + j * 4 + 1] = (std::uint8_t)c.y;
 				pixels[i * TexHeight * 4 + j * 4 + 2] = (std::uint8_t)c.z;

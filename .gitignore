@@ -5,6 +5,7 @@
 bin-int/
 bin/
 build*
+*.user
 
 # Non-generated ignores
 *.sln

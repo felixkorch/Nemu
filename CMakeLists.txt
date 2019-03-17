@@ -26,10 +26,7 @@ set(sources
     include/Nemu/Mapper/NROM256Mapper.h
 )
 
-find_package(Threads REQUIRED)
-
 add_executable(${PROJECT_NAME} ${sources})
 
-
 target_include_directories(${PROJECT_NAME} PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/include> )
-target_link_libraries(${PROJECT_NAME} glfw ${GLFW_LIBRARIES} Sgl Threads::Threads)
+target_link_libraries(${PROJECT_NAME} Sgl ${SGL_LIBRARIES})

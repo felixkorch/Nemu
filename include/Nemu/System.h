@@ -1,6 +1,7 @@
 #pragma once
 #include <string>
 #include <fstream>
+#include <iostream>
 
 namespace nemu
 {
@@ -16,7 +17,7 @@ namespace nemu
 		return T{ std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>() };
 	}
 
-	void WriteFile(const std::string& path, const char* buff, std::size_t length)
+    void WriteFile(const std::string& path, const char* buff, std::streamsize length)
 	{
 		std::ofstream output{ path, std::ios::binary };
 		output.write(buff, length);

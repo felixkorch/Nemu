@@ -2,7 +2,6 @@
 #include "Nemu/CPU.h"
 #include "Nemu/NESKeys.h"
 #include <Sgl.h>
-
 #include <ctime>
 
 #define VertexShader   Shader::Core_Vertex_Shader2D
@@ -25,7 +24,7 @@ private:
 	NESKeyMapper keyMapper;
 	std::uint8_t* pixels; // pixels[ x * height * depth + y * depth + z ] = elements[x][y][z]
 	Renderable2D frame;
-	Texture2D *frameTexture;
+    Texture2D* frameTexture;
 
 public:
 	MainLayer()
@@ -57,8 +56,8 @@ public:
 		/* Input */
 
 		keyMapper.MapKey(NESKey::Start, SGL_KEY_ENTER);
-		keyMapper.MapKey(NESKey::A, SGL_KEY_A);
-		keyMapper.MapKey(NESKey::B, SGL_KEY_B);
+        keyMapper.MapKey(NESKey::A,     SGL_KEY_A);
+        keyMapper.MapKey(NESKey::B,     SGL_KEY_B);
 	}
 
 	glm::vec4 HexToRgb(unsigned int hexValue)
@@ -73,7 +72,7 @@ public:
 		return rgbColor;
 	}
 
-	~MainLayer()
+    ~MainLayer() override
 	{
 		delete pixels;
 		delete frameTexture;

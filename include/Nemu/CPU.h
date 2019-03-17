@@ -44,28 +44,28 @@ namespace nemu
 		Memory& memory;
 		Stack<typename Memory::iterator> stack;
 
-        constexpr static int Flag_C      = (1 << 0);
-        constexpr static int Flag_Z      = (1 << 1);
-        constexpr static int Flag_I      = (1 << 2);
-        constexpr static int Flag_D      = (1 << 3); // Disabled on the NES (decimal).
-        constexpr static int Flag_B      = (1 << 4); // Bits 4 and 5 are used to indicate whether a
-        constexpr static int Flag_Unused = (1 << 5); // Software or hardware interrupt occured
-        constexpr static int Flag_V      = (1 << 6);
-        constexpr static int Flag_N      = (1 << 7);
+        constexpr static uint Flag_C      = (1 << 0);
+        constexpr static uint Flag_Z      = (1 << 1);
+        constexpr static uint Flag_I      = (1 << 2);
+        constexpr static uint Flag_D      = (1 << 3); // Disabled on the NES (decimal).
+        constexpr static uint Flag_B      = (1 << 4); // Bits 4 and 5 are used to indicate whether a
+        constexpr static uint Flag_Unused = (1 << 5); // Software or hardware interrupt occured
+        constexpr static uint Flag_V      = (1 << 6);
+        constexpr static uint Flag_N      = (1 << 7);
 
-		constexpr static uint8  Bit0 = (1 << 0);
-		constexpr static uint8  Bit1 = (1 << 1);
-		constexpr static uint8  Bit2 = (1 << 2);
-		constexpr static uint8  Bit3 = (1 << 3);
-		constexpr static uint8  Bit4 = (1 << 4);
-		constexpr static uint8  Bit5 = (1 << 5);
-		constexpr static uint8  Bit6 = (1 << 6);
-		constexpr static uint8  Bit7 = (1 << 7);
-		constexpr static uint16 Bit8 = (1 << 8);
+        constexpr static uint Bit0 = (1 << 0);
+        constexpr static uint Bit1 = (1 << 1);
+        constexpr static uint Bit2 = (1 << 2);
+        constexpr static uint Bit3 = (1 << 3);
+        constexpr static uint Bit4 = (1 << 4);
+        constexpr static uint Bit5 = (1 << 5);
+        constexpr static uint Bit6 = (1 << 6);
+        constexpr static uint Bit7 = (1 << 7);
+        constexpr static uint Bit8 = (1 << 8);
 
-		constexpr static uint16 ResetVector = 0xFFFC;
-		constexpr static uint16 NMIVector   = 0xFFFA;
-		constexpr static uint16 IRQVector   = 0xFFFE;
+        constexpr static uint ResetVector = 0xFFFC;
+        constexpr static uint NMIVector   = 0xFFFA;
+        constexpr static uint IRQVector   = 0xFFFE;
 
 	public:
 		CPU(Memory& mem)

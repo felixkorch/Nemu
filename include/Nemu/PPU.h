@@ -8,16 +8,16 @@ namespace ppu {
 
 	// The PPU has its own address space: 0x0000 -> 0x3FFF
 	// Registers exposed to the CPU
-	constexpr static std::uint16_t PPUCTRL   = 0x2000;
-	constexpr static std::uint16_t PPUMASK   = 0x2001;
-	constexpr static std::uint16_t PPUSTATUS = 0x2002;
-	constexpr static std::uint16_t OAMADDR   = 0x2003;
-	constexpr static std::uint16_t OAMDATA   = 0x2004;
-	constexpr static std::uint16_t PPUSCROLL = 0x2005;
-	constexpr static std::uint16_t PPUADDR   = 0x2006;
-	constexpr static std::uint16_t PPUDATA   = 0x2007;
+    constexpr static unsigned int PPUCTRL   = 0x2000;
+    constexpr static unsigned int PPUMASK   = 0x2001;
+    constexpr static unsigned int PPUSTATUS = 0x2002;
+    constexpr static unsigned int OAMADDR   = 0x2003;
+    constexpr static unsigned int OAMDATA   = 0x2004;
+    constexpr static unsigned int PPUSCROLL = 0x2005;
+    constexpr static unsigned int PPUADDR   = 0x2006;
+    constexpr static unsigned int PPUDATA   = 0x2007;
 
-	static unsigned int nesRGB[] = {
+    constexpr static unsigned int nesRGB[] = {
 		0x7C7C7C, 0x0000FC, 0x0000BC, 0x4428BC, 0x940084, 0xA80020, 0xA81000, 0x881400,
 		0x503000, 0x007800, 0x006800, 0x005800, 0x004058, 0x000000, 0x000000, 0x000000,
 		0xBCBCBC, 0x0078F8, 0x0058F8, 0x6844FC, 0xD800CC, 0xE40058, 0xF83800, 0xE45C10,
@@ -112,19 +112,40 @@ namespace ppu {
 	template <class CPUMemory, class PPUMemory>
 	class PPU {
 
-		/* Member variables */
-	private:
+    /* Member variables */
+    private:
 		CPUMemory& CPUMem;
 		PPUMemory PPUMem;
-		AccessOperation access;
 		unsigned int pixels[256 * 240];
 
-		/* Public functions */
+        /* Background addresses / read operations  */
+        unsigned int VAddr, tempVAddr, fineX;
+        AccessOperation access;
+
+        /* Background shift registers */
+        std::uint16_t shiftReg16_1;
+        std::uint16_t shiftReg16_2;
+        std::uint8_t  shiftReg8_1;
+        std::uint8_t  shiftReg8_2;
+
+        /* Sprite data / attributes */
+        unsigned int primaryOAM  [64 * 4]; // 64 sprites, 4 bytes each
+        unsigned int secondaryOAM[8 * 4];  // 8 sprites
+
+
+
+    /* Public functions */
 	public:
 		PPU(CPUMemory& cpuMem) :
 			CPUMem(cpuMem),
 			pixels{}
 		{}
+
+        void ShiftBackground()
+        {
+            shiftReg16_1 = (shiftReg16_1 & 0xFF00) | shiftReg8_1;
+            shiftReg16_2 = (shiftReg16_2 & 0xFF00) | shiftReg8_2;
+        }
 
 	};
 

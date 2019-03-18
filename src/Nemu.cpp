@@ -1,7 +1,6 @@
 #include "Nemu/PPU.h"
 #include "Nemu/CPU.h"
-#include "Nemu/NESKeys.h"
-#include <Sgl.h>
+#include "Nemu/NESInput.h"
 #include <ctime>
 
 #define VertexShader   Shader::Core_Vertex_Shader2D
@@ -20,11 +19,13 @@ class MainLayer : public Layer {
 private:
 	Renderer2D* renderer;
 	Shader shader;
-
-	NESKeyMapper keyMapper;
 	std::uint8_t* pixels; // pixels[ x * height * depth + y * depth + z ] = elements[x][y][z]
 	Renderable2D frame;
     Texture2D* frameTexture;
+
+	NESInput nesInput;
+	//CPU cpu;
+	//PPU ppu;
 
 public:
 	MainLayer()
@@ -54,10 +55,17 @@ public:
 		frameTexture->SetData(pixels);
 
 		/* Input */
+		NESKeyMapper keyMapper;
+		keyMapper.Map(NESButton::Start, SGL_KEY_ENTER);
+		keyMapper.Map(NESButton::A,     SGL_KEY_A);
+		keyMapper.Map(NESButton::B,     SGL_KEY_B);
+		keyMapper.Map(NESButton::Left,  SGL_KEY_LEFT);
+		keyMapper.Map(NESButton::Right, SGL_KEY_RIGHT);
+		nesInput.AddKeyboardConfig(keyMapper);
 
-		keyMapper.MapKey(NESKey::Start, SGL_KEY_ENTER);
-        keyMapper.MapKey(NESKey::A,     SGL_KEY_A);
-        keyMapper.MapKey(NESKey::B,     SGL_KEY_B);
+		NESJoystickMapper joystickMapper;
+		joystickMapper.MapKey(NESButton::A, 0);
+		nesInput.AddJoystickConfig(joystickMapper);
 	}
 
 	glm::vec4 HexToRgb(unsigned int hexValue)
@@ -83,14 +91,18 @@ public:
 	{
 		/* Update */
 
-		if (Input::IsKeyPressed(keyMapper.GetKey(NESKey::Start)))
+		if (nesInput.Get(NESButton::Start))
 			SglInfo("Start key is down!");
-		else if (Input::IsKeyPressed(keyMapper.GetKey(NESKey::A)))
+		else if (nesInput.Get(NESButton::A))
 			SglInfo("A key is down!");
-		else if (Input::IsKeyPressed(keyMapper.GetKey(NESKey::B)))
+		else if (nesInput.Get(NESButton::B))
 			SglInfo("B key is down!");
 
 		/* Render */
+
+		auto newFrame = nullptr;//ppu.NewFrame();
+		if(newFrame)
+			frameTexture->SetData(newFrame);
 
 		renderer->Begin();
 		renderer->Submit(frame);

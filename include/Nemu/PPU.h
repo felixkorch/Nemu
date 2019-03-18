@@ -86,7 +86,7 @@ namespace ppu {
 		Vertical:   0x2000 == 0x2800 && 0x2400 == 0x2C00
 		Horizontal: 0x2000 == 0x2400 && 0x2800 == 0x2C00
 	*/
-	struct ciRAM {
+	struct CIRAM {
 		std::uint8_t memory[2048] = {};
 		MirroringMode mirrormode = MirroringMode::Vertical;
 		std::uint8_t& operator[](std::size_t offset)
@@ -99,6 +99,25 @@ namespace ppu {
 				return memory[((offset / 2) & 1024) + (offset % 1024)];
 			default:
 				return memory[0]; // TODO
+			}
+		}
+	};
+
+	struct PPUInternalMem {
+		// CHR-RAM/ROM
+		CIRAM        ciRam;      // Holds nametables
+		std::uint8_t cgRam[256]; // Holds palettes
+
+		std::uint8_t& operator[](std::size_t offset)
+		{
+			if (offset > 0x3FFF) { // Out of bounds
+				return ciRam[offset]; // Temporary solution
+			}
+			else if (offset < 0x1FFF) {
+				return ciRam[offset]; // TODO: CHR ROM/RAM
+			}
+			else if (offset < 0x3FFF) {
+				return ciRam[offset];
 			}
 		}
 	};
@@ -117,6 +136,7 @@ namespace ppu {
 		CPUMemory& CPUMem;
 		PPUMemory PPUMem;
 		unsigned int pixels[256 * 240];
+		bool newFrame;
 
         /* Background addresses / read operations  */
         unsigned int VAddr, tempVAddr, fineX;
@@ -132,20 +152,95 @@ namespace ppu {
         unsigned int primaryOAM  [64 * 4]; // 64 sprites, 4 bytes each
         unsigned int secondaryOAM[8 * 4];  // 8 sprites
 
+		int scanline;
+		int dot; // Scanline counter
+		std::uint16_t fetchAddr;
 
-
-    /* Public functions */
 	public:
 		PPU(CPUMemory& cpuMem) :
 			CPUMem(cpuMem),
 			pixels{}
 		{}
 
-        void ShiftBackground()
-        {
-            shiftReg16_1 = (shiftReg16_1 & 0xFF00) | shiftReg8_1;
-            shiftReg16_2 = (shiftReg16_2 & 0xFF00) | shiftReg8_2;
-        }
+		std::uint8_t* NewFrame()
+		{
+			if (newFrame) {
+				newFrame = false;
+				return pixels;
+			}
+			return nullptr;
+		}
+
+	private:
+		void ShiftBackground()
+		{
+			shiftReg16_1 = (shiftReg16_1 & 0xFF00) | shiftReg8_1;
+			shiftReg16_2 = (shiftReg16_2 & 0xFF00) | shiftReg8_2;
+		}
+
+		void ClearOAM()
+		{
+
+		}
+
+		enum class Stage {
+			PRE, VISIBLE, POST, VBLANC
+		};
+
+		template <class Stage>
+		void Scanline() {}
+
+		template <>
+		void Scanline<Stage::PRE>()
+		{
+
+		}
+
+		template <>
+		void Scanline<Stage::VISIBLE>()
+		{
+			if (dot == 0)
+				return;
+			else if (dot == 1) {
+				ClearOAM();
+			}
+			else if (dot <= 255) { // The data for each tile is fetched
+				switch (dot % 8) {
+				case 0: {
+
+				}
+				case 1: {
+
+				}
+				case 2: {
+
+				}
+				case 3: {
+
+				}
+				case 4: {
+
+				}
+				case 5: {
+
+				}
+				case 6: {
+
+				}
+				case 7: {
+
+
+				}
+				}
+			}
+		}
+
+		template <>
+		void Scanline<Stage::POST>()
+		{
+
+		}
+
 
 	};
 

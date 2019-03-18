@@ -35,9 +35,9 @@ namespace nemu
 		using uint8  = std::uint8_t;
 		using int8   = std::int8_t;
 
-		uint8 regX;
-		uint8 regY;
-		uint8 regA;
+		uint8  regX;
+		uint8  regY;
+		uint8  regA;
 		uint16 regPC;
         StatusRegister regStatus;
 
@@ -454,7 +454,7 @@ namespace nemu
 		void OpROL()
 		{
 			uint8& oper = GetOperand<Mode>();
-            uint16 temp = oper;                                // Holds carry in bit 8
+            uint temp = oper;                                  // Holds carry in bit 8
             temp <<= 1;                                        // Shifts left one bit
             temp = regStatus.C ? temp | Bit0 : temp & ~Bit0;   // Changes bit 0 to whatever carry is
             regStatus.C = temp & Bit8;                         // Sets carry flag to whatever bit 8 is
@@ -466,7 +466,7 @@ namespace nemu
 		template <>
 		void OpROL<Implied>() // Special case for Accumulator ROL
 		{
-			uint16 temp = regA;
+			uint temp = regA;
 			temp <<= 1;
             temp = regStatus.C ? temp | Bit0 : temp & ~Bit0;
             regStatus.C = temp & Bit8;
@@ -479,7 +479,7 @@ namespace nemu
 		void OpROR()
 		{
 			uint8& oper = GetOperand<Mode>();
-			uint16 temp = oper;
+			uint temp = oper;
             temp = regStatus.C ? temp | Bit8 : temp & ~Bit8;
             regStatus.C = temp & Bit0;
 			temp >>= 1;
@@ -491,7 +491,7 @@ namespace nemu
 		template <>
 		void OpROR<Implied>() // Special case for Accumulator ROR
 		{
-			uint16 temp = regA;
+			uint temp = regA;
             temp = regStatus.C ? temp | Bit8 : temp & ~Bit8;
             regStatus.C = temp & Bit0;
 			temp >>= 1;

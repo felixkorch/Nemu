@@ -667,12 +667,12 @@ namespace nemu
 		}
         void OpCLR(int flag)
 		{
-            regStatus &= ~flag;
+            regStatus = (int)regStatus & ~flag;
 			regPC++;
 		}
         void OpSET(int flag)
 		{
-            regStatus |= flag;
+            regStatus = (int)regStatus | flag;
 			regPC++;
 		}
 
@@ -713,7 +713,7 @@ namespace nemu
 
 		void OpPHP()
 		{
-			stack.Push(regStatus | (1 << Flag_B) | (1 << Flag_Unused));
+			stack.Push(regStatus | Flag_B | Flag_Unused);
 			regPC++;
 		}
 		void OpPLA()
@@ -753,7 +753,7 @@ namespace nemu
 			regPC += 2;
 			stack.Push((regPC >> 8) & 0xFF);
 			stack.Push(regPC & 0xFF);
-			stack.Push(regStatus | (1 << Flag_B) | (1 << Flag_Unused));
+			stack.Push(regStatus | Flag_B | Flag_Unused);
             regStatus.I = 1;
 			regPC = memory.Get16At(IRQVector);
 		}

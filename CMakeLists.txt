@@ -15,7 +15,7 @@ set(sources
     include/Nemu/CPU.h
     include/Nemu/PPU.h
     include/Nemu/MemoryPermission.h
-    include/Nemu/NESKeys.h
+    include/Nemu/NESInput.h
     include/Nemu/NESMemory.h
     include/Nemu/Stack.h
     include/Nemu/StatusRegister.h

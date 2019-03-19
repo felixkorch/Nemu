@@ -183,21 +183,12 @@ namespace ppu {
 
 		}
 
-		enum class Stage {
-			PRE, VISIBLE, POST, VBLANC
-		};
-
-		template <class Stage>
-		void Scanline() {}
-
-		template <>
-		void Scanline<Stage::PRE>()
+		void ScanlinePRE()
 		{
 
 		}
 
-		template <>
-		void Scanline<Stage::VISIBLE>()
+		void ScanlineVISIBLE()
 		{
 			if (dot == 0)
 				return;
@@ -235,8 +226,7 @@ namespace ppu {
 			}
 		}
 
-		template <>
-		void Scanline<Stage::POST>()
+		void ScanlinePOST()
 		{
 
 		}

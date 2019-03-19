@@ -24,7 +24,6 @@ private:
     Texture2D* frameTexture;
 
 	NESInput nesInput;
-	//CPU cpu;
 	//PPU ppu;
 
 public:
@@ -66,6 +65,7 @@ public:
 		NESJoystickMapper joystickMapper;
 		joystickMapper.MapKey(NESButton::A, 0);
 		nesInput.AddJoystickConfig(joystickMapper);
+
 	}
 
 	glm::vec4 HexToRgb(unsigned int hexValue)

@@ -131,11 +131,11 @@ namespace nemu
 			std::cout << "Y: " << +regY << std::endl;
 		}
 
-		/// -------------------------------------------PRIVATE FUNCTIONS------------------------------------------------------- ///
+	/// -------------------------------------------PRIVATE FUNCTIONS------------------------------------------------------- ///
 
 	private:
 
-		enum Addressmode {
+		enum class AddressMode {
 			Immediate, Absolute,
 			AbsoluteX, AbsoluteY,
 			Indirect,  Relative,
@@ -144,240 +144,263 @@ namespace nemu
 			IndirectY, Implied
 		};
 
-		template <Addressmode Mode>
-		uint8& GetOperand();
+		static constexpr int InstructionSizeImmediate = 2;
+		static constexpr int InstructionSizeAbsolute  = 3;
+		static constexpr int InstructionSizeAbsoluteX = 3;
+		static constexpr int InstructionSizeAbsoluteY = 3;
+		static constexpr int InstructionSizeIndirect  = 3;
+		static constexpr int InstructionSizeRelative  = 2;
+		static constexpr int InstructionSizeZeropage  = 2;
+		static constexpr int InstructionSizeZeropageX = 2;
+		static constexpr int InstructionSizeZeropageY = 2;
+		static constexpr int InstructionSizeIndirectX = 2;
+		static constexpr int InstructionSizeIndirectY = 2;
+		static constexpr int InstructionSizeImplied   = 1;
 
-		template <Addressmode Mode>
-        constexpr int InstructionSize();
-        template<> constexpr int InstructionSize <Immediate>() { return 2; }
-        template<> constexpr int InstructionSize <Absolute>()  { return 3; }
-        template<> constexpr int InstructionSize <AbsoluteX>() { return 3; }
-        template<> constexpr int InstructionSize <AbsoluteY>() { return 3; }
-        template<> constexpr int InstructionSize <Indirect>()  { return 3; }
-        template<> constexpr int InstructionSize <Relative>()  { return 2; }
-        template<> constexpr int InstructionSize <Zeropage>()  { return 2; }
-        template<> constexpr int InstructionSize <ZeropageX>() { return 2; }
-        template<> constexpr int InstructionSize <ZeropageY>() { return 2; }
-        template<> constexpr int InstructionSize <IndirectX>() { return 2; }
-        template<> constexpr int InstructionSize <IndirectY>() { return 2; }
-        template<> constexpr int InstructionSize <Implied>()   { return 1; }
+		int InstructionSize(AddressMode mode)
+		{
+			switch (mode) {
+			case Immediate: return InstructionSizeImmediate;
+			case Absolute:  return InstructionSizeAbsolute;
+			case AbsoluteX: return InstructionSizeAbsoluteX;
+			case AbsoluteY: return InstructionSizeAbsoluteY;
+			case Indirect:  return InstructionSizeIndirect;
+			case Relative:  return InstructionSizeRelative;
+			case Zeropage:  return InstructionSizeZeropage;
+			case ZeropageX: return InstructionSizeZeropageX;
+			case ZeropageY: return InstructionSizeZeropageY;
+			case IndirectX: return InstructionSizeIndirectX;
+			case IndirectY: return InstructionSizeIndirectY;
+			case Implied:   return InstructionSizeImplied;
+			}
+		}
 
-		template <>
-		uint8& GetOperand<Immediate>()
+		uint8& GetOperandImmediate()
 		{
 			return memory[regPC + 1];
 		}
-		template <>
-		uint8& GetOperand<Absolute>()
+
+		uint8& GetOperandAbsolute()
 		{
 			uint16 addr = memory.Get16At(regPC + 1);
 			return memory[addr];
 		}
-		template <>
-		uint8& GetOperand<AbsoluteX>()
+		uint8& GetOperandAbsoluteX()
 		{
 			uint16 addr = memory.Get16At(regPC + 1) + regX;
 			return memory[addr];
 		}
-		template <>
-		uint8& GetOperand<AbsoluteY>()
+		uint8& GetOperandAbsoluteY()
 		{
 			uint16 addr = memory.Get16At(regPC + 1) + regY;
 			return memory[addr];
 		}
-		template <>
-		uint8& GetOperand<Relative>()
+		uint8& GetOperandRelative()
 		{
 			return memory[regPC + 1];
 		}
-		template <>
-		uint8& GetOperand<IndirectX>() // Add first then fetch
+		uint8& GetOperandIndirectX() // Add first then fetch
 		{
 			uint8 offset = memory[regPC + 1] + regX;
 			uint16 addr = memory.Get16At(offset);
 			return memory[addr];
 		}
-		template <>
-		uint8& GetOperand<IndirectY>() // Fetch first then add
+		uint8& GetOperandIndirectY() // Fetch first then add
 		{
 			uint8 offset = memory[regPC + 1];
 			uint16 addr = memory.Get16At(offset) + regY;
 			return memory[addr];
 		}
-		template <>
-		uint8& GetOperand<Zeropage>()
+		uint8& GetOperandZeropage()
 		{
 			uint8 offset = memory[regPC + 1];
 			return memory[offset];
 		}
-		template <>
-		uint8& GetOperand<ZeropageX>()
+
+		uint8& GetOperandZeropageX()
 		{
 			uint8 offset = memory[regPC + 1] + regX;
 			return memory[offset];
 		}
-		template <>
-		uint8& GetOperand<ZeropageY>()
+		uint8& GetOperandZeropageY()
 		{
 			uint8 offset = memory[regPC + 1] + regY;
 			return memory[offset];
+		}
+
+		uint8& GetOperand(AddressMode mode)
+		{
+			switch (mode) {
+			case Immediate: return GetOperandImmediate();
+			case Absolute:  return GetOperandAbsolute();
+			case AbsoluteX: return GetOperandAbsoluteX();
+			case AbsoluteY: return GetOperandAbsoluteY();
+			case Indirect:  return GetOperandIndirect();
+			case Relative:  return GetOperandRelative();
+			case Zeropage:  return GetOperandZeropage();
+			case ZeropageX: return GetOperandZeropageX();
+			case ZeropageY: return GetOperandZeropageY();
+			case IndirectX: return GetOperandIndirectX();
+			case IndirectY: return GetOperandIndirectY();
+			case Implied:   return GetOperandImplied();
+			}
 		}
 
 		void Decode() // Fetches & decodes an instruction
 		{
 			//std::cout << "0x" << std::hex << regPC << std::endl;
 			switch (memory[regPC]) {
-			case 0x00: OpBRK();                       break;
-			case 0xA0: OpLD<Immediate>(regY);         break;
-			case 0xA4: OpLD<Zeropage>(regY);          break;
-			case 0xB4: OpLD<ZeropageX>(regY);         break;
-			case 0xAC: OpLD<Absolute>(regY);          break;
-			case 0xBC: OpLD<AbsoluteX>(regY);         break;
-			case 0xA2: OpLD<Immediate>(regX);         break;
-			case 0xA6: OpLD<Zeropage>(regX);          break;
-			case 0xB6: OpLD<ZeropageY>(regX);         break;
-			case 0xAE: OpLD<Absolute>(regX);          break;
-			case 0xBE: OpLD<AbsoluteY>(regX);         break;
-			case 0xEA: OpNOP();                       break;
-			case 0x18: OpCLR(Flag_C);                 break;
-			case 0xD8: OpCLR(Flag_D);                 break;
-			case 0x58: OpCLR(Flag_I);                 break;
-			case 0xB8: OpCLR(Flag_V);                 break;
-			case 0x38: OpSET(Flag_C);                 break;
-			case 0xF8: OpSET(Flag_D);                 break;
-			case 0x78: OpSET(Flag_I);                 break;
-			case 0xA9: OpLD<Immediate>(regA);         break;
-			case 0xA5: OpLD<Zeropage>(regA);          break;
-			case 0xB5: OpLD<ZeropageX>(regA);         break;
-			case 0xAD: OpLD<Absolute>(regA);          break;
-			case 0xBD: OpLD<AbsoluteX>(regA);         break;
-			case 0xB9: OpLD<AbsoluteY>(regA);         break;
-			case 0xA1: OpLD<IndirectX>(regA);         break;
-			case 0xB1: OpLD<IndirectY>(regA);         break;
-			case 0x69: OpADC<Immediate>();            break;
-			case 0x65: OpADC<Zeropage>();             break;
-			case 0x75: OpADC<ZeropageX>();            break;
-			case 0x6D: OpADC<Absolute>();             break;
-			case 0x7D: OpADC<AbsoluteX>();            break;
-			case 0x79: OpADC<AbsoluteY>();            break;
-			case 0x61: OpADC<IndirectX>();            break;
-			case 0x71: OpADC<IndirectY>();            break;
-			case 0xE9: OpSBC<Immediate>();            break;
-			case 0xE5: OpSBC<Zeropage>();             break;
-			case 0xF5: OpSBC<ZeropageX>();            break;
-			case 0xED: OpSBC<Absolute>();             break;
-			case 0xFD: OpSBC<AbsoluteX>();            break;
-			case 0xF9: OpSBC<AbsoluteY>();            break;
-			case 0xE1: OpSBC<IndirectX>();            break;
-			case 0xF1: OpSBC<IndirectY>();            break;
-			case 0x85: OpST<Zeropage>(regA);          break;
-			case 0x95: OpST<ZeropageX>(regA);         break;
-			case 0x8D: OpST<Absolute>(regA);          break;
-			case 0x9D: OpST<AbsoluteX>(regA);         break;
-			case 0x99: OpST<AbsoluteY>(regA);         break;
-			case 0x81: OpST<IndirectX>(regA);         break;
-			case 0x91: OpST<IndirectY>(regA);         break;
-			case 0x86: OpST<Zeropage>(regX);          break;
-			case 0x96: OpST<ZeropageY>(regX);         break;
-			case 0x8E: OpST<Absolute>(regX);          break;
-			case 0x84: OpST<Zeropage>(regY);          break;
-			case 0x94: OpST<ZeropageX>(regY);         break;
-			case 0x8C: OpST<Absolute>(regY);          break;
-			case 0x4C: OpJMP<Absolute>();             break;
-			case 0x6C: OpJMP<Indirect>();             break;
-			case 0x20: OpJSR();                       break;
-			case 0x48: OpPHA();                       break;
-			case 0x08: OpPHP();                       break;
-			case 0x68: OpPLA();                       break;
-			case 0x28: OpPLP();                       break;
-			case 0x40: OpRTI();                       break;
-			case 0x60: OpRTS();                       break;
-            case 0x10: OpBRA(!regStatus.N);           break;
-            case 0xF0: OpBRA(regStatus.Z);            break;
-            case 0x90: OpBRA(!regStatus.C);           break;
-            case 0xB0: OpBRA(regStatus.C);            break;
-            case 0x30: OpBRA(regStatus.N);            break;
-            case 0xD0: OpBRA(!regStatus.Z);           break;
-            case 0x50: OpBRA(!regStatus.V);           break;
-            case 0x70: OpBRA(regStatus.V);            break;
-			case 0x24: OpBIT<Zeropage>();             break;
-			case 0x2C: OpBIT<Absolute>();             break;
-			case 0x88: OpDEY();                       break;
-			case 0xCA: OpDEX();                       break;
-			case 0xC6: OpDEC<Zeropage>();             break;
-			case 0xD6: OpDEC<ZeropageX>();            break;
-			case 0xCE: OpDEC<Absolute>();             break;
-			case 0xDE: OpDEC<AbsoluteX>();            break;
-			case 0x8A: OpTXA();                       break;
-			case 0xAA: OpTAX();                       break;
-			case 0xA8: OpTAY();                       break;
-			case 0xBA: OpTSX();                       break;
-			case 0x9A: OpTXS();                       break;
-			case 0x98: OpTYA();                       break;
-			case 0x0A: OpASL<Implied>();              break;
-			case 0x06: OpASL<Zeropage>();             break;
-			case 0x16: OpASL<ZeropageX>();            break;
-			case 0x0E: OpASL<Absolute>();             break;
-			case 0x1E: OpASL<AbsoluteX>();            break;
-			case 0x4A: OpLSR<Implied>();              break;
-			case 0x46: OpLSR<Zeropage>();             break;
-			case 0x56: OpLSR<ZeropageX>();            break;
-			case 0x4E: OpLSR<Absolute>();             break;
-			case 0x5E: OpLSR<AbsoluteX>();            break;
-			case 0x2A: OpROL<Implied>();              break;
-			case 0x26: OpROL<Zeropage>();             break;
-			case 0x36: OpROL<ZeropageX>();            break;
-			case 0x2E: OpROL<Absolute>();             break;
-			case 0x3E: OpROL<AbsoluteX>();            break;
-			case 0x6A: OpROR<Implied>();              break;
-			case 0x66: OpROR<Zeropage>();             break;
-			case 0x76: OpROR<ZeropageX>();            break;
-			case 0x6E: OpROR<Absolute>();             break;
-			case 0x7E: OpROR<AbsoluteX>();            break;
-			case 0x29: OpAND<Immediate>();            break;
-			case 0x25: OpAND<Zeropage>();             break;
-			case 0x35: OpAND<ZeropageX>();            break;
-			case 0x2D: OpAND<Absolute>();             break;
-			case 0x3D: OpAND<AbsoluteX>();            break;
-			case 0x39: OpAND<AbsoluteY>();            break;
-			case 0x21: OpAND<IndirectX>();            break;
-			case 0x31: OpAND<IndirectY>();            break;
-			case 0xC9: OpCMP<Immediate>(regA);        break;
-			case 0xC5: OpCMP<Zeropage>(regA);         break;
-			case 0xD5: OpCMP<ZeropageX>(regA);        break;
-			case 0xCD: OpCMP<Absolute>(regA);         break;
-			case 0xDD: OpCMP<AbsoluteX>(regA);        break;
-			case 0xD9: OpCMP<AbsoluteY>(regA);        break;
-			case 0xC1: OpCMP<IndirectX>(regA);        break;
-			case 0xD1: OpCMP<IndirectY>(regA);        break;
-			case 0xE0: OpCMP<Immediate>(regX);        break;
-			case 0xE4: OpCMP<Zeropage>(regX);         break;
-			case 0xEC: OpCMP<Absolute>(regX);         break;
-			case 0xC0: OpCMP<Immediate>(regY);        break;
-			case 0xC4: OpCMP<Zeropage>(regY);         break;
-			case 0xCC: OpCMP<Absolute>(regY);         break;
-			case 0x09: OpORA<Immediate>();            break;
-			case 0x05: OpORA<Zeropage>();             break;
-			case 0x15: OpORA<ZeropageX>();            break;
-			case 0x0D: OpORA<Absolute>();             break;
-			case 0x1D: OpORA<AbsoluteX>();            break;
-			case 0x19: OpORA<AbsoluteY>();            break;
-			case 0x01: OpORA<IndirectX>();            break;
-			case 0x11: OpORA<IndirectY>();            break;
-			case 0x49: OpEOR<Immediate>();            break;
-			case 0x45: OpEOR<Zeropage>();             break;
-			case 0x55: OpEOR<ZeropageX>();            break;
-			case 0x4D: OpEOR<Absolute>();             break;
-			case 0x5D: OpEOR<AbsoluteX>();            break;
-			case 0x59: OpEOR<AbsoluteY>();            break;
-			case 0x41: OpEOR<IndirectX>();            break;
-			case 0x51: OpEOR<IndirectY>();            break;
-			case 0xE6: OpINC<Zeropage>();             break;
-			case 0xF6: OpINC<ZeropageX>();            break;
-			case 0xEE: OpINC<Absolute>();             break;
-			case 0xFE: OpINC<AbsoluteX>();            break;
-			case 0xE8: OpINX();                       break;
-			case 0xC8: OpINY();                       break;
+			case 0x00: OpBRK();                             break;
+			case 0xA0: OpLD(AddressMode::Immediate, regY);  break;
+			case 0xA4: OpLD(AddressMode::Zeropage, regY);   break;
+			case 0xB4: OpLD(AddressMode::ZeropageX, regY);  break;
+			case 0xAC: OpLD(AddressMode::Absolute, regY);   break;
+			case 0xBC: OpLD(AddressMode::AbsoluteX, regY);  break;
+			case 0xA2: OpLD(AddressMode::Immediate, regX);  break;
+			case 0xA6: OpLD(AddressMode::Zeropage, regX);   break;
+			case 0xB6: OpLD(AddressMode::ZeropageY, regX);  break;
+			case 0xAE: OpLD(AddressMode::Absolute, regX);   break;
+			case 0xBE: OpLD(AddressMode::AbsoluteY, regX);  break;
+			case 0xEA: OpNOP();                             break;
+			case 0x18: OpCLR(Flag_C);                       break;
+			case 0xD8: OpCLR(Flag_D);                       break;
+			case 0x58: OpCLR(Flag_I);                       break;
+			case 0xB8: OpCLR(Flag_V);                       break;
+			case 0x38: OpSET(Flag_C);                       break;
+			case 0xF8: OpSET(Flag_D);                       break;
+			case 0x78: OpSET(Flag_I);                       break;
+			case 0xA9: OpLD(AddressMode::Immediate, regA);  break;
+			case 0xA5: OpLD(AddressMode::Zeropage, regA);   break;
+			case 0xB5: OpLD(AddressMode::ZeropageX, regA);  break;
+			case 0xAD: OpLD(AddressMode::Absolute, regA);   break;
+			case 0xBD: OpLD(AddressMode::AbsoluteX, regA);  break;
+			case 0xB9: OpLD(AddressMode::AbsoluteY, regA);  break;
+			case 0xA1: OpLD(AddressMode::IndirectX, regA);  break;
+			case 0xB1: OpLD(AddressMode::IndirectY, regA);  break;
+			case 0x69: OpAD(AddressMode::Immediate);        break;
+			case 0x65: OpAD(AddressMode::Zeropage);         break;
+			case 0x75: OpAD(AddressMode::ZeropageX);        break;
+			case 0x6D: OpAD(AddressMode::Absolute);         break;
+			case 0x7D: OpAD(AddressMode::AbsoluteX);        break;
+			case 0x79: OpAD(AddressMode::AbsoluteY);        break;
+			case 0x61: OpAD(AddressMode::IndirectX);        break;
+			case 0x71: OpAD(AddressMode::IndirectY);        break;
+			case 0xE9: OpSB(AddressMode::Immediate);        break;
+			case 0xE5: OpSB(AddressMode::Zeropage);         break;
+			case 0xF5: OpSB(AddressMode::ZeropageX);        break;
+			case 0xED: OpSB(AddressMode::Absolute);         break;
+			case 0xFD: OpSB(AddressMode::AbsoluteX);        break;
+			case 0xF9: OpSB(AddressMode::AbsoluteY);        break;
+			case 0xE1: OpSB(AddressMode::IndirectX);        break;
+			case 0xF1: OpSB(AddressMode::IndirectY);        break;
+			case 0x85: OpST(AddressMode::Zeropage, regA);   break;
+			case 0x95: OpST(AddressMode::ZeropageX, regA);  break;
+			case 0x8D: OpST(AddressMode::Absolute, regA);   break;
+			case 0x9D: OpST(AddressMode::AbsoluteX, regA);  break;
+			case 0x99: OpST(AddressMode::AbsoluteY, regA);  break;
+			case 0x81: OpST(AddressMode::IndirectX, regA);  break;
+			case 0x91: OpST(AddressMode::IndirectY, regA);  break;
+			case 0x86: OpST(AddressMode::Zeropage, regX);   break;
+			case 0x96: OpST(AddressMode::ZeropageY, regX);  break;
+			case 0x8E: OpST(AddressMode::Absolute, regX);   break;
+			case 0x84: OpST(AddressMode::Zeropage, regY);   break;
+			case 0x94: OpST(AddressMode::ZeropageX, regY);  break;
+			case 0x8C: OpST(AddressMode::Absolute, regY);   break;
+			case 0x4C: OpJMPAbsolute();                     break;
+			case 0x6C: OpJMPIndirect();                     break;
+			case 0x20: OpJSR();                             break;
+			case 0x48: OpPHA();                             break;
+			case 0x08: OpPHP();                             break;
+			case 0x68: OpPLA();                             break;
+			case 0x28: OpPLP();                             break;
+			case 0x40: OpRTI();                             break;
+			case 0x60: OpRTS();                             break;
+			case 0x10: OpBRA(!regStatus.N);                 break;
+			case 0xF0: OpBRA(regStatus.Z);                  break;
+			case 0x90: OpBRA(!regStatus.C);                 break;
+			case 0xB0: OpBRA(regStatus.C);                  break;
+			case 0x30: OpBRA(regStatus.N);                  break;
+			case 0xD0: OpBRA(!regStatus.Z);                 break;
+			case 0x50: OpBRA(!regStatus.V);                 break;
+			case 0x70: OpBRA(regStatus.V);                  break;
+			case 0x24: OpBIT(AddressMode::Zeropage);        break;
+			case 0x2C: OpBIT(AddressMode::Absolute);        break;
+			case 0x88: OpDEY();                             break;
+			case 0xCA: OpDEX();                             break;
+			case 0xC6: OpDEC(AddressMode::Zeropage);        break;
+			case 0xD6: OpDEC(AddressMode::ZeropageX);       break;
+			case 0xCE: OpDEC(AddressMode::Absolute);        break;
+			case 0xDE: OpDEC(AddressMode::AbsoluteX);       break;
+			case 0x8A: OpTXA();                             break;
+			case 0xAA: OpTAX();                             break;
+			case 0xA8: OpTAY();                             break;
+			case 0xBA: OpTSX();                             break;
+			case 0x9A: OpTXS();                             break;
+			case 0x98: OpTYA();                             break;
+			case 0x0A: OpASLImplied();                      break;
+			case 0x06: OpASL(AddressMode::Zeropage);        break;
+			case 0x16: OpASL(AddressMode::ZeropageX);       break;
+			case 0x0E: OpASL(AddressMode::Absolute);        break;
+			case 0x1E: OpASL(AddressMode::AbsoluteX);       break;
+			case 0x4A: OpLSRImplied();                      break;
+			case 0x46: OpLSR(AddressMode::Zeropage);        break;
+			case 0x56: OpLSR(AddressMode::ZeropageX);       break;
+			case 0x4E: OpLSR(AddressMode::Absolute);        break;
+			case 0x5E: OpLSR(AddressMode::AbsoluteX);       break;
+			case 0x2A: OpROLImplied();                      break;
+			case 0x26: OpROL(AddressMode::Zeropage);        break;
+			case 0x36: OpROL(AddressMode::ZeropageX);       break;
+			case 0x2E: OpROL(AddressMode::Absolute);        break;
+			case 0x3E: OpROL(AddressMode::AbsoluteX);       break;
+			case 0x6A: OpRORImplied();                      break;
+			case 0x66: OpROR(AddressMode::Zeropage);        break;
+			case 0x76: OpROR(AddressMode::ZeropageX);       break;
+			case 0x6E: OpROR(AddressMode::Absolute);        break;
+			case 0x7E: OpROR(AddressMode::AbsoluteX);       break;
+			case 0x29: OpAND(AddressMode::Immediate);       break;
+			case 0x25: OpAND(AddressMode::Zeropage);        break;
+			case 0x35: OpAND(AddressMode::ZeropageX);       break;
+			case 0x2D: OpAND(AddressMode::Absolute);        break;
+			case 0x3D: OpAND(AddressMode::AbsoluteX);       break;
+			case 0x39: OpAND(AddressMode::AbsoluteY);       break;
+			case 0x21: OpAND(AddressMode::IndirectX);       break;
+			case 0x31: OpAND(AddressMode::IndirectY);       break;
+			case 0xC9: OpCMP(AddressMode::Immediate, regA); break;
+			case 0xC5: OpCMP(AddressMode::Zeropage, regA);  break;
+			case 0xD5: OpCMP(AddressMode::ZeropageX, regA); break;
+			case 0xCD: OpCMP(AddressMode::Absolute, regA);  break;
+			case 0xDD: OpCMP(AddressMode::AbsoluteX, regA); break;
+			case 0xD9: OpCMP(AddressMode::AbsoluteY, regA); break;
+			case 0xC1: OpCMP(AddressMode::IndirectX, regA); break;
+			case 0xD1: OpCMP(AddressMode::IndirectY, regA); break;
+			case 0xE0: OpCMP(AddressMode::Immediate, regX); break;
+			case 0xE4: OpCMP(AddressMode::Zeropage, regX);  break;
+			case 0xEC: OpCMP(AddressMode::Absolute, regX);  break;
+			case 0xC0: OpCMP(AddressMode::Immediate, regY); break;
+			case 0xC4: OpCMP(AddressMode::Zeropage, regY);  break;
+			case 0xCC: OpCMP(AddressMode::Absolute, regY);  break;
+			case 0x09: OpORA(AddressMode::Immediate);       break;
+			case 0x05: OpORA(AddressMode::Zeropage);        break;
+			case 0x15: OpORA(AddressMode::ZeropageX);       break;
+			case 0x0D: OpORA(AddressMode::Absolute);        break;
+			case 0x1D: OpORA(AddressMode::AbsoluteX);       break;
+			case 0x19: OpORA(AddressMode::AbsoluteY);       break;
+			case 0x01: OpORA(AddressMode::IndirectX);       break;
+			case 0x11: OpORA(AddressMode::IndirectY);       break;
+			case 0x49: OpEOR(AddressMode::Immediate);       break;
+			case 0x45: OpEOR(AddressMode::Zeropage);        break;
+			case 0x55: OpEOR(AddressMode::ZeropageX);       break;
+			case 0x4D: OpEOR(AddressMode::Absolute);        break;
+			case 0x5D: OpEOR(AddressMode::AbsoluteX);       break;
+			case 0x59: OpEOR(AddressMode::AbsoluteY);       break;
+			case 0x41: OpEOR(AddressMode::IndirectX);       break;
+			case 0x51: OpEOR(AddressMode::IndirectY);       break;
+			case 0xE6: OpINC(AddressMode::Zeropage);        break;
+			case 0xF6: OpINC(AddressMode::ZeropageX);       break;
+			case 0xEE: OpINC(AddressMode::Absolute);        break;
+			case 0xFE: OpINC(AddressMode::AbsoluteX);       break;
+			case 0xE8: OpINX();                             break;
+			case 0xC8: OpINY();                             break;
 			default: // Illegal opcode
 				std::cout << "Error: Illegal op-code" << std::endl;
 				break;
@@ -395,10 +418,10 @@ namespace nemu
 		/// occur if the operands have different signs, since it will
 		/// always be less than the positive one.
 
-		template <Addressmode Mode>
-		void OpADC()
+		
+		void OpADC(AddressMode mode)
 		{
-			uint8& oper = GetOperand<Mode>();
+			uint8& oper = GetOperand(mode);
             uint result = regA + oper + regStatus.C;
 			bool overflow = !((regA ^ oper) & Bit7) && ((regA ^ result) & Bit7);
             regStatus.Z = (result & 0xFF) == 0;
@@ -406,13 +429,13 @@ namespace nemu
             regStatus.V = overflow;
             regStatus.N = result & Bit7;
 			regA = result & 0xFF;
-			regPC += InstructionSize<Mode>();
+			regPC += InstructionSize(mode);
 		}
 
-		template <Addressmode Mode>
-		void OpSBC()
+		
+		void OpSBC(AddressMode mode)
 		{
-			uint8& oper = GetOperand<Mode>();
+			uint8& oper = GetOperand(mode);
             uint result = regA - oper - !regStatus.C;
 			bool overflow = ((regA ^ result) & Bit7) && ((regA ^ oper) & Bit7);
             regStatus.Z = (result & 0xFF) == 0;
@@ -420,40 +443,40 @@ namespace nemu
             regStatus.V = overflow;
             regStatus.N = result & Bit7;
 			regA = result & 0xFF;
-			regPC += InstructionSize<Mode>();
+			regPC += InstructionSize(mode);
 		}
-		template <Addressmode Mode>
-		void OpCMP(uint8& reg)
+		
+		void OpCMP(AddressMode mode, uint8& reg)
 		{
-			uint8& oper = GetOperand<Mode>();
+			uint8& oper = GetOperand(mode);
 			uint result = reg - oper;
             regStatus.Z = reg == oper;
             regStatus.N = result & Bit7;
             regStatus.C = result < Bit8;
-			regPC += InstructionSize<Mode>();
+			regPC += InstructionSize(mode);
 		}
-		template <Addressmode Mode>
-		void OpAND()
+		
+		void OpAND(AddressMode mode)
 		{
-			uint8& oper = GetOperand<Mode>();
+			uint8& oper = GetOperand(mode);
 			regA &= oper;
 			SetFlagNegative(regA);
 			SetFlagZero(regA);
-			regPC += InstructionSize<Mode>();
+			regPC += InstructionSize(mode);
 		}
-		template <Addressmode Mode>
-		void OpEOR()
+		
+		void OpEOR(AddressMode mode)
 		{
-			uint8& oper = GetOperand<Mode>();
+			uint8& oper = GetOperand(mode);
 			regA ^= oper;
 			SetFlagNegative(regA);
 			SetFlagZero(regA);
-			regPC += InstructionSize<Mode>();
+			regPC += InstructionSize(mode);
 		}
-		template <Addressmode Mode>
-		void OpROL()
+		
+		void OpROL(AddressMode mode)
 		{
-			uint8& oper = GetOperand<Mode>();
+			uint8& oper = GetOperand(mode);
             uint temp = oper;                                  // Holds carry in bit 8
             temp <<= 1;                                        // Shifts left one bit
             temp = regStatus.C ? temp | Bit0 : temp & ~Bit0;   // Changes bit 0 to whatever carry is
@@ -461,10 +484,10 @@ namespace nemu
 			oper = temp & 0xFF;
 			SetFlagNegative(oper);
 			SetFlagZero(oper);
-			regPC += InstructionSize<Mode>();
+			regPC += InstructionSize(mode);
 		}
-		template <>
-		void OpROL<Implied>() // Special case for Accumulator ROL
+
+		void OpROLImplied() // Special case for Accumulator ROL
 		{
 			uint temp = regA;
 			temp <<= 1;
@@ -473,12 +496,12 @@ namespace nemu
 			regA = temp & 0xFF;
 			SetFlagNegative(regA);
 			SetFlagZero(regA);
-			regPC += InstructionSize<Implied>();
+			regPC += InstructionSize(mode);
 		}
-		template <Addressmode Mode>
-		void OpROR()
+		
+		void OpROR(AddressMode mode)
 		{
-			uint8& oper = GetOperand<Mode>();
+			uint8& oper = GetOperand(mode);
 			uint temp = oper;
             temp = regStatus.C ? temp | Bit8 : temp & ~Bit8;
             regStatus.C = temp & Bit0;
@@ -486,10 +509,10 @@ namespace nemu
 			oper = temp & 0xFF;
 			SetFlagNegative(oper);
 			SetFlagZero(oper);
-			regPC += InstructionSize<Mode>();
+			regPC += InstructionSize(mode);
 		}
-		template <>
-		void OpROR<Implied>() // Special case for Accumulator ROR
+
+		void OpRORImplied() // Special case for Accumulator ROR
 		{
 			uint temp = regA;
             temp = regStatus.C ? temp | Bit8 : temp & ~Bit8;
@@ -498,56 +521,56 @@ namespace nemu
 			regA = temp & 0xFF;
 			SetFlagNegative(regA);
 			SetFlagZero(regA);
-			regPC += InstructionSize<Implied>();
+			regPC += InstructionSize(mode);
 		}
-		template <Addressmode Mode>
-		void OpASL()
+		
+		void OpASL(AddressMode mode)
 		{
-			uint8& oper = GetOperand<Mode>();
+			uint8& oper = GetOperand(mode);
             regStatus.C = oper & Bit7;
 			oper <<= 1;
 			SetFlagNegative(oper);
 			SetFlagZero(oper);
-			regPC += InstructionSize<Mode>();
+			regPC += InstructionSize(mode);
 		}
-		template <>
-		void OpASL<Implied>() // Special case for Accumulator ASL
+
+		void OpASLImplied() // Special case for Accumulator ASL
         {
             regStatus.C = regA & Bit7;
 			regA <<= 1;
 			SetFlagNegative(regA);
 			SetFlagZero(regA);
-			regPC += InstructionSize<Implied>();
+			regPC += InstructionSize(mode);
 		}
-		template <Addressmode Mode>
-		void OpLSR()
+		
+		void OpLSR(AddressMode mode)
 		{
-			uint8& oper = GetOperand<Mode>();
+			uint8& oper = GetOperand(mode);
             regStatus.C = oper & Bit0;
 			oper >>= 1;
             regStatus.Z = oper == 0;
             regStatus.N = 0;
-			regPC += InstructionSize<Mode>();
+			regPC += InstructionSize(mode);
 		}
-		template <>
-		void OpLSR<Implied>() // Special case for Accumulator LSR
+
+		void OpLSRImplied() // Special case for Accumulator LSR
         {
             regStatus.C = regA & Bit0;
 			regA >>= 1;
             regStatus.Z = regA == 0;
             regStatus.N = 0;
-			regPC += InstructionSize<Implied>();
+			regPC += InstructionSize(mode);
 		}
 
 		/* Decrease Operations */
-		template <Addressmode Mode>
-		void OpDEC()
+		
+		void OpDEC(AddressMode mode)
 		{
-			uint8& oper = GetOperand<Mode>();
+			uint8& oper = GetOperand(mode);
 			oper--;
             regStatus.Z = oper == 0;
             regStatus.N = oper & Bit7;
-			regPC += InstructionSize<Mode>();
+			regPC += InstructionSize(mode);
 		}
 		void OpDEX()
 		{
@@ -565,14 +588,14 @@ namespace nemu
 		}
 
 		/* Increase Operations */
-		template <Addressmode Mode>
-		void OpINC() // Increase operations
+		
+		void OpINC(AddressMode mode) // Increase operations
 		{
-			uint8& oper = GetOperand<Mode>();
+			uint8& oper = GetOperand(mode);
 			oper++;
 			SetFlagNegative(oper);
 			SetFlagZero(oper);
-			regPC += InstructionSize<Mode>();
+			regPC += InstructionSize(mode);
 		}
 		void OpINX()
 		{
@@ -631,39 +654,38 @@ namespace nemu
 			regPC++;
 		}
 
-		template <Addressmode Mode>
-		void OpLD(uint8& reg) // Load operations
+		void OpLD(AddressMode mode, uint8& reg) // Load operations
 		{
-			uint8& oper = GetOperand<Mode>();
+			uint8& oper = GetOperand(mode);
 			reg = oper;
 			SetFlagNegative(reg);
 			SetFlagZero(reg);
-			regPC += InstructionSize<Mode>();
+			regPC += InstructionSize(mode);
 		}
-		template <Addressmode Mode>
-		void OpST(uint8& reg) // Store operations
+		
+		void OpST(AddressMode mode, uint8& reg) // Store operations
 		{
-			uint8& oper = GetOperand<Mode>();
+			uint8& oper = GetOperand(mode);
 			oper = reg;
-			regPC += InstructionSize<Mode>();
+			regPC += InstructionSize(mode);
 		}
-		template <Addressmode Mode>
-		void OpORA()
+		
+		void OpORA(AddressMode mode)
 		{
-			uint8& oper = GetOperand<Mode>();
+			uint8& oper = GetOperand(mode);
 			regA |= oper;
 			SetFlagNegative(regA);
 			SetFlagZero(regA);
-			regPC += InstructionSize<Mode>();
+			regPC += InstructionSize(mode);
 		}
-		template <Addressmode Mode>
-		void OpBIT()
+		
+		void OpBIT(AddressMode mode)
 		{
-			uint8& oper = GetOperand<Mode>();
+			uint8& oper = GetOperand(mode);
             regStatus.N = oper & Bit7;
             regStatus.V = oper & Bit6;
             regStatus.Z = (oper & regA) == 0;
-			regPC += InstructionSize<Mode>();
+			regPC += InstructionSize(mode);
 		}
         void OpCLR(int flag)
 		{
@@ -677,15 +699,13 @@ namespace nemu
 		}
 
 		/* Jump operations */
-		template <Addressmode Mode> void OpJMP();
 
-		template <>
-		void OpJMP<Absolute>()
+		void OpJMPAbsolute()
 		{
 			regPC = memory.Get16At(regPC + 1);
 		}
-		template <>
-		void OpJMP<Indirect>()
+
+		void OpJMPIndirect()
 		{
 			uint16 offset = memory.Get16At(regPC + 1);
 			regPC = memory.Get16At(offset);
@@ -698,10 +718,10 @@ namespace nemu
 			stack.Push(regPC & 0xFF);        // Push PC_Low
 			regPC = addr;
 		}
-		void OpBRA(bool condition) // Branch operations
+		void OpBRA(AddressMode mode, bool condition) // Branch operations
 		{
-			int8 oper = GetOperand<Immediate>();
-			regPC += condition ? oper + InstructionSize<Immediate>() : InstructionSize<Immediate>();
+			int8 oper = GetOperand(mode);
+			regPC += condition ? oper + InstructionSize(AddressMode::Immediate) : InstructionSize(AddressMode::Immediate);
 		}
 
 		/* Stack operations */

@@ -1,23 +1,26 @@
-#include "Nemu/FlagRegister.h"
+#include "Nemu/StatusRegister.h"
 #include <cassert>
+#include <iostream>
 
 int main(int argc, char **argv) 
 {
-    nemu::FlagRegister reg;
+    nemu::StatusRegister reg;
 
-    reg.c = 1;
-    reg.i = 1;
+    reg.C = 1;
+    reg.I = 1;
     assert(reg == 5);
 
-    reg.c = 0;
+    reg.C = 0;
     assert(reg == 4);
-    assert(reg.c == 0);
-    assert(reg.i == 1);
+    assert(reg.C == 0);
+    assert(reg.I == 1);
 
     reg = 0x40;
-    assert(reg.v == 1);
-    assert(reg.b == 0);
+    assert(reg.V == 1);
+    assert(reg.B == 0);
     assert(reg = 0x40);
+	std::cout << "Test passed" << std::endl;
+	std::cin.get();
 
     return 0;
 }

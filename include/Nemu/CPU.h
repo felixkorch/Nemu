@@ -160,18 +160,18 @@ namespace nemu
 		int InstructionSize(AddressMode mode)
 		{
 			switch (mode) {
-			case Immediate: return InstructionSizeImmediate;
-			case Absolute:  return InstructionSizeAbsolute;
-			case AbsoluteX: return InstructionSizeAbsoluteX;
-			case AbsoluteY: return InstructionSizeAbsoluteY;
-			case Indirect:  return InstructionSizeIndirect;
-			case Relative:  return InstructionSizeRelative;
-			case Zeropage:  return InstructionSizeZeropage;
-			case ZeropageX: return InstructionSizeZeropageX;
-			case ZeropageY: return InstructionSizeZeropageY;
-			case IndirectX: return InstructionSizeIndirectX;
-			case IndirectY: return InstructionSizeIndirectY;
-			case Implied:   return InstructionSizeImplied;
+			case AddressMode::Immediate: return InstructionSizeImmediate;
+			case AddressMode::Absolute:  return InstructionSizeAbsolute;
+			case AddressMode::AbsoluteX: return InstructionSizeAbsoluteX;
+			case AddressMode::AbsoluteY: return InstructionSizeAbsoluteY;
+			case AddressMode::Indirect:  return InstructionSizeIndirect;
+			case AddressMode::Relative:  return InstructionSizeRelative;
+			case AddressMode::Zeropage:  return InstructionSizeZeropage;
+			case AddressMode::ZeropageX: return InstructionSizeZeropageX;
+			case AddressMode::ZeropageY: return InstructionSizeZeropageY;
+			case AddressMode::IndirectX: return InstructionSizeIndirectX;
+			case AddressMode::IndirectY: return InstructionSizeIndirectY;
+			case AddressMode::Implied:   return InstructionSizeImplied;
 			}
 		}
 
@@ -231,18 +231,16 @@ namespace nemu
 		uint8& GetOperand(AddressMode mode)
 		{
 			switch (mode) {
-			case Immediate: return GetOperandImmediate();
-			case Absolute:  return GetOperandAbsolute();
-			case AbsoluteX: return GetOperandAbsoluteX();
-			case AbsoluteY: return GetOperandAbsoluteY();
-			case Indirect:  return GetOperandIndirect();
-			case Relative:  return GetOperandRelative();
-			case Zeropage:  return GetOperandZeropage();
-			case ZeropageX: return GetOperandZeropageX();
-			case ZeropageY: return GetOperandZeropageY();
-			case IndirectX: return GetOperandIndirectX();
-			case IndirectY: return GetOperandIndirectY();
-			case Implied:   return GetOperandImplied();
+			case AddressMode::Immediate: return GetOperandImmediate();
+			case AddressMode::Absolute:  return GetOperandAbsolute();
+			case AddressMode::AbsoluteX: return GetOperandAbsoluteX();
+			case AddressMode::AbsoluteY: return GetOperandAbsoluteY();
+			case AddressMode::Relative:  return GetOperandRelative();
+			case AddressMode::Zeropage:  return GetOperandZeropage();
+			case AddressMode::ZeropageX: return GetOperandZeropageX();
+			case AddressMode::ZeropageY: return GetOperandZeropageY();
+			case AddressMode::IndirectX: return GetOperandIndirectX();
+			case AddressMode::IndirectY: return GetOperandIndirectY();
 			}
 		}
 
@@ -496,7 +494,7 @@ namespace nemu
 			regA = temp & 0xFF;
 			SetFlagNegative(regA);
 			SetFlagZero(regA);
-			regPC += InstructionSize(mode);
+			regPC += InstructionSize(AddressMode::Implied);
 		}
 		
 		void OpROR(AddressMode mode)
@@ -521,7 +519,7 @@ namespace nemu
 			regA = temp & 0xFF;
 			SetFlagNegative(regA);
 			SetFlagZero(regA);
-			regPC += InstructionSize(mode);
+			regPC += InstructionSize(AddressMode::Implied);
 		}
 		
 		void OpASL(AddressMode mode)
@@ -540,7 +538,7 @@ namespace nemu
 			regA <<= 1;
 			SetFlagNegative(regA);
 			SetFlagZero(regA);
-			regPC += InstructionSize(mode);
+			regPC += InstructionSize(AddressMode::Implied);
 		}
 		
 		void OpLSR(AddressMode mode)
@@ -559,7 +557,7 @@ namespace nemu
 			regA >>= 1;
             regStatus.Z = regA == 0;
             regStatus.N = 0;
-			regPC += InstructionSize(mode);
+			regPC += InstructionSize(AddressMode::Implied);
 		}
 
 		/* Decrease Operations */

@@ -32,13 +32,11 @@ public:
 	{
 		renderer = Renderer2D::Create(Width, Height, shader);
 		frame = Renderable2D(glm::vec2(Width, Height), glm::vec2(0, 0));
-
 		frameTexture = new Texture2D(TexWidth, TexHeight);
 
 		srand(time(nullptr));
-
 		pixels = new std::uint8_t[TexWidth * TexHeight * 4];
-
+		
 		int i, j;
 
 		for (i = 0; i < TexWidth; i++) {

@@ -10,29 +10,25 @@ endif()
 
 add_subdirectory(deps/Sgl)
 
-set(NemuLib_SOURCE
-    ${CMAKE_CURRENT_SOURCE_DIR}/include/Nemu/CPU.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/include/Nemu/PPU.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/include/Nemu/MemoryPermission.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/include/Nemu/NESInput.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/include/Nemu/NESMemory.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/include/Nemu/Stack.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/include/Nemu/StatusRegister.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/include/Nemu/System.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/include/Nemu/Mapper/InternalNESMapper.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/include/Nemu/Mapper/Mapper.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/include/Nemu/Mapper/NROM128Mapper.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/include/Nemu/Mapper/NROM256Mapper.h
+set(Nemu_SOURCE
+	src/Nemu.cpp
+    include/Nemu/CPU.h
+    include/Nemu/PPU.h
+    include/Nemu/MemoryPermission.h
+    include/Nemu/NESInput.h
+    include/Nemu/NESMemory.h
+    include/Nemu/Stack.h
+    include/Nemu/StatusRegister.h
+    include/Nemu/System.h
+    include/Nemu/Mapper/InternalNESMapper.h
+    include/Nemu/Mapper/Mapper.h
+    include/Nemu/Mapper/NROM128Mapper.h
+    include/Nemu/Mapper/NROM256Mapper.h
 )
-#NEMU LIB
-add_library(NemuLib INTERFACE)
-target_sources(NemuLib INTERFACE ${NemuLib_SOURCE})
-target_include_directories(NemuLib INTERFACE $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include> )
 
-
-#NEMU BIN
-add_executable(${PROJECT_NAME} src/Nemu.cpp)
-target_link_libraries(${PROJECT_NAME} NemuLib Sgl ${SGL_LIBRARIES})
+add_executable(${PROJECT_NAME} ${Nemu_SOURCE})
+target_link_libraries(${PROJECT_NAME} Sgl ${Sgl_LIBRARIES})
+target_include_directories(${PROJECT_NAME} PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/include>)
 
 set_target_properties(${PROJECT_NAME} PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY_DEBUG ${CMAKE_CURRENT_LIST_DIR}/bin/Debug/${PROJECT_NAME}

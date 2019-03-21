@@ -135,22 +135,22 @@ namespace ppu {
     private:
 		CPUMemory& CPUMem;
 		PPUMemory PPUMem;
-		unsigned int pixels[256 * 240];
+		std::uint8_t pixels[256 * 240];
 		bool newFrame;
 
-        /* Background addresses / read operations  */
-        unsigned int VAddr, tempVAddr, fineX;
-        AccessOperation access;
+		/* Background addresses / read operations  */
+		unsigned int VAddr, tempVAddr, fineX;
+		AccessOperation access;
 
-        /* Background shift registers */
-        std::uint16_t shiftReg16_1;
-        std::uint16_t shiftReg16_2;
-        std::uint8_t  shiftReg8_1;
-        std::uint8_t  shiftReg8_2;
+		/* Background shift registers */
+		std::uint16_t shiftReg16_1;
+		std::uint16_t shiftReg16_2;
+		std::uint8_t  shiftReg8_1;
+		std::uint8_t  shiftReg8_2;
 
-        /* Sprite data / attributes */
-        unsigned int primaryOAM  [64 * 4]; // 64 sprites, 4 bytes each
-        unsigned int secondaryOAM[8 * 4];  // 8 sprites
+		/* Sprite data / attributes */
+		unsigned int primaryOAM  [64 * 4]; // 64 sprites, 4 bytes each
+		unsigned int secondaryOAM[8 * 4];  // 8 sprites
 
 		int scanline;
 		int dot; // Scanline counter

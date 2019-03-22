@@ -6,6 +6,7 @@ bin-int/
 bin/
 build*
 *.user
+*.json
 
 # Non-generated ignores
 *.sln

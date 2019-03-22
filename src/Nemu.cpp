@@ -17,6 +17,7 @@ using namespace nemu;
 
 class MainLayer : public Layer {
 private:
+	Window& window;
 	Renderer2D* renderer;
 	Shader shader;
 	std::uint8_t* pixels; // pixels[ x * height * depth + y * depth + z ] = elements[x][y][z]
@@ -24,11 +25,12 @@ private:
     Texture2D* frameTexture;
 
 	NESInput nesInput;
-	//PPU ppu;
+	// PPU ppu;
+	// CPU cpu;
 
 public:
-	MainLayer()
-		: Layer("MainLayer"), shader(VertexShader, FragmentShader)
+	MainLayer(Window& window)
+		: Layer("MainLayer"), shader(VertexShader, FragmentShader), window(window)
 	{
 		renderer = Renderer2D::Create(Width, Height, shader);
 		frame = Renderable2D(glm::vec2(Width, Height), glm::vec2(0, 0));
@@ -85,6 +87,19 @@ public:
 		delete renderer;
 	}
 
+	// Logic to scale the frame when entering fullscreen
+	void ToggleFullScreen()
+	{
+		window.ToggleFullScreen();
+		int newWidth = (float)window.GetWindowHeight() * frame.bounds.size.x / frame.bounds.size.y;
+		int newHeight = window.GetWindowHeight();
+		frame = Renderable2D(glm::vec2(newWidth, newHeight), glm::vec2(0, 0));
+		frame.bounds.pos.x = window.GetWindowWidth() / 2 - frame.bounds.size.x / 2; // Centralize the texture
+		frameTexture->SetSize(frame.bounds.size.x, frame.bounds.size.y);
+		frameTexture->SetData(pixels);
+		renderer->SetScreenSize(window.GetWindowWidth(), window.GetWindowHeight());
+	}
+
 	void OnUpdate() override
 	{
 		/* Update */
@@ -98,7 +113,7 @@ public:
 
 		/* Render */
 
-		auto newFrame = nullptr;//ppu.NewFrame();
+		auto newFrame = nullptr; // ppu.NewFrame();
 		if(newFrame)
 			frameTexture->SetData(newFrame);
 
@@ -112,17 +127,21 @@ public:
 	void OnEvent(Event& event) override
 	{
 		if (event.GetEventType() == EventType::DropEvent) {
-			auto& c = (DropEvent&)event;
-			SglTrace(c.ToString());
+			auto& e = (DropEvent&)event;
+			SglTrace(e.ToString());
 			/* Handle ROM loading */
 		}
 		else if (event.GetEventType() == EventType::KeyPressed) {
-			auto& c = (KeyPressedEvent&)event;
-			SglTrace(c.ToString());
+			auto& e = (KeyPressedEvent&)event;
+			SglTrace(e.ToString());
+
+			// Fullscreen (Alt-Enter)
+			if (e.GetKeyCode() == SGL_KEY_ENTER && Input::IsKeyPressed(SGL_KEY_LEFT_ALT))
+				ToggleFullScreen();
 		}
 		else if (event.GetEventType() == EventType::KeyReleased) {
-			auto& c = (KeyReleasedEvent&)event;
-			SglTrace(c.ToString());
+			auto& e = (KeyReleasedEvent&)event;
+			SglTrace(e.ToString());
 		}
 	}
 };
@@ -133,7 +152,7 @@ public:
 	NESApp()
 		: Application(Width, Height, "Nemu - NES Emulator")
 	{
-		PushLayer(new MainLayer());
+		PushLayer(new MainLayer(*window));
 	}
 
 	~NESApp() {}

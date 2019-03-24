@@ -2,6 +2,7 @@
 #include "Nemu/NESMemory.h"
 #include <cstdint>
 #include <cstddef>
+#include <functional>
 
 namespace nemu {
 namespace ppu {
@@ -131,24 +132,25 @@ namespace ppu {
 	template <class CPUMemory, class PPUMemory>
 	class PPU {
 
-    /* Member variables */
+    // Member variables
     private:
+		std::function<void(std::uint8_t*)> HandleNewFrame;
 		CPUMemory& CPUMem;
 		PPUMemory PPUMem;
-		std::uint8_t pixels[256 * 240];
+		std::uint8_t* pixels; // pixels[ x * height * depth + y * depth + z ] = elements[x][y][z]
 		bool newFrame;
 
-		/* Background addresses / read operations  */
+		// Background addresses / read operations
 		unsigned int VAddr, tempVAddr, fineX;
 		AccessOperation access;
 
-		/* Background shift registers */
+		// Background shift registers
 		std::uint16_t shiftReg16_1;
 		std::uint16_t shiftReg16_2;
 		std::uint8_t  shiftReg8_1;
 		std::uint8_t  shiftReg8_2;
 
-		/* Sprite data / attributes */
+		// Sprite data / attributes
 		unsigned int primaryOAM  [64 * 4]; // 64 sprites, 4 bytes each
 		unsigned int secondaryOAM[8 * 4];  // 8 sprites
 
@@ -157,21 +159,24 @@ namespace ppu {
 		std::uint16_t fetchAddr;
 
 	public:
-		PPU(CPUMemory& cpuMem) :
+		PPU(CPUMemory& cpuMem, std::function<void(std::uint8_t* pixels)> newFrameCallback) :
 			CPUMem(cpuMem),
-			pixels{}
+			pixels{},
+			HandleNewFrame(newFrameCallback)
 		{}
 
-		std::uint8_t* NewFrame()
+		~PPU()
 		{
-			if (newFrame) {
-				newFrame = false;
-				return pixels;
-			}
-			return nullptr;
+			delete pixels;
 		}
 
 	private:
+
+		bool isBetween(int x, int a, int b)
+		{
+			return x >= a && x <= b;
+		}
+
 		void ShiftBackground()
 		{
 			shiftReg16_1 = (shiftReg16_1 & 0xFF00) | shiftReg8_1;
@@ -195,13 +200,15 @@ namespace ppu {
 			else if (dot == 1) {
 				ClearOAM();
 			}
-			else if (dot <= 255) { // The data for each tile is fetched
+			else if (isBetween(dot, 2, 255)) { // The data for each tile is fetched
 				switch (dot % 8) {
 				case 0: {
 
 				}
 				case 1: {
-
+					fetchAddr = nt_addr();
+					reload_shift();
+					break;
 				}
 				case 2: {
 
@@ -228,7 +235,8 @@ namespace ppu {
 
 		void ScanlinePOST()
 		{
-
+			if (dot == 0)
+				HandleNewFrame(pixels);
 		}
 
 

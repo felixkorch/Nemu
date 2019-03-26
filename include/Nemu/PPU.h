@@ -137,7 +137,7 @@ namespace ppu {
 		std::function<void(std::uint8_t*)> HandleNewFrame;
 		CPUMemory& CPUMem;
 		PPUMemory PPUMem;
-		std::uint8_t* pixels; // pixels[ x * height * depth + y * depth + z ] = elements[x][y][z]
+		std::unique_ptr<std::uint8_t[]> pixels; // pixels[ x * height * depth + y * depth + z ] = elements[x][y][z]
 		bool newFrame;
 
 		// Background addresses / read operations
@@ -167,7 +167,6 @@ namespace ppu {
 
 		~PPU()
 		{
-			delete pixels;
 		}
 
 	private:
@@ -236,7 +235,7 @@ namespace ppu {
 		void ScanlinePOST()
 		{
 			if (dot == 0)
-				HandleNewFrame(pixels);
+				HandleNewFrame(pixels.get());
 		}
 
 

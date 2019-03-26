@@ -5,48 +5,45 @@
 
 using namespace sgl;
 using namespace nemu;
+using namespace ppu;
 
-#define VertexShader   Shader::Core_Vertex_Shader2D
-#define FragmentShader Shader::Core_Fragment_Shader2D
-
-#define Width 1280
-#define Height 720
+#define Width 512
+#define Height 480
 
 #define TexWidth 256
 #define TexHeight 240
 
+using CPUMemoryType = VectorMemory<std::uint8_t>;
+using PPUMemoryType = ppu::PPUInternalMem;
+using CPUType = CPU<CPUMemoryType>;
+using PPUType = PPU<CPUMemoryType, PPUMemoryType>;
 
 class MainLayer : public Layer {
 private:
-	using CPUMemoryType = VectorMemory<std::uint8_t>;
-	using PPUMemoryType = ppu::PPUInternalMem;
+	static constexpr float aspectRatio = (float)TexWidth / (float)TexHeight;
 
-	const float aspectRatio = (float)TexWidth / (float)TexHeight;
-	Renderer2D* renderer;
-	Shader shader;
+	std::unique_ptr<Renderer2D> renderer;
 	Renderable2D frame;
-    Texture2D* frameTexture;
+    Texture2D frameTexture;
 
 	NESInput nesInput;
-
 	CPUMemoryType CPUMemory;
-	CPU<CPUMemoryType>* cpu;
-	ppu::PPU<CPUMemoryType, PPUMemoryType>* ppu;
+	std::unique_ptr<CPUType> cpu;
+	std::unique_ptr<PPUType> ppu;
 
 public:
-	MainLayer()
-		: Layer("MainLayer"), shader(VertexShader, FragmentShader)
+	MainLayer() :
+		Layer("MainLayer"),
+		renderer(Renderer2D::Create(Width, Height)),
+		frameTexture(TexWidth, TexHeight)
 	{
-		cpu = new CPU<CPUMemoryType>(CPUMemory);
-		ppu = new ppu::PPU<CPUMemoryType, PPUMemoryType>(CPUMemory, std::bind(&MainLayer::OnNewFrame, this, std::placeholders::_1));
-
-		renderer = Renderer2D::Create(Width, Height, shader);
+		cpu = sgl::make_unique<CPUType>(CPUMemory);
+		ppu = sgl::make_unique<PPUType>(CPUMemory, std::bind(&MainLayer::OnNewFrame, this, std::placeholders::_1));
 
 		const float scaledWidth = (float)Height * aspectRatio;
 		const float xPosition = Width / 2 - scaledWidth / 2;
 
 		frame = Renderable2D(glm::vec2(scaledWidth, Height), glm::vec2(xPosition, 0));
-		frameTexture = new Texture2D(TexWidth, TexHeight);
 
 		/* Input */
 		NESKeyMapper keyMapper;
@@ -65,16 +62,12 @@ public:
 
     ~MainLayer() override
 	{
-		delete frameTexture;
-		delete renderer;
-		delete cpu;
-		delete ppu;
 	}
 
 	// Callback from the PPU
 	void OnNewFrame(std::uint8_t* pixels)
 	{
-		frameTexture->SetData(pixels);
+		frameTexture.SetData(pixels);
 	}
 
 	void OnUpdate() override
@@ -91,8 +84,8 @@ public:
 		/* Render */
 
 		renderer->Begin();
+		renderer->SubmitTexture(&frameTexture);
 		renderer->Submit(frame);
-		renderer->SubmitTexture(frameTexture);
 		renderer->End();
 		renderer->Flush();
 	}
@@ -126,11 +119,18 @@ public:
 	}
 };
 
+constexpr WindowProperties props{
+		Width,                 // WindowWidth
+		Height,                // WindowHeight
+		"Nemu - NES Emulator", // Title
+		false                  // Resizable
+};
+
 class NESApp : public Application {
 public:
 
 	NESApp()
-		: Application(Width, Height, "Nemu - NES Emulator")
+		: Application(props)
 	{
 		PushLayer(new MainLayer);
 	}
@@ -143,33 +143,3 @@ sgl::Application* sgl::CreateApplication()
 {
 	return new NESApp;
 }
-
-
-/*
-glm::vec4 HexToRgb(unsigned int hexValue)
-{
-	glm::vec4 rgbColor;
-
-	rgbColor.x = ((hexValue >> 16) & 0xFF);
-	rgbColor.y = ((hexValue >> 8) & 0xFF);
-	rgbColor.z = ((hexValue) & 0xFF);
-	rgbColor.w = 1;
-
-	return rgbColor;
-}*/
-
-/*
-srand(time(nullptr));
-pixels = new std::uint8_t[TexWidth * TexHeight * 4];
-
-int i, j;
-
-for (i = 0; i < TexWidth; i++) {
-	for (j = 0; j < TexHeight; j++) {
-		auto c = HexToRgb(ppu::nesRGB[rand() % 64]);
-		pixels[i * TexHeight * 4 + j * 4 + 0] = (std::uint8_t)c.x;
-		pixels[i * TexHeight * 4 + j * 4 + 1] = (std::uint8_t)c.y;
-		pixels[i * TexHeight * 4 + j * 4 + 2] = (std::uint8_t)c.z;
-		pixels[i * TexHeight * 4 + j * 4 + 3] = (std::uint8_t)255;
-	}
-}*/

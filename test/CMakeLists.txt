@@ -7,6 +7,7 @@ set(Nemu_TESTS
         NESMemory16Read
         FlagRegister
         NROM128ReadWrite
+		Sandbox
 )
 
 foreach (test ${Nemu_TESTS})

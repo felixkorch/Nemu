@@ -13,74 +13,65 @@ namespace nemu
 	class VectorMemory : public std::vector<T> { // Temporary class to use standard vector as memory
 	public:
 
-		VectorMemory()
-			: std::vector<T>(0xFFFF) {}
+		VectorMemory() :
+			std::vector<T>(0xFFFF) {}
 
-		VectorMemory(const std::vector<T> vec)
-			: std::vector<T>(vec) {}
+		VectorMemory(const std::vector<T> vec) : 
+			std::vector<T>(vec) {}
 
 		std::uint16_t Get16At(std::size_t offset)
 		{
-			return *((std::uint16_t*)(this->data() + offset));
+			return (*this)[offset] | ((*this)[offset + 1] << 8);
 		}
 	};
 
-	template <class Memory>
+	template <class Memory, class MemoryValueType> // MemoryValueType - e.g. int, std::uint8_t...
 	class CPU {
 	private:
-		using uint   = std::uint32_t;
-		using int32  = std::int32_t;
-		using uint32 = std::uint32_t;
-		using uint16 = std::uint16_t;
-		using uint8  = std::uint8_t;
-		using int8   = std::int8_t;
-
-		uint8  regX;
-		uint8  regY;
-		uint8  regA;
-		uint16 regPC;
-        StatusRegister regStatus;
+		std::uint8_t   regX;
+		std::uint8_t   regY;
+		std::uint8_t   regA;
+		std::uint16_t  regPC;
+		StatusRegister regStatus;
 
 		Memory& memory;
 		Stack<typename Memory::iterator> stack;
 
-        constexpr static uint Flag_C      = (1 << 0);
-        constexpr static uint Flag_Z      = (1 << 1);
-        constexpr static uint Flag_I      = (1 << 2);
-        constexpr static uint Flag_D      = (1 << 3); // Disabled on the NES (decimal).
-        constexpr static uint Flag_B      = (1 << 4); // Bits 4 and 5 are used to indicate whether a
-        constexpr static uint Flag_Unused = (1 << 5); // Software or hardware interrupt occured
-        constexpr static uint Flag_V      = (1 << 6);
-        constexpr static uint Flag_N      = (1 << 7);
+        constexpr static unsigned Flag_C      = (1 << 0);
+        constexpr static unsigned Flag_Z      = (1 << 1);
+        constexpr static unsigned Flag_I      = (1 << 2);
+        constexpr static unsigned Flag_D      = (1 << 3); // Disabled on the NES (decimal).
+        constexpr static unsigned Flag_B      = (1 << 4); // Bits 4 and 5 are used to indicate whether a
+        constexpr static unsigned Flag_Unused = (1 << 5); // Software or hardware interrupt occured
+        constexpr static unsigned Flag_V      = (1 << 6);
+        constexpr static unsigned Flag_N      = (1 << 7);
 
-        constexpr static uint Bit0 = (1 << 0);
-        constexpr static uint Bit1 = (1 << 1);
-        constexpr static uint Bit2 = (1 << 2);
-        constexpr static uint Bit3 = (1 << 3);
-        constexpr static uint Bit4 = (1 << 4);
-        constexpr static uint Bit5 = (1 << 5);
-        constexpr static uint Bit6 = (1 << 6);
-        constexpr static uint Bit7 = (1 << 7);
-        constexpr static uint Bit8 = (1 << 8);
+        constexpr static unsigned Bit0 = (1 << 0);
+        constexpr static unsigned Bit1 = (1 << 1);
+        constexpr static unsigned Bit2 = (1 << 2);
+        constexpr static unsigned Bit3 = (1 << 3);
+        constexpr static unsigned Bit4 = (1 << 4);
+        constexpr static unsigned Bit5 = (1 << 5);
+        constexpr static unsigned Bit6 = (1 << 6);
+        constexpr static unsigned Bit7 = (1 << 7);
+        constexpr static unsigned Bit8 = (1 << 8);
 
-        constexpr static uint ResetVector = 0xFFFC;
-        constexpr static uint NMIVector   = 0xFFFA;
-        constexpr static uint IRQVector   = 0xFFFE;
+        constexpr static unsigned ResetVector = 0xFFFC;
+        constexpr static unsigned NMIVector   = 0xFFFA;
+        constexpr static unsigned IRQVector   = 0xFFFE;
 
 	public:
-		CPU(Memory& mem)
-			: regX(0),
-			  regY(0),
-			  regA(0),
-			  regPC(0),
-			  regStatus(),
-			  stack(mem.begin() + 0x0100, mem.begin() + 0x01FF), // Stack range 0x0100 -> 0x01FF.
-			  memory(mem)
+		CPU(Memory& mem) :
+			regX(0),
+			regY(0),
+			regA(0),
+			regPC(0),
+			regStatus(),
+			stack(mem.begin() + 0x0100, mem.begin() + 0x01FF),
+			memory(mem)
 		{
 			Reset();
 		}
-
-		/// -------------------------------------------PUBLIC FUNCTIONS------------------------------------------------------- ///
 
 		void Reset()
 		{
@@ -131,7 +122,10 @@ namespace nemu
 			std::cout << "Y: " << +regY << std::endl;
 		}
 
-	/// -------------------------------------------PRIVATE FUNCTIONS------------------------------------------------------- ///
+        Memory& GetMemory()
+        {
+            return memory;
+        }
 
 	private:
 
@@ -144,20 +138,20 @@ namespace nemu
 			IndirectY, Implied
 		};
 
-		static constexpr int InstructionSizeImmediate = 2;
-		static constexpr int InstructionSizeAbsolute  = 3;
-		static constexpr int InstructionSizeAbsoluteX = 3;
-		static constexpr int InstructionSizeAbsoluteY = 3;
-		static constexpr int InstructionSizeIndirect  = 3;
-		static constexpr int InstructionSizeRelative  = 2;
-		static constexpr int InstructionSizeZeropage  = 2;
-		static constexpr int InstructionSizeZeropageX = 2;
-		static constexpr int InstructionSizeZeropageY = 2;
-		static constexpr int InstructionSizeIndirectX = 2;
-		static constexpr int InstructionSizeIndirectY = 2;
-		static constexpr int InstructionSizeImplied   = 1;
+		static constexpr unsigned InstructionSizeImmediate = 2;
+		static constexpr unsigned InstructionSizeAbsolute  = 3;
+		static constexpr unsigned InstructionSizeAbsoluteX = 3;
+		static constexpr unsigned InstructionSizeAbsoluteY = 3;
+		static constexpr unsigned InstructionSizeIndirect  = 3;
+		static constexpr unsigned InstructionSizeRelative  = 2;
+		static constexpr unsigned InstructionSizeZeropage  = 2;
+		static constexpr unsigned InstructionSizeZeropageX = 2;
+		static constexpr unsigned InstructionSizeZeropageY = 2;
+		static constexpr unsigned InstructionSizeIndirectX = 2;
+		static constexpr unsigned InstructionSizeIndirectY = 2;
+		static constexpr unsigned InstructionSizeImplied   = 1;
 
-		int InstructionSize(AddressMode mode)
+		unsigned InstructionSize(AddressMode mode)
 		{
 			switch (mode) {
 			case AddressMode::Immediate: return InstructionSizeImmediate;
@@ -175,60 +169,59 @@ namespace nemu
 			}
 		}
 
-		uint8& GetOperandImmediate()
+		MemoryValueType& GetOperandImmediate()
 		{
 			return memory[regPC + 1];
 		}
-
-		uint8& GetOperandAbsolute()
+		MemoryValueType& GetOperandAbsolute()
 		{
-			uint16 addr = memory.Get16At(regPC + 1);
+			std::uint16_t addr = memory.Get16At(regPC + 1);
 			return memory[addr];
 		}
-		uint8& GetOperandAbsoluteX()
+		MemoryValueType& GetOperandAbsoluteX()
 		{
-			uint16 addr = memory.Get16At(regPC + 1) + regX;
+			std::uint16_t addr = memory.Get16At(regPC + 1) + regX;
 			return memory[addr];
 		}
-		uint8& GetOperandAbsoluteY()
+		MemoryValueType& GetOperandAbsoluteY()
 		{
-			uint16 addr = memory.Get16At(regPC + 1) + regY;
+			std::uint16_t addr = memory.Get16At(regPC + 1) + regY;
 			return memory[addr];
 		}
-		uint8& GetOperandRelative()
+		MemoryValueType& GetOperandRelative()
 		{
 			return memory[regPC + 1];
 		}
-		uint8& GetOperandIndirectX() // Add first then fetch
+		MemoryValueType& GetOperandIndirectX() // Add first then fetch
 		{
-			uint8 offset = memory[regPC + 1] + regX;
-			uint16 addr = memory.Get16At(offset);
+			std::uint8_t offset = memory[regPC + 1] + regX;
+			std::uint16_t addr = memory.Get16At(offset);
 			return memory[addr];
 		}
-		uint8& GetOperandIndirectY() // Fetch first then add
+		MemoryValueType& GetOperandIndirectY() // Fetch first then add
 		{
-			uint8 offset = memory[regPC + 1];
-			uint16 addr = memory.Get16At(offset) + regY;
+			std::uint8_t offset = memory[regPC + 1];
+			std::uint16_t addr = memory.Get16At(offset) + regY;
 			return memory[addr];
 		}
-		uint8& GetOperandZeropage()
+		MemoryValueType& GetOperandZeropage()
 		{
-			uint8 offset = memory[regPC + 1];
+			std::uint8_t offset = memory[regPC + 1];
 			return memory[offset];
 		}
 
-		uint8& GetOperandZeropageX()
+		MemoryValueType& GetOperandZeropageX()
 		{
-			uint8 offset = memory[regPC + 1] + regX;
+			std::uint8_t offset = memory[regPC + 1] + regX;
 			return memory[offset];
 		}
-		uint8& GetOperandZeropageY()
+		MemoryValueType& GetOperandZeropageY()
 		{
-			uint8 offset = memory[regPC + 1] + regY;
+			std::uint8_t offset = memory[regPC + 1] + regY;
 			return memory[offset];
 		}
 
-		uint8& GetOperand(AddressMode mode)
+		MemoryValueType& GetOperand(AddressMode mode)
 		{
 			switch (mode) {
 			case AddressMode::Immediate: return GetOperandImmediate();
@@ -246,7 +239,7 @@ namespace nemu
 
 		void Decode() // Fetches & decodes an instruction
 		{
-			//std::cout << "0x" << std::hex << regPC << std::endl;
+			std::cout << "0x" << std::hex << regPC << std::dec <<  std::endl;
 			switch (memory[regPC]) {
 			case 0x00: OpBRK();                             break;
 			case 0xA0: OpLD(AddressMode::Immediate, regY);  break;
@@ -275,22 +268,22 @@ namespace nemu
 			case 0xB9: OpLD(AddressMode::AbsoluteY, regA);  break;
 			case 0xA1: OpLD(AddressMode::IndirectX, regA);  break;
 			case 0xB1: OpLD(AddressMode::IndirectY, regA);  break;
-			case 0x69: OpAD(AddressMode::Immediate);        break;
-			case 0x65: OpAD(AddressMode::Zeropage);         break;
-			case 0x75: OpAD(AddressMode::ZeropageX);        break;
-			case 0x6D: OpAD(AddressMode::Absolute);         break;
-			case 0x7D: OpAD(AddressMode::AbsoluteX);        break;
-			case 0x79: OpAD(AddressMode::AbsoluteY);        break;
-			case 0x61: OpAD(AddressMode::IndirectX);        break;
-			case 0x71: OpAD(AddressMode::IndirectY);        break;
-			case 0xE9: OpSB(AddressMode::Immediate);        break;
-			case 0xE5: OpSB(AddressMode::Zeropage);         break;
-			case 0xF5: OpSB(AddressMode::ZeropageX);        break;
-			case 0xED: OpSB(AddressMode::Absolute);         break;
-			case 0xFD: OpSB(AddressMode::AbsoluteX);        break;
-			case 0xF9: OpSB(AddressMode::AbsoluteY);        break;
-			case 0xE1: OpSB(AddressMode::IndirectX);        break;
-			case 0xF1: OpSB(AddressMode::IndirectY);        break;
+			case 0x69: OpADC(AddressMode::Immediate);       break;
+			case 0x65: OpADC(AddressMode::Zeropage);        break;
+			case 0x75: OpADC(AddressMode::ZeropageX);       break;
+			case 0x6D: OpADC(AddressMode::Absolute);        break;
+			case 0x7D: OpADC(AddressMode::AbsoluteX);       break;
+			case 0x79: OpADC(AddressMode::AbsoluteY);       break;
+			case 0x61: OpADC(AddressMode::IndirectX);       break;
+			case 0x71: OpADC(AddressMode::IndirectY);       break;
+			case 0xE9: OpSBC(AddressMode::Immediate);       break;
+			case 0xE5: OpSBC(AddressMode::Zeropage);        break;
+			case 0xF5: OpSBC(AddressMode::ZeropageX);       break;
+			case 0xED: OpSBC(AddressMode::Absolute);        break;
+			case 0xFD: OpSBC(AddressMode::AbsoluteX);       break;
+			case 0xF9: OpSBC(AddressMode::AbsoluteY);       break;
+			case 0xE1: OpSBC(AddressMode::IndirectX);       break;
+			case 0xF1: OpSBC(AddressMode::IndirectY);       break;
 			case 0x85: OpST(AddressMode::Zeropage, regA);   break;
 			case 0x95: OpST(AddressMode::ZeropageX, regA);  break;
 			case 0x8D: OpST(AddressMode::Absolute, regA);   break;
@@ -419,8 +412,8 @@ namespace nemu
 		
 		void OpADC(AddressMode mode)
 		{
-			uint8& oper = GetOperand(mode);
-            uint result = regA + oper + regStatus.C;
+			auto& oper = GetOperand(mode);
+            unsigned result = regA + oper + regStatus.C;
 			bool overflow = !((regA ^ oper) & Bit7) && ((regA ^ result) & Bit7);
             regStatus.Z = (result & 0xFF) == 0;
             regStatus.C = result > 0xFF;
@@ -433,8 +426,8 @@ namespace nemu
 		
 		void OpSBC(AddressMode mode)
 		{
-			uint8& oper = GetOperand(mode);
-            uint result = regA - oper - !regStatus.C;
+			auto& oper = GetOperand(mode);
+            unsigned result = regA - oper - !regStatus.C;
 			bool overflow = ((regA ^ result) & Bit7) && ((regA ^ oper) & Bit7);
             regStatus.Z = (result & 0xFF) == 0;
             regStatus.C = result < Bit8;
@@ -444,10 +437,10 @@ namespace nemu
 			regPC += InstructionSize(mode);
 		}
 		
-		void OpCMP(AddressMode mode, uint8& reg)
+		void OpCMP(AddressMode mode, std::uint8_t& reg)
 		{
-			uint8& oper = GetOperand(mode);
-			uint result = reg - oper;
+			auto& oper = GetOperand(mode);
+			unsigned result = reg - oper;
             regStatus.Z = reg == oper;
             regStatus.N = result & Bit7;
             regStatus.C = result < Bit8;
@@ -456,7 +449,7 @@ namespace nemu
 		
 		void OpAND(AddressMode mode)
 		{
-			uint8& oper = GetOperand(mode);
+			auto& oper = GetOperand(mode);
 			regA &= oper;
 			SetFlagNegative(regA);
 			SetFlagZero(regA);
@@ -465,7 +458,7 @@ namespace nemu
 		
 		void OpEOR(AddressMode mode)
 		{
-			uint8& oper = GetOperand(mode);
+			auto& oper = GetOperand(mode);
 			regA ^= oper;
 			SetFlagNegative(regA);
 			SetFlagZero(regA);
@@ -474,8 +467,8 @@ namespace nemu
 		
 		void OpROL(AddressMode mode)
 		{
-			uint8& oper = GetOperand(mode);
-            uint temp = oper;                                  // Holds carry in bit 8
+			auto& oper = GetOperand(mode);
+            unsigned temp = oper;                              // Holds carry in bit 8
             temp <<= 1;                                        // Shifts left one bit
             temp = regStatus.C ? temp | Bit0 : temp & ~Bit0;   // Changes bit 0 to whatever carry is
             regStatus.C = temp & Bit8;                         // Sets carry flag to whatever bit 8 is
@@ -487,7 +480,7 @@ namespace nemu
 
 		void OpROLImplied() // Special case for Accumulator ROL
 		{
-			uint temp = regA;
+			unsigned temp = regA;
 			temp <<= 1;
             temp = regStatus.C ? temp | Bit0 : temp & ~Bit0;
             regStatus.C = temp & Bit8;
@@ -499,8 +492,8 @@ namespace nemu
 		
 		void OpROR(AddressMode mode)
 		{
-			uint8& oper = GetOperand(mode);
-			uint temp = oper;
+			auto& oper = GetOperand(mode);
+			unsigned temp = oper;
             temp = regStatus.C ? temp | Bit8 : temp & ~Bit8;
             regStatus.C = temp & Bit0;
 			temp >>= 1;
@@ -512,7 +505,7 @@ namespace nemu
 
 		void OpRORImplied() // Special case for Accumulator ROR
 		{
-			uint temp = regA;
+			unsigned temp = regA;
             temp = regStatus.C ? temp | Bit8 : temp & ~Bit8;
             regStatus.C = temp & Bit0;
 			temp >>= 1;
@@ -524,7 +517,7 @@ namespace nemu
 		
 		void OpASL(AddressMode mode)
 		{
-			uint8& oper = GetOperand(mode);
+			auto& oper = GetOperand(mode);
             regStatus.C = oper & Bit7;
 			oper <<= 1;
 			SetFlagNegative(oper);
@@ -543,7 +536,7 @@ namespace nemu
 		
 		void OpLSR(AddressMode mode)
 		{
-			uint8& oper = GetOperand(mode);
+			auto& oper = GetOperand(mode);
             regStatus.C = oper & Bit0;
 			oper >>= 1;
             regStatus.Z = oper == 0;
@@ -564,7 +557,7 @@ namespace nemu
 		
 		void OpDEC(AddressMode mode)
 		{
-			uint8& oper = GetOperand(mode);
+			auto& oper = GetOperand(mode);
 			oper--;
             regStatus.Z = oper == 0;
             regStatus.N = oper & Bit7;
@@ -589,7 +582,7 @@ namespace nemu
 		
 		void OpINC(AddressMode mode) // Increase operations
 		{
-			uint8& oper = GetOperand(mode);
+			std::uint8_t& oper = (std::uint8_t&)GetOperand(mode);
 			oper++;
 			SetFlagNegative(oper);
 			SetFlagZero(oper);
@@ -652,25 +645,25 @@ namespace nemu
 			regPC++;
 		}
 
-		void OpLD(AddressMode mode, uint8& reg) // Load operations
+		void OpLD(AddressMode mode, std::uint8_t& reg) // Load operations
 		{
-			uint8& oper = GetOperand(mode);
+			auto& oper = GetOperand(mode);
 			reg = oper;
 			SetFlagNegative(reg);
 			SetFlagZero(reg);
 			regPC += InstructionSize(mode);
 		}
 		
-		void OpST(AddressMode mode, uint8& reg) // Store operations
+		void OpST(AddressMode mode, std::uint8_t& reg) // Store operations
 		{
-			uint8& oper = GetOperand(mode);
+			auto& oper = GetOperand(mode);
 			oper = reg;
 			regPC += InstructionSize(mode);
 		}
 		
 		void OpORA(AddressMode mode)
 		{
-			uint8& oper = GetOperand(mode);
+			auto& oper = GetOperand(mode);
 			regA |= oper;
 			SetFlagNegative(regA);
 			SetFlagZero(regA);
@@ -679,20 +672,20 @@ namespace nemu
 		
 		void OpBIT(AddressMode mode)
 		{
-			uint8& oper = GetOperand(mode);
+			auto& oper = GetOperand(mode);
             regStatus.N = oper & Bit7;
             regStatus.V = oper & Bit6;
             regStatus.Z = (oper & regA) == 0;
 			regPC += InstructionSize(mode);
 		}
-        void OpCLR(int flag)
+        void OpCLR(unsigned flag)
 		{
-            regStatus = (int)regStatus & ~flag;
+            regStatus = (unsigned)regStatus & ~flag;
 			regPC++;
 		}
-        void OpSET(int flag)
+        void OpSET(unsigned flag)
 		{
-            regStatus = (int)regStatus | flag;
+            regStatus = (unsigned)regStatus | flag;
 			regPC++;
 		}
 
@@ -705,20 +698,20 @@ namespace nemu
 
 		void OpJMPIndirect()
 		{
-			uint16 offset = memory.Get16At(regPC + 1);
+			std::uint16_t offset = memory.Get16At(regPC + 1);
 			regPC = memory.Get16At(offset);
 		}
 		void OpJSR()
 		{
-			uint16 addr = memory.Get16At(regPC + 1);
+			std::uint16_t addr = memory.Get16At(regPC + 1);
 			regPC += 2;
 			stack.Push((regPC >> 8) & 0xFF); // Push PC_High
 			stack.Push(regPC & 0xFF);        // Push PC_Low
 			regPC = addr;
 		}
-		void OpBRA(AddressMode mode, bool condition) // Branch operations
+		void OpBRA(bool condition) // Branch operations
 		{
-			int8 oper = GetOperand(mode);
+			std::int8_t oper = GetOperand(AddressMode::Immediate);
 			regPC += condition ? oper + InstructionSize(AddressMode::Immediate) : InstructionSize(AddressMode::Immediate);
 		}
 
@@ -749,14 +742,14 @@ namespace nemu
 		void OpRTI()
 		{
 			regStatus = stack.Pop();
-			uint16 PC_low = stack.Pop();
-			uint16 PC_high = stack.Pop();
+			unsigned PC_low = stack.Pop();
+			unsigned PC_high = stack.Pop();
 			regPC = (PC_high << 8) | PC_low;
 		}
 		void OpRTS()
 		{
-			uint16 PC_low = stack.Pop();
-			uint16 PC_high = stack.Pop();
+			unsigned PC_low = stack.Pop();
+			unsigned PC_high = stack.Pop();
 			regPC = ((PC_high << 8) | PC_low) + 1;
 		}
 
@@ -777,14 +770,14 @@ namespace nemu
 		}
 
 		/* Flag operations */
-		void SetFlagNegative(uint8& reg)
+		void SetFlagNegative(unsigned oper)
 		{
-            regStatus.N = reg & Bit7; // If 7th bit is 1, set negative
+            regStatus.N = oper & Bit7; // If 7th bit is 1, set negative
 		}
 
-		void SetFlagZero(uint8& reg)
+		void SetFlagZero(unsigned oper)
         {
-            regStatus.Z = reg == 0;   // If register is 0, set zero
+            regStatus.Z = oper == 0;   // If register is 0, set zero
 		}
 
 	};

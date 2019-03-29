@@ -3,16 +3,16 @@ namespace nemu
     class StatusRegister {
 	private:
 
-        template <int N>
+        template <unsigned N>
         class Bit {
-            int &data;
+            unsigned &data;
 
         public:
-            constexpr Bit(int &data)
+            constexpr Bit(unsigned &data)
                     : data(data)
             {}
 
-            int &operator=(bool value)
+            unsigned &operator=(bool value)
             {
                 if (value)
                     return data |= (1 << N);
@@ -26,7 +26,7 @@ namespace nemu
         };
 
 	private:
-		int data;
+		unsigned data;
     public:
         Bit<0> C;
         Bit<1> Z;
@@ -49,12 +49,12 @@ namespace nemu
                 , N(data)
         {}
 
-        constexpr operator int() const
+        constexpr operator unsigned() const
         {
             return data;
         }
 
-		int &operator=(int newValue)
+		unsigned &operator=(unsigned newValue)
         {
             return data = newValue;
         }

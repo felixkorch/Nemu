@@ -1,6 +1,7 @@
 #include "Nemu/PPU.h"
 #include "Nemu/CPU.h"
 #include "Nemu/NESInput.h"
+#include "Nemu/NESMemory.h"
 #include <ctime>
 
 using namespace sgl;
@@ -13,10 +14,9 @@ using namespace ppu;
 #define TexWidth 256
 #define TexHeight 240
 
-using CPUMemoryType = VectorMemory<std::uint8_t>;
-using PPUMemoryType = ppu::PPUInternalMem;
+using CPUMemoryType = NESMemory<std::uint8_t, NROM256Mapper>;
 using CPUType = CPU<CPUMemoryType>;
-using PPUType = PPU<CPUMemoryType, PPUMemoryType>;
+using PPUType = PPU<CPUType>;
 
 class MainLayer : public Layer {
 private:
@@ -38,7 +38,7 @@ public:
 		frameTexture(TexWidth, TexHeight)
 	{
 		cpu = sgl::make_unique<CPUType>(CPUMemory);
-		ppu = sgl::make_unique<PPUType>(CPUMemory, std::bind(&MainLayer::OnNewFrame, this, std::placeholders::_1));
+		ppu = sgl::make_unique<PPUType>(*cpu, std::bind(&MainLayer::OnNewFrame, this, std::placeholders::_1));
 
 		const float scaledWidth = (float)Height * aspectRatio;
 		const float xPosition = Width / 2 - scaledWidth / 2;

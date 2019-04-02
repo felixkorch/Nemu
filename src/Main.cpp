@@ -143,6 +143,7 @@ public:
 	NESApp()
 		: Application(props)
 	{
+		ForceFramerate(60);
 		PushLayer(new MainLayer);
 	}
 

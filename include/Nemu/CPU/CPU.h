@@ -11,7 +11,7 @@ namespace cpu {
 
     class CPU : public CPUInterface {
 		Nemu& nemu;
-		std::array<unsigned, 0x800> internalRam; // 2KB of Internal RAM
+		std::vector<unsigned> internalRam; // 2KB of Internal RAM
 		std::uint8_t   regX;
 		std::uint8_t   regY;
 		std::uint8_t   regA;
@@ -37,7 +37,7 @@ namespace cpu {
 	public:
 		CPU(Nemu& nemu) :
 			nemu(nemu),
-			internalRam{},
+			internalRam(0x800),
 			regX(0),
 			regY(0),
 			regA(0),

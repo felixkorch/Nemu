@@ -20,6 +20,22 @@ namespace nemu {
 		0xF8D878, 0xD8F878, 0xB8F8B8, 0xB8F8D8, 0x00FCFC, 0xF8D8F8, 0x000000, 0x000000
 	};
 
+	struct RGBA {
+		std::uint8_t x, y, z, w;
+	};
+
+	RGBA HexToRGBA(unsigned hexValue)
+	{
+		RGBA rgbaColor;
+
+		rgbaColor.x = ((hexValue >> 16) & 0xFF);
+		rgbaColor.y = ((hexValue >> 8) & 0xFF);
+		rgbaColor.z = ((hexValue) & 0xFF);
+		rgbaColor.w = 255;
+
+		return rgbaColor;
+	}
+
     class PPU : public PPUInterface {
 
 		///	The NES has 4 nametables but the board only contains space for 2.
@@ -230,8 +246,6 @@ namespace nemu {
 			Reset();
 		}
 
-
-
 		~PPU() {}
 
 		virtual void Reset() override
@@ -375,7 +389,17 @@ namespace nemu {
 		int SpriteHeight() { return ctrl.spriteSize ? 16 : 8; }
 		void UpdateScrollH() { if (!IsRendering()) return; vAddr.reg = (vAddr.reg & ~0x041F) | (tAddr.reg & 0x041F); }
 		void UpdateScrollV() { if (!IsRendering()) return; vAddr.reg = (vAddr.reg & ~0x7BE0) | (tAddr.reg & 0x7BE0); }
-		void ScrollH() { if (!IsRendering()) return; if (vAddr.coarseX == 31) vAddr.reg ^= 0x41F; else vAddr.coarseX++; }
+
+		void ScrollH()
+		{
+			if (!IsRendering())
+				return;
+			if (vAddr.coarseX == 31)
+				vAddr.reg ^= 0x41F;
+			else
+				vAddr.coarseX++;
+		}
+
 		void ScrollV()
 		{
 			if (!IsRendering())
@@ -397,9 +421,9 @@ namespace nemu {
 
 		void ShiftBackground()
 		{
-			bgShiftLow = (bgShiftLow & 0xFF00) | bgL;
+			bgShiftLow  = (bgShiftLow & 0xFF00)  | bgL;
 			bgShiftHigh = (bgShiftHigh & 0xFF00) | bgH;
-			atLatchLow = (at & 1);
+			atLatchLow  = (at & 1);
 			atLatchHigh = (at & 2);
 		}
 
@@ -444,7 +468,6 @@ namespace nemu {
 				}
 			}
 		}
-
 
 		void LoadSprites()
 		{
@@ -492,7 +515,7 @@ namespace nemu {
 			int x = dot - 2;
 
 			if (scanline < 240 && x >= 0 && x < 256) {
-				if (mask.bg && !(mask.bgLeft && x < 8)) {
+				if (mask.bg && !(!mask.bgLeft && x < 8)) {
 					// Background:
 					palette = (NthBit(bgShiftHigh, 15 - fineX) << 1) |
 						       NthBit(bgShiftLow, 15 - fineX);
@@ -501,7 +524,7 @@ namespace nemu {
 							         NthBit(atShiftLow, 7 - fineX)) << 2;
 				}
 				// Sprites:
-				if (mask.spr && !(mask.sprLeft && x < 8)) {
+				if (mask.spr && !(!mask.sprLeft && x < 8)) {
 					for (int i = 7; i >= 0; i--) {
 						if (oam[i].id == 64)
 							continue;
@@ -544,25 +567,10 @@ namespace nemu {
 			// Perform background shifts:
 			bgShiftLow  <<= 1;
 			bgShiftHigh <<= 1;
-            atShiftLow  = (atShiftLow << 1) | atLatchLow;
+            atShiftLow  = (atShiftLow << 1)  | atLatchLow;
             atShiftHigh = (atShiftHigh << 1) | atLatchHigh;
 		}
 
-		struct RGBA {
-			std::uint8_t x, y, z, w;
-		};
-
-		RGBA HexToRGBA(unsigned hexValue)
-		{
-			RGBA rgbaColor;
-
-			rgbaColor.x = ((hexValue >> 16) & 0xFF);
-			rgbaColor.y = ((hexValue >> 8) & 0xFF);
-			rgbaColor.z = ((hexValue) & 0xFF);
-			rgbaColor.w = 255;
-
-			return rgbaColor;
-		}
 
 		enum class ScanlinePhase {
 			PRE, VISIBLE, POST, NMI

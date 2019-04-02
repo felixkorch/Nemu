@@ -15,7 +15,7 @@ namespace nemu
 
     template <class Iterator>
     class Stack {
-        using ValueType = unsigned; // Hardcoded to unsigned for now.
+        using ValueType = typename Iterator::value_type;
 
 	private:
         const Iterator lowerBound;

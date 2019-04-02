@@ -147,7 +147,7 @@ namespace nemu
 
 		void CartridgeWriteCHR(std::size_t index, unsigned value)
 		{
-			chrRom[index & chrRom.size()] = value;
+			chrRom[index % chrRom.size()] = value;
 		}
 
 		unsigned CartridgeReadCHR(std::size_t index)

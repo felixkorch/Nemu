@@ -39,7 +39,7 @@ public:
 		frame = Renderable2D(glm::vec2(scaledWidth, Height), glm::vec2(xPosition, 0));
 		frame.uv = { glm::vec2(0, 1), glm::vec2(1, 1), glm::vec2(1, 0), glm::vec2(0, 0) };
 
-		// Input
+		// Input - Key Mapping
 		NESKeyMapper keyMapper;
 		keyMapper.Map(NESButton::Start,  SGL_KEY_ENTER);
 		keyMapper.Map(NESButton::Select, SGL_KEY_BACKSPACE);
@@ -51,10 +51,12 @@ public:
 		keyMapper.Map(NESButton::Down,   SGL_KEY_DOWN);
 		nesInput.AddKeyboardConfig(keyMapper);
 
+		// Input - Joystick Mapping
 		AxisConfig left { 0, AxisConfig::Value::Negative };
 		AxisConfig right{ 0, AxisConfig::Value::Positive };
 		AxisConfig up   { 1, AxisConfig::Value::Negative };
 		AxisConfig down { 1, AxisConfig::Value::Positive };
+
 		NESJoystickMapper joystickMapper;
 		joystickMapper.MapKey(NESButton::A, 0);
 		joystickMapper.MapAxis(NESButton::Left, left);
@@ -128,11 +130,11 @@ public:
 	}
 };
 
-constexpr WindowProperties props{
+const WindowProperties props {
 		Width,                 // WindowWidth
 		Height,                // WindowHeight
-		"Nemu - NES Emulator", // Title
-		false                  // Resizable
+		false,                 // Resizable
+		"Nemu - NES Emulator"  // Title
 };
 
 class NESApp : public Application {

@@ -3,11 +3,11 @@ set(Nemu_TESTS
         # CPUStackPush
         # EasyAnd
         # MemoryPermission
-        NESMemoryReadAndWrite
-        NESMemory16Read
-        FlagRegister
-        NROM128ReadWrite
-		Sandbox
+        # NESMemoryReadAndWrite
+        # NESMemory16Read
+        # FlagRegister
+        # NROM128ReadWrite
+		# Sandbox
 )
 
 foreach (test ${Nemu_TESTS})

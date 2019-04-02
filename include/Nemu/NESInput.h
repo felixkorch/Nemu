@@ -4,6 +4,21 @@
 
 namespace nemu
 {
+	struct EnumClassHash
+	{
+		template <typename T>
+		int operator()(T t) const
+		{
+			return static_cast<int>(t);
+		}
+	};
+
+	template <typename Key>
+	using HashType = typename std::conditional<std::is_enum<Key>::value, EnumClassHash, std::hash<Key>>::type;
+
+	template <typename Key, typename T>
+	using UnorderedMap = std::unordered_map<Key, T, HashType<Key>>;
+
 	enum class NESButton {
 		A, B, Left, Right, Up, Down, Start, Select
 	};
@@ -13,7 +28,7 @@ namespace nemu
 
 	class NESKeyMapper {
 	private:
-		std::unordered_map<NESButton, int> map;
+		UnorderedMap<NESButton, int> map;
 	public:
 
 		void Reset()
@@ -38,15 +53,29 @@ namespace nemu
 		enum class Value {
 			Negative, Positive
 		};
-		static constexpr auto threshhold = 0.1;
+
 		int axis;
 		Value val;
+		float threshhold;
+
+		AxisConfig() :
+			axis(),
+			val(),
+			threshhold()
+		{}
+
+		AxisConfig(int axis, Value val, float threshhold = 0.1) :
+			axis(axis),
+			val(val),
+			threshhold(threshhold)
+		{}
+
 	};
 
 	class NESJoystickMapper {
 	private:
-		std::unordered_map<NESButton, int> keyMap;
-		std::unordered_map<NESButton, AxisConfig> axisMap;
+		UnorderedMap<NESButton, int> keyMap;
+		UnorderedMap<NESButton, AxisConfig> axisMap;
 	public:
 
 		void Reset()

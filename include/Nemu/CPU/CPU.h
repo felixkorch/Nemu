@@ -4,7 +4,6 @@
 #include "Nemu/Stack.h"
 #include "Nemu/StatusRegister.h"
 #include <vector>
-#include <array>
 #include <iostream>
 
 namespace nemu {

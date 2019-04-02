@@ -1,12 +1,11 @@
-#include "Nemu/PPU.h"
-#include "Nemu/CPU.h"
+#include "Nemu/PPU/PPU.h"
+#include "Nemu/CPU/CPU.h"
 #include "Nemu/NESInput.h"
 #include "Nemu/NESMemory.h"
 #include <ctime>
 
 using namespace sgl;
 using namespace nemu;
-using namespace ppu;
 
 #define Width 512
 #define Height 480
@@ -14,48 +13,54 @@ using namespace ppu;
 #define TexWidth 256
 #define TexHeight 240
 
-using CPUMemoryType = NESMemory<std::uint8_t, NROM256Mapper>;
-using CPUType = CPU<CPUMemoryType>;
-using PPUType = PPU<CPUType>;
-
 class MainLayer : public Layer {
 private:
 	static constexpr float aspectRatio = (float)TexWidth / (float)TexHeight;
-
 	std::unique_ptr<Renderer2D> renderer;
 	Renderable2D frame;
     Texture2D frameTexture;
 
+	Nemu nemu;
 	NESInput nesInput;
-	CPUMemoryType CPUMemory;
-	std::unique_ptr<CPUType> cpu;
-	std::unique_ptr<PPUType> ppu;
+	bool running;
 
 public:
 	MainLayer() :
 		Layer("MainLayer"),
 		renderer(Renderer2D::Create(Width, Height)),
-		frameTexture(TexWidth, TexHeight)
+		frame(),
+		frameTexture(TexWidth, TexHeight),
+		nesInput(),
+		running(false)
 	{
-		cpu = sgl::make_unique<CPUType>(CPUMemory);
-		ppu = sgl::make_unique<PPUType>(*cpu, std::bind(&MainLayer::OnNewFrame, this, std::placeholders::_1));
-
 		const float scaledWidth = (float)Height * aspectRatio;
 		const float xPosition = Width / 2 - scaledWidth / 2;
 
 		frame = Renderable2D(glm::vec2(scaledWidth, Height), glm::vec2(xPosition, 0));
+		frame.uv = { glm::vec2(0, 1), glm::vec2(1, 1), glm::vec2(1, 0), glm::vec2(0, 0) };
 
-		/* Input */
+		// Input
 		NESKeyMapper keyMapper;
-		keyMapper.Map(NESButton::Start, SGL_KEY_ENTER);
-		keyMapper.Map(NESButton::A,     SGL_KEY_A);
-		keyMapper.Map(NESButton::B,     SGL_KEY_B);
-		keyMapper.Map(NESButton::Left,  SGL_KEY_LEFT);
-		keyMapper.Map(NESButton::Right, SGL_KEY_RIGHT);
+		keyMapper.Map(NESButton::Start,  SGL_KEY_ENTER);
+		keyMapper.Map(NESButton::Select, SGL_KEY_BACKSPACE);
+		keyMapper.Map(NESButton::A,      SGL_KEY_A);
+		keyMapper.Map(NESButton::B,      SGL_KEY_S);
+		keyMapper.Map(NESButton::Left,   SGL_KEY_LEFT);
+		keyMapper.Map(NESButton::Right,  SGL_KEY_RIGHT);
+		keyMapper.Map(NESButton::Up,     SGL_KEY_UP);
+		keyMapper.Map(NESButton::Down,   SGL_KEY_DOWN);
 		nesInput.AddKeyboardConfig(keyMapper);
 
+		AxisConfig left { 0, AxisConfig::Value::Negative };
+		AxisConfig right{ 0, AxisConfig::Value::Positive };
+		AxisConfig up   { 1, AxisConfig::Value::Negative };
+		AxisConfig down { 1, AxisConfig::Value::Positive };
 		NESJoystickMapper joystickMapper;
 		joystickMapper.MapKey(NESButton::A, 0);
+		joystickMapper.MapAxis(NESButton::Left, left);
+		joystickMapper.MapAxis(NESButton::Right, right);
+		joystickMapper.MapAxis(NESButton::Up, up);
+		joystickMapper.MapAxis(NESButton::Down, down);
 		nesInput.AddJoystickConfig(joystickMapper);
 
 	}
@@ -72,17 +77,10 @@ public:
 
 	void OnUpdate() override
 	{
-		/* Update */
+		// Update
+		if (running) nemu.RunFrame();
 
-		if (nesInput.Get(NESButton::Start))
-			SglInfo("Start key is down!");
-		else if (nesInput.Get(NESButton::A))
-			SglInfo("A key is down!");
-		else if (nesInput.Get(NESButton::B))
-			SglInfo("B key is down!");
-
-		/* Render */
-
+		// Render
 		renderer->Begin();
 		renderer->SubmitTexture(&frameTexture);
 		renderer->Submit(frame);
@@ -92,19 +90,29 @@ public:
 
 	void OnEvent(Event& event) override
 	{
+		// Handling Rom-Loading
 		if (event.GetEventType() == EventType::DropEvent) {
 			auto& e = (DropEvent&)event;
 			SglTrace(e.ToString());
-			/* Handle ROM loading */
+
+			auto paths = e.GetPaths();
+			if (paths.size() > 1)
+				return;
+
+			running = true;
+
+			Joypad joypad;
+			joypad.AddInputConfig(nesInput);
+
+			nemu = Nemu();
+			nemu.AddJoypad(joypad);
+			nemu.CreateCPU<CPU>();
+			nemu.CreatePPU<PPU>(std::bind(&MainLayer::OnNewFrame, this, std::placeholders::_1));
+			nemu.LoadROM(paths[0]);
+			nemu.Power();
+
 		}
-		else if (event.GetEventType() == EventType::KeyPressed) {
-			auto& e = (KeyPressedEvent&)event;
-			SglTrace(e.ToString());
-		}
-		else if (event.GetEventType() == EventType::KeyReleased) {
-			auto& e = (KeyReleasedEvent&)event;
-			SglTrace(e.ToString());
-		}
+		// Window Resized
 		else if (event.GetEventType() == EventType::WindowResizedEvent) {
 			auto& e = (WindowResizedEvent&)event;
 			// Width according to aspect ratio
@@ -113,6 +121,7 @@ public:
 			const float xPosition = e.GetWidth() / 2 - scaledWidth / 2;
 			// Update the renderable
 			frame = Renderable2D(glm::vec2(scaledWidth, e.GetHeight()), glm::vec2(xPosition, 0));
+			frame.uv = { glm::vec2(0, 1), glm::vec2(1, 1), glm::vec2(1, 0), glm::vec2(0, 0) };
 			// Set size of camera
 			renderer->SetScreenSize(e.GetWidth(), e.GetHeight());
 		}

@@ -81,6 +81,12 @@ namespace nemu
                 return Iterator(memory, address + offset);
             }
 
+			Iterator &operator=(const Iterator &other)
+			{
+				this->address = other.address;
+				return *this;
+			}
+
             constexpr Iterator operator-(difference_type offset) const
             {
                 return Iterator(memory, address - offset);
@@ -171,7 +177,7 @@ namespace nemu
         }
 
         // TODO:
-        //   Not very important but it would be convinient to have a const
+        //   Not very important but it would be convenient to have a const
         //   operator[].
         //
         // const value_type &operator[](std::size_t address) const

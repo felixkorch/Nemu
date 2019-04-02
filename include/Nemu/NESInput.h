@@ -85,32 +85,47 @@ namespace nemu
 	};
 
 	class NESInput {
-		NESKeyMapper* keyMapper = nullptr;
-		NESJoystickMapper* joystickMapper = nullptr;
+		NESKeyMapper keyMapper;
+		NESJoystickMapper joystickMapper;
+		bool keyMapperExists = false;
+		bool joystickMapperExists = false;
 	public:
 
 		void AddKeyboardConfig(const NESKeyMapper& mapper)
 		{
-			keyMapper = new NESKeyMapper(mapper);
+			keyMapper = NESKeyMapper(mapper);
+			keyMapperExists = true;
 		}
 
 		void AddJoystickConfig(const NESJoystickMapper& mapper)
 		{
-			joystickMapper = new NESJoystickMapper(mapper);
+			joystickMapper = NESJoystickMapper(mapper);
+			joystickMapperExists = true;
 		}
 
 		bool Get(NESButton btn)
 		{
 			bool val = false;
-			if (keyMapper) val = keyMapper->Get(btn);
-			if (joystickMapper && !val) val = joystickMapper->Get(btn);
+			if (keyMapperExists)
+				val = keyMapper.Get(btn);
+
+			if (joystickMapperExists && !val)
+				val = joystickMapper.Get(btn);
 			return val;
 		}
 
-		~NESInput()
+		std::uint8_t GetState()
 		{
-			if (keyMapper) delete keyMapper;
-			if (joystickMapper) delete joystickMapper;
+			return
+				(Get(NESButton::A)      << 0) |
+				(Get(NESButton::B)      << 1) |
+				(Get(NESButton::Select) << 2) |
+				(Get(NESButton::Start)  << 3) |
+				(Get(NESButton::Up)     << 4) |
+				(Get(NESButton::Down)   << 5) |
+				(Get(NESButton::Left)   << 6) |
+				(Get(NESButton::Right)  << 7);
 		}
+
 	};
 }

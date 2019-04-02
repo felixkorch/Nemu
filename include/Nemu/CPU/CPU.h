@@ -1,41 +1,26 @@
 #pragma once
+#include "Nemu/Common.h"
+#include "Nemu/Nemu.h"
 #include "Nemu/Stack.h"
-#include "Nemu/NESMemory.h"
-#include "Nemu/Mapper/NROM256Mapper.h"
 #include "Nemu/StatusRegister.h"
 #include <vector>
 #include <array>
 #include <iostream>
 
-namespace nemu
-{
-	template <class T>
-	class VectorMemory : public std::vector<T> { // Temporary class to use standard vector as memory
-	public:
+namespace nemu {
+namespace cpu {
 
-		VectorMemory() :
-			std::vector<T>(0xFFFF) {}
-
-		VectorMemory(const std::vector<T> vec) : 
-			std::vector<T>(vec) {}
-
-		std::uint16_t Get16At(std::size_t offset)
-		{
-			return (*this)[offset] | ((*this)[offset + 1] << 8);
-		}
-	};
-
-	template <class Memory, class MemoryValueType> // MemoryValueType - e.g. int, std::uint8_t...
-	class CPU {
-	private:
+    class CPU : public CPUInterface {
+		Nemu& nemu;
+		std::array<unsigned, 0x800> internalRam; // 2KB of Internal RAM
 		std::uint8_t   regX;
 		std::uint8_t   regY;
 		std::uint8_t   regA;
 		std::uint16_t  regPC;
 		StatusRegister regStatus;
+		bool nmi, irq;
 
-		Memory& memory;
-		Stack<typename Memory::iterator> stack;
+		Stack<decltype(internalRam)::iterator> stack;
 
         constexpr static unsigned Flag_C      = (1 << 0);
         constexpr static unsigned Flag_Z      = (1 << 1);
@@ -46,61 +31,50 @@ namespace nemu
         constexpr static unsigned Flag_V      = (1 << 6);
         constexpr static unsigned Flag_N      = (1 << 7);
 
-        constexpr static unsigned Bit0 = (1 << 0);
-        constexpr static unsigned Bit1 = (1 << 1);
-        constexpr static unsigned Bit2 = (1 << 2);
-        constexpr static unsigned Bit3 = (1 << 3);
-        constexpr static unsigned Bit4 = (1 << 4);
-        constexpr static unsigned Bit5 = (1 << 5);
-        constexpr static unsigned Bit6 = (1 << 6);
-        constexpr static unsigned Bit7 = (1 << 7);
-        constexpr static unsigned Bit8 = (1 << 8);
-
         constexpr static unsigned ResetVector = 0xFFFC;
         constexpr static unsigned NMIVector   = 0xFFFA;
         constexpr static unsigned IRQVector   = 0xFFFE;
 
 	public:
-		CPU(Memory& mem) :
+		CPU(Nemu& nemu) :
+			nemu(nemu),
+			internalRam{},
 			regX(0),
 			regY(0),
 			regA(0),
 			regPC(0),
 			regStatus(),
-			stack(mem.begin() + 0x0100, mem.begin() + 0x01FF),
-			memory(mem)
+			nmi(false),
+			irq(false),
+			stack(internalRam.begin() + 0x0100, internalRam.begin() + 0x01FF)
+		{}
+
+		virtual void Reset() override
 		{
-			Reset();
+			regPC = Read16(ResetVector);  // Load PC with the reset vector.
 		}
 
-		void Reset()
+		virtual void SetNMI() override
 		{
-			regPC = memory.Get16At(ResetVector);  // Load PC with the reset vector.
+			nmi = true;
 		}
 
-		void InvokeNMI()
+		virtual void SetIRQ() override
 		{
-			stack.Push((regPC >> 8) & 0xFF);
-			stack.Push(regPC & 0xFF);
-            stack.Push((regStatus & ~Flag_B) | Flag_Unused);
-            regStatus.I = 1;
-			regPC = memory.Get16At(NMIVector);
+			irq = true;
 		}
 
-		void InvokeIRQ()
-		{
-            if (!regStatus.I) {
-				stack.Push((regPC >> 8) & 0xFF);
-				stack.Push(regPC & 0xFF);
-                stack.Push((regStatus & ~Flag_B) | Flag_Unused);
-                regStatus.I = 1;
-				regPC = memory.Get16At(IRQVector);
-			}
-		}
 
-		void Execute()
+		virtual void Execute() override
 		{
+			if (nmi) InvokeNMI();
+			else if (irq) InvokeIRQ();
 			Decode();
+		}
+
+		virtual void* GetMemory() override
+		{
+			return &internalRam[0];
 		}
 
 		void PrintFlags()
@@ -121,11 +95,6 @@ namespace nemu
 			std::cout << "X: " << +regX << std::endl;
 			std::cout << "Y: " << +regY << std::endl;
 		}
-
-        Memory& GetMemory()
-        {
-            return memory;
-        }
 
 	private:
 
@@ -166,81 +135,173 @@ namespace nemu
 			case AddressMode::IndirectX: return InstructionSizeIndirectX;
 			case AddressMode::IndirectY: return InstructionSizeIndirectY;
 			case AddressMode::Implied:   return InstructionSizeImplied;
+			default:                     return InstructionSizeImmediate;
 			}
 		}
 
-		MemoryValueType& GetOperandImmediate()
+		std::uint16_t GetAddressImmediate()
 		{
-			return memory[regPC + 1];
+			return regPC + 1;
 		}
-		MemoryValueType& GetOperandAbsolute()
+		std::uint16_t GetAddressAbsolute()
 		{
-			std::uint16_t addr = memory.Get16At(regPC + 1);
-			return memory[addr];
+			std::uint16_t addr = Read16(regPC + 1);
+			return addr;
 		}
-		MemoryValueType& GetOperandAbsoluteX()
+		std::uint16_t GetAddressAbsoluteX()
 		{
-			std::uint16_t addr = memory.Get16At(regPC + 1) + regX;
-			return memory[addr];
+			std::uint16_t addr = Read16(regPC + 1) + regX;
+			return addr;
 		}
-		MemoryValueType& GetOperandAbsoluteY()
+		std::uint16_t GetAddressAbsoluteY()
 		{
-			std::uint16_t addr = memory.Get16At(regPC + 1) + regY;
-			return memory[addr];
+			std::uint16_t addr = Read16(regPC + 1) + regY;
+			return addr;
 		}
-		MemoryValueType& GetOperandRelative()
+		std::uint16_t GetAddressRelative()
 		{
-			return memory[regPC + 1];
+			return regPC + 1;
 		}
-		MemoryValueType& GetOperandIndirectX() // Add first then fetch
+		std::uint16_t GetAddressIndirectX() // Add first then fetch
 		{
-			std::uint8_t offset = memory[regPC + 1] + regX;
-			std::uint16_t addr = memory.Get16At(offset);
-			return memory[addr];
+			std::uint8_t offset = ReadMemory(regPC + 1) + regX;
+			std::uint16_t addr = Read16(offset);
+			return addr;
 		}
-		MemoryValueType& GetOperandIndirectY() // Fetch first then add
+		std::uint16_t GetAddressIndirectY() // Fetch first then add
 		{
-			std::uint8_t offset = memory[regPC + 1];
-			std::uint16_t addr = memory.Get16At(offset) + regY;
-			return memory[addr];
+			std::uint8_t offset = ReadMemory(regPC + 1);
+			std::uint16_t addr = Read16(offset) + regY;
+			return addr;
 		}
-		MemoryValueType& GetOperandZeropage()
+		std::uint16_t GetAddressZeropage()
 		{
-			std::uint8_t offset = memory[regPC + 1];
-			return memory[offset];
-		}
-
-		MemoryValueType& GetOperandZeropageX()
-		{
-			std::uint8_t offset = memory[regPC + 1] + regX;
-			return memory[offset];
-		}
-		MemoryValueType& GetOperandZeropageY()
-		{
-			std::uint8_t offset = memory[regPC + 1] + regY;
-			return memory[offset];
+			std::uint8_t addr = ReadMemory(regPC + 1);
+			return addr;
 		}
 
-		MemoryValueType& GetOperand(AddressMode mode)
+		std::uint16_t GetAddressZeropageX()
+		{
+			std::uint8_t addr = ReadMemory(regPC + 1) + regX;
+			return addr;
+		}
+		std::uint16_t GetAddressZeropageY()
+		{
+			std::uint8_t addr = ReadMemory(regPC + 1) + regY;
+			return addr;
+		}
+
+		std::uint16_t GetAddress(AddressMode mode)
 		{
 			switch (mode) {
-			case AddressMode::Immediate: return GetOperandImmediate();
-			case AddressMode::Absolute:  return GetOperandAbsolute();
-			case AddressMode::AbsoluteX: return GetOperandAbsoluteX();
-			case AddressMode::AbsoluteY: return GetOperandAbsoluteY();
-			case AddressMode::Relative:  return GetOperandRelative();
-			case AddressMode::Zeropage:  return GetOperandZeropage();
-			case AddressMode::ZeropageX: return GetOperandZeropageX();
-			case AddressMode::ZeropageY: return GetOperandZeropageY();
-			case AddressMode::IndirectX: return GetOperandIndirectX();
-			case AddressMode::IndirectY: return GetOperandIndirectY();
+			case AddressMode::Immediate: return GetAddressImmediate();
+			case AddressMode::Absolute:  return GetAddressAbsolute();
+			case AddressMode::AbsoluteX: return GetAddressAbsoluteX();
+			case AddressMode::AbsoluteY: return GetAddressAbsoluteY();
+			case AddressMode::Relative:  return GetAddressRelative();
+			case AddressMode::Zeropage:  return GetAddressZeropage();
+			case AddressMode::ZeropageX: return GetAddressZeropageX();
+			case AddressMode::ZeropageY: return GetAddressZeropageY();
+			case AddressMode::IndirectX: return GetAddressIndirectX();
+			case AddressMode::IndirectY: return GetAddressIndirectY();
+			default:                     return GetAddressImmediate();
+			}
+		}
+
+		// Write 256 successive bytes to the OAMDMA register.
+		void DmaOam(unsigned bank)
+		{
+			for (int i = 0; i < 256; i++)
+				WriteMemory(0x2014, ReadMemory(bank * 0x100 + i));
+		}
+
+		void WriteMemory(std::size_t index, unsigned value)
+		{
+            // Internal RAM
+			if (index <= 0x1FFF) {
+				internalRam[index] = value;
+				return; 
+			}
+			// PPU Access
+			if (index <= 0x3FFF) {
+				nemu.PPUWrite(index % 8, value);
+				return;
+			}
+
+			// Joypad Write strobe
+			if (index == 0x4016) {
+				nemu.JoypadWrite(value & 1);
+				return;
+			}
+
+			// 
+			if (index == 0x4014) {
+				DmaOam(value);
+				return;
+			}
+
+			// Cartridge Access
+			if (index >= 0x4020 && index <= 0xFFFF) {
+				nemu.CartridgeWritePRG(index, value);
+				return;
+			}
+		}
+
+        unsigned ReadMemory(std::size_t index)
+		{
+			// Internal RAM
+			if (index <= 0x1FFF) {
+				return internalRam[index];
+			}
+			// PPU Access
+			if (index <= 0x3FFF) {
+				return nemu.PPURead(index % 8);
+			}
+
+			// Joypad Read (0)
+			if (index == 0x4016) {
+				return nemu.JoypadRead(0);
+			}
+
+			// Cartridge Access
+			if (index >= 0x4020 && index <= 0xFFFF) {
+				return nemu.CartridgeReadPRG(index);
+			}
+			return 0; // Default
+		}
+
+
+		unsigned Read16(std::size_t index)
+		{
+			return ReadMemory(index) | (ReadMemory(index + 1) << 8);
+		}
+
+		void InvokeNMI()
+		{
+			stack.Push((regPC >> 8) & 0xFF);
+			stack.Push(regPC & 0xFF);
+			stack.Push((regStatus & ~Flag_B) | Flag_Unused);
+			regStatus.I = 1;
+			regPC = Read16(NMIVector);
+			nmi = false;
+		}
+
+		void InvokeIRQ()
+		{
+			if (!regStatus.I) {
+				stack.Push((regPC >> 8) & 0xFF);
+				stack.Push(regPC & 0xFF);
+				stack.Push((regStatus & ~Flag_B) | Flag_Unused);
+				regStatus.I = 1;
+				regPC = Read16(IRQVector);
+				irq = false;
 			}
 		}
 
 		void Decode() // Fetches & decodes an instruction
 		{
-			std::cout << "0x" << std::hex << regPC << std::dec <<  std::endl;
-			switch (memory[regPC]) {
+			//std::cout << "0x" << std::hex << regPC << std::dec <<  std::endl;
+			switch (ReadMemory(regPC)) {
 			case 0x00: OpBRK();                             break;
 			case 0xA0: OpLD(AddressMode::Immediate, regY);  break;
 			case 0xA4: OpLD(AddressMode::Zeropage, regY);   break;
@@ -394,6 +455,7 @@ namespace nemu
 			case 0xC8: OpINY();                             break;
 			default: // Illegal opcode
 				std::cout << "Error: Illegal op-code" << std::endl;
+				std::cin.get();
 				break;
 			};
 		}
@@ -412,7 +474,7 @@ namespace nemu
 		
 		void OpADC(AddressMode mode)
 		{
-			auto& oper = GetOperand(mode);
+			auto oper = ReadMemory(GetAddress(mode));
             unsigned result = regA + oper + regStatus.C;
 			bool overflow = !((regA ^ oper) & Bit7) && ((regA ^ result) & Bit7);
             regStatus.Z = (result & 0xFF) == 0;
@@ -426,7 +488,7 @@ namespace nemu
 		
 		void OpSBC(AddressMode mode)
 		{
-			auto& oper = GetOperand(mode);
+			auto oper = ReadMemory(GetAddress(mode));
             unsigned result = regA - oper - !regStatus.C;
 			bool overflow = ((regA ^ result) & Bit7) && ((regA ^ oper) & Bit7);
             regStatus.Z = (result & 0xFF) == 0;
@@ -439,7 +501,7 @@ namespace nemu
 		
 		void OpCMP(AddressMode mode, std::uint8_t& reg)
 		{
-			auto& oper = GetOperand(mode);
+			auto oper = ReadMemory(GetAddress(mode));
 			unsigned result = reg - oper;
             regStatus.Z = reg == oper;
             regStatus.N = result & Bit7;
@@ -449,7 +511,7 @@ namespace nemu
 		
 		void OpAND(AddressMode mode)
 		{
-			auto& oper = GetOperand(mode);
+			auto oper = ReadMemory(GetAddress(mode));
 			regA &= oper;
 			SetFlagNegative(regA);
 			SetFlagZero(regA);
@@ -458,68 +520,101 @@ namespace nemu
 		
 		void OpEOR(AddressMode mode)
 		{
-			auto& oper = GetOperand(mode);
+			auto oper = ReadMemory(GetAddress(mode));
 			regA ^= oper;
 			SetFlagNegative(regA);
 			SetFlagZero(regA);
 			regPC += InstructionSize(mode);
 		}
 		
+		/// Section - Read->Modify->Write Operations
+
+		// Rotate Left
 		void OpROL(AddressMode mode)
 		{
-			auto& oper = GetOperand(mode);
-            unsigned temp = oper;                              // Holds carry in bit 8
-            temp <<= 1;                                        // Shifts left one bit
-            temp = regStatus.C ? temp | Bit0 : temp & ~Bit0;   // Changes bit 0 to whatever carry is
-            regStatus.C = temp & Bit8;                         // Sets carry flag to whatever bit 8 is
-			oper = temp & 0xFF;
+			// Read
+			std::uint16_t address = GetAddress(mode);
+			unsigned oper = ReadMemory(address);
+
+			// Modify
+			oper <<= 1;                                        // Holds carry in bit 8, Shifts left one bit
+			oper = regStatus.C ? oper | Bit0 : oper & ~Bit0;   // Changes bit 0 to whatever carry is
+            regStatus.C = oper & Bit8;                         // Sets carry flag to whatever bit 8 is
+
+			// Write
+			WriteMemory(address, oper & 0xFF);
+
 			SetFlagNegative(oper);
 			SetFlagZero(oper);
 			regPC += InstructionSize(mode);
 		}
 
-		void OpROLImplied() // Special case for Accumulator ROL
+		void OpROLImplied()
 		{
+			// Read / Modify
 			unsigned temp = regA;
 			temp <<= 1;
             temp = regStatus.C ? temp | Bit0 : temp & ~Bit0;
             regStatus.C = temp & Bit8;
+
+			// Write
 			regA = temp & 0xFF;
+
 			SetFlagNegative(regA);
 			SetFlagZero(regA);
 			regPC += InstructionSize(AddressMode::Implied);
 		}
 		
+		// Rotate Right
 		void OpROR(AddressMode mode)
 		{
-			auto& oper = GetOperand(mode);
-			unsigned temp = oper;
-            temp = regStatus.C ? temp | Bit8 : temp & ~Bit8;
-            regStatus.C = temp & Bit0;
-			temp >>= 1;
-			oper = temp & 0xFF;
+			// Read
+			std::uint16_t address = GetAddress(mode);
+			unsigned oper = ReadMemory(address);
+
+			// Modify
+			oper = regStatus.C ? oper | Bit8 : oper & ~Bit8;
+            regStatus.C = oper & Bit0;
+			oper >>= 1;
+
+			// Write
+			WriteMemory(address, oper & 0xFF);
+
 			SetFlagNegative(oper);
 			SetFlagZero(oper);
 			regPC += InstructionSize(mode);
 		}
 
-		void OpRORImplied() // Special case for Accumulator ROR
+		void OpRORImplied()
 		{
+			// Read / Modify
 			unsigned temp = regA;
             temp = regStatus.C ? temp | Bit8 : temp & ~Bit8;
             regStatus.C = temp & Bit0;
 			temp >>= 1;
+
+			// Write
 			regA = temp & 0xFF;
+
 			SetFlagNegative(regA);
 			SetFlagZero(regA);
 			regPC += InstructionSize(AddressMode::Implied);
 		}
 		
+		// Arithmetic shift left
 		void OpASL(AddressMode mode)
 		{
-			auto& oper = GetOperand(mode);
+			// Read
+			std::uint16_t address = GetAddress(mode);
+			std::uint8_t oper = ReadMemory(address);
+
+			// Modify
             regStatus.C = oper & Bit7;
 			oper <<= 1;
+
+			// Write
+			WriteMemory(address, oper);
+
 			SetFlagNegative(oper);
 			SetFlagZero(oper);
 			regPC += InstructionSize(mode);
@@ -527,8 +622,10 @@ namespace nemu
 
 		void OpASLImplied() // Special case for Accumulator ASL
         {
+			// Read / Modify / Write
             regStatus.C = regA & Bit7;
 			regA <<= 1;
+
 			SetFlagNegative(regA);
 			SetFlagZero(regA);
 			regPC += InstructionSize(AddressMode::Implied);
@@ -536,9 +633,17 @@ namespace nemu
 		
 		void OpLSR(AddressMode mode)
 		{
-			auto& oper = GetOperand(mode);
+			// Read
+			std::uint16_t address = GetAddress(mode);
+			std::uint8_t oper = ReadMemory(address);
+
+			// Modify
             regStatus.C = oper & Bit0;
 			oper >>= 1;
+
+			// Write
+			WriteMemory(address, oper);
+
             regStatus.Z = oper == 0;
             regStatus.N = 0;
 			regPC += InstructionSize(mode);
@@ -546,23 +651,47 @@ namespace nemu
 
 		void OpLSRImplied() // Special case for Accumulator LSR
         {
+			// Read / Write / Modify
             regStatus.C = regA & Bit0;
 			regA >>= 1;
+
             regStatus.Z = regA == 0;
             regStatus.N = 0;
 			regPC += InstructionSize(AddressMode::Implied);
 		}
-
-		/* Decrease Operations */
 		
 		void OpDEC(AddressMode mode)
 		{
-			auto& oper = GetOperand(mode);
+			// Read
+			std::uint16_t address = GetAddress(mode);
+			std::uint8_t oper = ReadMemory(address);
+
+			// Modify / Write
 			oper--;
+			WriteMemory(address, oper);
+
             regStatus.Z = oper == 0;
             regStatus.N = oper & Bit7;
 			regPC += InstructionSize(mode);
 		}
+
+		void OpINC(AddressMode mode) // Increase operations
+		{
+			// Read
+			std::uint16_t address = GetAddress(mode);
+			std::uint8_t oper = ReadMemory(address);
+
+			// Modify / Write
+			oper++;
+			WriteMemory(address, oper);
+
+			SetFlagNegative(oper);
+			SetFlagZero(oper);
+			regPC += InstructionSize(mode);
+		}
+
+
+		/// Section - Increase / Decrease Registers 
 		void OpDEX()
 		{
 			regX--;
@@ -578,16 +707,6 @@ namespace nemu
 			regPC++;
 		}
 
-		/* Increase Operations */
-		
-		void OpINC(AddressMode mode) // Increase operations
-		{
-			std::uint8_t& oper = (std::uint8_t&)GetOperand(mode);
-			oper++;
-			SetFlagNegative(oper);
-			SetFlagZero(oper);
-			regPC += InstructionSize(mode);
-		}
 		void OpINX()
 		{
 			regX++;
@@ -645,26 +764,27 @@ namespace nemu
 			regPC++;
 		}
 
-		void OpLD(AddressMode mode, std::uint8_t& reg) // Load operations
+		/// Section - Load Operations
+
+		void OpLD(AddressMode mode, std::uint8_t& reg)
 		{
-			auto& oper = GetOperand(mode);
-			reg = oper;
+			reg = ReadMemory(GetAddress(mode));
 			SetFlagNegative(reg);
 			SetFlagZero(reg);
 			regPC += InstructionSize(mode);
 		}
 		
-		void OpST(AddressMode mode, std::uint8_t& reg) // Store operations
+		/// Section - Store Operations
+
+		void OpST(AddressMode mode, std::uint8_t& reg)
 		{
-			auto& oper = GetOperand(mode);
-			oper = reg;
+			WriteMemory(GetAddress(mode), reg);
 			regPC += InstructionSize(mode);
 		}
 		
 		void OpORA(AddressMode mode)
 		{
-			auto& oper = GetOperand(mode);
-			regA |= oper;
+			regA |= ReadMemory(GetAddress(mode));
 			SetFlagNegative(regA);
 			SetFlagZero(regA);
 			regPC += InstructionSize(mode);
@@ -672,7 +792,7 @@ namespace nemu
 		
 		void OpBIT(AddressMode mode)
 		{
-			auto& oper = GetOperand(mode);
+			auto oper = ReadMemory(GetAddress(mode));
             regStatus.N = oper & Bit7;
             regStatus.V = oper & Bit6;
             regStatus.Z = (oper & regA) == 0;
@@ -693,29 +813,30 @@ namespace nemu
 
 		void OpJMPAbsolute()
 		{
-			regPC = memory.Get16At(regPC + 1);
+			regPC = Read16(regPC + 1);
 		}
 
 		void OpJMPIndirect()
 		{
-			std::uint16_t offset = memory.Get16At(regPC + 1);
-			regPC = memory.Get16At(offset);
+			std::uint16_t offset = Read16(regPC + 1);
+			regPC = Read16(offset);
 		}
 		void OpJSR()
 		{
-			std::uint16_t addr = memory.Get16At(regPC + 1);
+			std::uint16_t addr = Read16(regPC + 1);
 			regPC += 2;
 			stack.Push((regPC >> 8) & 0xFF); // Push PC_High
 			stack.Push(regPC & 0xFF);        // Push PC_Low
 			regPC = addr;
 		}
-		void OpBRA(bool condition) // Branch operations
+		// Branch operations
+		void OpBRA(bool condition)
 		{
-			std::int8_t oper = GetOperand(AddressMode::Immediate);
+			std::int8_t oper = ReadMemory(GetAddress(AddressMode::Immediate));
 			regPC += condition ? oper + InstructionSize(AddressMode::Immediate) : InstructionSize(AddressMode::Immediate);
 		}
 
-		/* Stack operations */
+		// Stack operations
 		void OpPHA()
 		{
 			stack.Push(regA);
@@ -753,23 +874,23 @@ namespace nemu
 			regPC = ((PC_high << 8) | PC_low) + 1;
 		}
 
-		/* Special operations */
 		void OpNOP()
 		{
 			regPC++;
 		}
 		
-		void OpBRK() // Software interrupt
+		// Software Interrupt
+		void OpBRK()
 		{
 			regPC += 2;
 			stack.Push((regPC >> 8) & 0xFF);
 			stack.Push(regPC & 0xFF);
 			stack.Push(regStatus | Flag_B | Flag_Unused);
             regStatus.I = 1;
-			regPC = memory.Get16At(IRQVector);
+			regPC = Read16(IRQVector);
 		}
 
-		/* Flag operations */
+		// Flag Operations
 		void SetFlagNegative(unsigned oper)
 		{
             regStatus.N = oper & Bit7; // If 7th bit is 1, set negative
@@ -782,4 +903,5 @@ namespace nemu
 
 	};
 
+} // namespace cpu
 } // namespace nemu

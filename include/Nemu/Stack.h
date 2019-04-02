@@ -11,7 +11,7 @@ namespace nemu
     /// bevavior in order to manipulate it.
     /// The stack is of the type empty stack and uses a wrap-around mechanism.
     ///
-    /// TODO: Implement Stack under/overflow.
+    /// TODO: Implement Stack Under / Overflow.
 
     template <class Iterator>
     class Stack {

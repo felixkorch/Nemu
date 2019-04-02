@@ -11,9 +11,13 @@ endif()
 add_subdirectory(deps/Sgl)
 
 set(Nemu_SOURCE
-	src/Nemu.cpp
-    include/Nemu/CPU.h
-    include/Nemu/PPU.h
+    src/Main.cpp
+    include/Nemu/Nemu.h
+    include/Nemu/Common.h
+    include/Nemu/CPU/CPU.h
+    include/Nemu/PPU/PPU.h
+    include/Nemu/CPU/CPUInterface.h
+    include/Nemu/PPU/PPUInterface.h
     include/Nemu/MemoryPermission.h
     include/Nemu/NESInput.h
     include/Nemu/NESMemory.h

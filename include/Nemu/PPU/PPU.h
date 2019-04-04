@@ -9,7 +9,7 @@
 namespace nemu {
 	namespace ppu {
 
-    constexpr static unsigned nesRGB[] = {
+    constexpr static unsigned NESPalette[] = {
 		0x7C7C7C, 0x0000FC, 0x0000BC, 0x4428BC, 0x940084, 0xA80020, 0xA81000, 0x881400,
 		0x503000, 0x007800, 0x006800, 0x005800, 0x004058, 0x000000, 0x000000, 0x000000,
 		0xBCBCBC, 0x0078F8, 0x0058F8, 0x6844FC, 0xD800CC, 0xE40058, 0xF83800, 0xE45C10,
@@ -44,92 +44,14 @@ namespace nemu {
 		///	Vertical:   0x2000 == 0x2800 && 0x2400 == 0x2C00
 		///	Horizontal: 0x2000 == 0x2400 && 0x2800 == 0x2C00
 
-        class CiRam {
-            std::uint8_t memory[0x800]; // 2048 B
-			MirroringMode mirrormode;
-        public:
-            CiRam(PPU& ppu) :
-				memory{}
-			{}
-
-			void SetMirroring(MirroringMode mode)
-			{
-				mirrormode = mode;
+		unsigned MirroredAddress(unsigned addr)
+		{
+			switch (mirroring) {
+				case MirroringMode::Vertical:    return addr % 0x800;
+				case MirroringMode::Horizontal:  return ((addr / 2) & 0x400) + (addr % 0x400);
+				default:                         return addr - 0x2000;
 			}
-
-			std::uint8_t Read(std::size_t index)
-			{
-				switch (mirrormode) {
-				case Vertical:
-					return memory[index % 0x800];
-				case Horizontal:
-					return memory[((index / 2) & 0x400) + (index % 0x400)];
-				default:
-					return index - 0x2000;
-				}
-			}
-
-			void Write(std::size_t index, std::uint8_t value)
-			{
-				switch (mirrormode) {
-				case Vertical:
-					memory[index % 0x800] = value;
-				case Horizontal:
-					memory[((index / 2) & 0x400) + (index % 0x400)] = value;
-				}
-			}
-		};
-
-        class InternalMemory {
-			std::reference_wrapper<PPU> ppu;
-            CiRam        ciRam;       // Holds nametables (2048 B)
-            std::uint8_t cgRam[0x20]; // Holds palettes   (32 B)
-        public:
-            InternalMemory(PPU& ppu) :
-				ppu(ppu),
-				ciRam(ppu),
-				cgRam{}
-			{}
-
-			void SetMirroring(MirroringMode mode)
-			{
-				ciRam.SetMirroring(mode);
-			}
-
-			void Write(std::size_t index, std::uint8_t value)
-			{
-				if (index <= 0x1FFF) {  // CHR-ROM/RAM.
-					ppu.get().nemu.CartridgeWriteCHR(index, value);
-					return;
-				}
-				if (index <= 0x3EFF) { // Nametables.
-					ciRam.Write(index, value);
-					return;
-				}
-				if (index <= 0x3FFF) { // Palettes.
-					if ((index & 0x13) == 0x10)
-						index &= ~0x10;
-					cgRam[index & 0x1F] = value;
-					return;
-				}
-			}
-
-            std::uint8_t Read(std::size_t index)
-            {
-				if (index <= 0x1FFF) {  // CHR-ROM/RAM.
-					return ppu.get().nemu.CartridgeReadCHR(index);
-				}
-				if (index <= 0x3EFF) { // Nametables.
-					return ciRam.Read(index);
-				}
-				if (index <= 0x3FFF) { // Palettes.
-					if ((index & 0x13) == 0x10)
-						index &= ~0x10;
-					return cgRam[index & 0x1F] & (ppu.get().mask.gray ? 0x30 : 0xFF);
-				}
-				return 0; // Out of bounds.
-            }
-		};
+		}
 
         union Ctrl {
             struct {
@@ -142,16 +64,6 @@ namespace nemu {
                 unsigned nmiEnable       : 1; // Enable NMI
             };
             std::uint8_t reg;
-        };
-
-        struct Sprite {
-            std::uint8_t id; // Index in OAM.
-            std::uint8_t xPos;
-            std::uint8_t yPos;
-            std::uint8_t tileIndex;
-            std::uint8_t attributes;
-            std::uint8_t dataLow;
-            std::uint8_t dataHigh;
         };
 
         // PPUSTATUS Register
@@ -198,19 +110,29 @@ namespace nemu {
             unsigned reg : 15;
 		};
 
+		struct Sprite {
+            std::uint8_t id;
+            std::uint8_t x;
+            std::uint8_t y;
+            std::uint8_t tile;
+            std::uint8_t attributes;
+            std::uint8_t dataLow;
+            std::uint8_t dataHigh;
+        };
+
+		// Used when the CPU is communicating to change state
 		struct AccessOperation {
 			std::uint8_t result;
 			std::uint8_t buffer;
 			bool latch;
 		};
 
-    // Member variables
 	private:
-
 		Nemu& nemu;
 		std::function<void(std::uint8_t*)> HandleNewFrame;
-        InternalMemory internalMemory;
 		std::unique_ptr<std::uint8_t[]> pixels;
+
+		MirroringMode mirroring;
 
 		Ctrl ctrl;
 		Mask mask;
@@ -224,23 +146,27 @@ namespace nemu {
 		// Background shift registers
 		std::uint16_t bgShiftLow, bgShiftHigh;
 		std::uint8_t  atShiftLow, atShiftHigh;
-		std::uint8_t nt, at, bgL, bgH;
+		std::uint8_t nametable, attributes, bgLow, bgHigh;
         bool atLatchLow, atLatchHigh;
 
-		// Sprite data / attributes
+		// OAM Memory (Sprite data)
 		Sprite oam [8];
 		Sprite secondaryOam[8];
-		std::uint8_t oamMem[0x100]; // 256 B (64 sprites * 4B each)
+		std::uint8_t oamMem[0x100]; // (256 B)
 
-		int scanline; // Rows
-		int dot;      // Columns
+		// Background Memory
+		std::uint8_t ciRam[0x800]; // Nametables (2048 B)
+		std::uint8_t cgRam[0x20];  // Palettes   (32 B)
+
+		// Renderer Counters
+		int scanline;
+		int dot;
 		bool frameOdd;
 
 	public:
         PPU(Nemu& nemu, std::function<void(std::uint8_t* pixels)> newFrameCallback) :
 			nemu(nemu),
-			HandleNewFrame(newFrameCallback),
-			internalMemory(*this)
+			HandleNewFrame(newFrameCallback)
 		{
 			Reset();
 		}
@@ -249,20 +175,19 @@ namespace nemu {
 
 		virtual void Reset() override
 		{
-			internalMemory = InternalMemory(*this);
 			pixels = std::unique_ptr<std::uint8_t[]>(new std::uint8_t[256 * 240 * 4]);
 			ctrl = {};
 			mask = {};
 			vAddr = tAddr = {};
-			oamAddr = fineX = 0;
 			access = {};
-			bgShiftLow = bgShiftHigh = atShiftLow = atLatchHigh = nt = at = bgL = bgH = 0;
-			atLatchLow = atLatchHigh = false;
-			memset(oam, 0, sizeof(oam));
+			oamAddr = fineX = scanline = dot = 0;
+			bgShiftLow = bgShiftHigh = atShiftLow = atLatchHigh = nametable = attributes = bgLow = bgHigh = 0;
+			frameOdd = atLatchLow = atLatchHigh = false;
+			memset(oam,          0, sizeof(oam));
+			memset(oamMem,       0, sizeof(oamMem));
 			memset(secondaryOam, 0, sizeof(secondaryOam));
-			memset(oamMem, 0, sizeof(oamMem));
-			scanline = dot = 0;
-			frameOdd = false;
+			memset(ciRam,        0, sizeof(ciRam));
+			memset(cgRam,        0, sizeof(cgRam));
 		}
 
         virtual std::uint8_t ReadRegister(std::size_t index) override
@@ -281,10 +206,10 @@ namespace nemu {
 			case 7: { // PPUDATA ($2007)                     
 				if (vAddr.addr <= 0x3EFF) {
 					access.result = access.buffer;
-					access.buffer = internalMemory.Read(vAddr.addr);
+					access.buffer = Read(vAddr.addr);
 				}
 				else {
-					access.result = access.buffer = internalMemory.Read(vAddr.addr);
+					access.result = access.buffer = Read(vAddr.addr);
 				}
 				vAddr.addr += ctrl.increment ? 32 : 1;
 			}
@@ -342,10 +267,44 @@ namespace nemu {
 				break;
 			}
 			case 7: { // PPUDATA ($2007)
-                internalMemory.Write(vAddr.addr, value);
+                Write(vAddr.addr, value);
 				vAddr.addr += ctrl.increment ? 32 : 1;
 			}
 			}
+		}
+
+		void Write(std::size_t index, std::uint8_t value)
+		{
+			if (index <= 0x1FFF) {  // CHR-ROM/RAM.
+				nemu.CartridgeWriteCHR(index, value);
+				return;
+			}
+			if (index <= 0x3EFF) { // Nametables.
+				ciRam[MirroredAddress(index)] = value;
+				return;
+			}
+			if (index <= 0x3FFF) { // Palettes.
+				if ((index & 0x13) == 0x10)
+					index &= ~0x10;
+				cgRam[index & 0x1F] = value;
+				return;
+			}
+		}
+
+		std::uint8_t Read(std::size_t index)
+		{
+			if (index <= 0x1FFF) {  // CHR-ROM/RAM.
+				return nemu.CartridgeReadCHR(index);
+			}
+			if (index <= 0x3EFF) { // Nametables.
+				return ciRam[MirroredAddress(index)];
+			}
+			if (index <= 0x3FFF) { // Palettes.
+				if ((index & 0x13) == 0x10)
+					index &= ~0x10;
+				return cgRam[index & 0x1F] & (mask.gray ? 0x30 : 0xFF);
+			}
+			return 0; // Out of bounds.
 		}
 
 		virtual void Step() override
@@ -377,17 +336,19 @@ namespace nemu {
 
 		virtual void SetMirroring(MirroringMode mode) override
 		{
-			internalMemory.SetMirroring(mode);
+			mirroring = mode;
 		}
 
 
 	private:
 
-		std::uint16_t NametableAddress()      { return 0x2000 | (vAddr.reg & 0xFFF); }
-		std::uint16_t AttributeTableAddress() { return 0x23C0 | (vAddr.nametable << 10) | ((vAddr.coarseY / 4) << 3) | (vAddr.coarseX / 4); }
-		std::uint16_t BackgroundAddress()     { return (ctrl.backgroundTable * 0x1000) + (nt * 16) + vAddr.fineY; }
 		bool IsRendering() { return mask.bg || mask.spr; }
 		int SpriteHeight() { return ctrl.spriteSize ? 16 : 8; }
+
+		std::uint16_t NametableAddress()      { return 0x2000 | (vAddr.reg & 0xFFF); }
+		std::uint16_t AttributeTableAddress() { return 0x23C0 | (vAddr.nametable << 10) | ((vAddr.coarseY / 4) << 3) | (vAddr.coarseX / 4); }
+		std::uint16_t BackgroundAddress()     { return (ctrl.backgroundTable * 0x1000) + (nametable * 16) + vAddr.fineY; }
+
 		void UpdateScrollH() { if (!IsRendering()) return; vAddr.reg = (vAddr.reg & ~0x041F) | (tAddr.reg & 0x041F); }
 		void UpdateScrollV() { if (!IsRendering()) return; vAddr.reg = (vAddr.reg & ~0x7BE0) | (tAddr.reg & 0x7BE0); }
 
@@ -422,21 +383,20 @@ namespace nemu {
 
 		void ShiftBackground()
 		{
-			bgShiftLow  = (bgShiftLow & 0xFF00)  | bgL;
-			bgShiftHigh = (bgShiftHigh & 0xFF00) | bgH;
-			atLatchLow  = (at & 1);
-			atLatchHigh = (at & 2);
+			bgShiftLow  = (bgShiftLow & 0xFF00)  | bgLow;
+			bgShiftHigh = (bgShiftHigh & 0xFF00) | bgHigh;
+			atLatchLow  = (attributes & 1);
+			atLatchHigh = (attributes & 2);
 		}
 
 		void ClearOAM()
 		{
-			for (int i = 0; i < 8; i++)
-			{
+			for (int i = 0; i < 8; i++) {
 				secondaryOam[i].id         = 64;
-				secondaryOam[i].yPos       = 0xFF;
-				secondaryOam[i].tileIndex  = 0xFF;
+				secondaryOam[i].y          = 0xFF;
+				secondaryOam[i].tile       = 0xFF;
 				secondaryOam[i].attributes = 0xFF;
-				secondaryOam[i].xPos       = 0xFF;
+				secondaryOam[i].x          = 0xFF;
 				secondaryOam[i].dataLow    = 0;
 				secondaryOam[i].dataHigh   = 0;
 			}
@@ -456,10 +416,10 @@ namespace nemu {
 				// Checks if the sprite is on the scanline
 				if (diff >= 0 && diff < SpriteHeight()) {
 					secondaryOam[count].id = i;
-					secondaryOam[count].yPos = oamMem[i * 4 + 0];
-					secondaryOam[count].tileIndex = oamMem[i * 4 + 1];
+					secondaryOam[count].y = oamMem[i * 4 + 0];
+					secondaryOam[count].tile = oamMem[i * 4 + 1];
 					secondaryOam[count].attributes = oamMem[i * 4 + 2];
-					secondaryOam[count].xPos = oamMem[i * 4 + 3];
+					secondaryOam[count].x = oamMem[i * 4 + 3];
 
 					// Maximum of 8 sprites is possible
 					if (++count > 8) {
@@ -476,24 +436,24 @@ namespace nemu {
 			for (unsigned i = 0; i < 8; i++) {
 				oam[i] = secondaryOam[i];
 
-				// 8 x 16
+				// 8x16
 				if (SpriteHeight() == 16) {
 					// Bit 0 selects either Pattern table 0 or 1 (0x0000 / 0x1000)
-					const unsigned table = oam[i].tileIndex & Bit0;
+					const unsigned table = oam[i].tile & Bit0;
 					// The 7 MSB represents the index (Each tile is 16 bytes)
-					const unsigned index = (oam[i].tileIndex & ~Bit0) * 16;
+					const unsigned index = (oam[i].tile & ~Bit0) * 16;
 					addr = (table ? 0x1000 : 0x0000) + index;
 				}
-				// 8 x 8
+				// 8x8
 				else {
 					// Table selected by bit 3 of the CTRL register
 					const unsigned table = ctrl.spriteTable;
 					// For 8x8 sprites the index is simply the byte
-					const unsigned index = oam[i].tileIndex * 16;
+					const unsigned index = oam[i].tile * 16;
 					addr = (table ? 0x1000 : 0x0000) + index;
 				}
 
-				unsigned sprY = (scanline - oam[i].yPos) % SpriteHeight();  // Line inside the sprite
+				unsigned sprY = (scanline - oam[i].y) % SpriteHeight();  // Line inside the sprite
 
 				// Bit 7 indicates vertical flip
 				if (oam[i].attributes & Bit7)
@@ -502,8 +462,8 @@ namespace nemu {
 				// Select the second tile if on 8x16
 				addr += sprY + (sprY & 8);
 
-				oam[i].dataLow  = internalMemory.Read(addr + 0);
-				oam[i].dataHigh = internalMemory.Read(addr + 8);
+				oam[i].dataLow  = Read(addr + 0);
+				oam[i].dataHigh = Read(addr + 8);
 
 			}
 		}
@@ -531,7 +491,7 @@ namespace nemu {
 							continue;
 
 						// If the sprite is outside of the tile, it should not be drawn
-						unsigned sprX = x - oam[i].xPos;
+						unsigned sprX = x - oam[i].x;
 						if (sprX >= 8)
 							continue;
 
@@ -557,7 +517,7 @@ namespace nemu {
 				if (objPalette && (palette == 0 || objPriority == 0))
 					palette = objPalette;
 
-				unsigned color = nesRGB[internalMemory.Read(0x3F00 + (IsRendering() ? palette : 0))];
+				unsigned color = NESPalette[Read(0x3F00 + (IsRendering() ? palette : 0))];
 				RGBA rgbaColor = HexToRGBA(color);
 
 				pixels[scanline * 256 * 4 + x * 4 + 0] = rgbaColor.x;
@@ -591,7 +551,7 @@ namespace nemu {
 			}
 			else if (phase == ScanlinePhase::VISIBLE || phase == ScanlinePhase::PRE) {
 
-				// Handle Sprites
+				// Update Sprites
 				if (dot == 1) {
 					ClearOAM();
 					if (phase == ScanlinePhase::PRE)
@@ -604,52 +564,29 @@ namespace nemu {
 					LoadSprites();
 				}
 
-				// Handle Background
+				// Update Background
 				if ((dot >= 2 && dot <= 255) || (dot >= 322 && dot <= 337)) {
 					Pixel();
 					switch (dot % 8) {
-					case 1: {
-						addr = NametableAddress();
-						ShiftBackground();
-						break;
-					}
-					case 2: {
-						nt = internalMemory.Read(addr);
-						break;
-					}
-					case 3: {
-						addr = AttributeTableAddress();
-						break;
-					}
+					case 1: addr = NametableAddress(); ShiftBackground(); break;
+					case 2: nametable = Read(addr);                       break;
+					case 3: addr = AttributeTableAddress();               break;
 					case 4: {
-						at = internalMemory.Read(addr);
-						if (vAddr.coarseY & 2) at >>= 4;
-						if (vAddr.coarseX & 2) at >>= 2;
+						attributes = Read(addr);
+						if (vAddr.coarseY & 2) attributes >>= 4;
+						if (vAddr.coarseX & 2) attributes >>= 2;
 						break;
 					}
-					case 5: {
-						addr = BackgroundAddress();
-						break;
-					}
-					case 6: {
-						bgL = internalMemory.Read(addr);
-						break;
-					}
-					case 7: {
-						addr += 8;
-						break;
-					}
-					case 0: {
-						bgH = internalMemory.Read(addr);
-						ScrollH();
-						break;
-					}
+					case 5: addr = BackgroundAddress();                   break;
+					case 6: bgLow = Read(addr);                           break;
+					case 7: addr += 8;                                    break;
+					case 0: bgHigh = Read(addr); ScrollH();               break;
 					}
 					return;
 				}
 				if (dot == 256) {
 					Pixel();
-					bgH = internalMemory.Read(addr);
+					bgHigh = Read(addr);
 					ScrollV();
 				}
 				else if (dot == 257) {
@@ -660,7 +597,6 @@ namespace nemu {
 				else if (dot >= 280 && dot <= 304) {
 					if (phase == ScanlinePhase::PRE) UpdateScrollV();
 				}
-
 				else if (dot == 1) {
 					addr = NametableAddress();
 					if (phase == ScanlinePhase::PRE)
@@ -670,16 +606,15 @@ namespace nemu {
 					addr = NametableAddress();
 				}
 				else if (dot == 338) {
-					nt = internalMemory.Read(addr);
+					nametable = Read(addr);
 				}
 				else if (dot == 340) {
-					nt = internalMemory.Read(addr);
+					nametable = Read(addr);
 					if (phase == ScanlinePhase::PRE && IsRendering() && frameOdd)
 						dot++;
 				}
 			}
 		}
-
 	};
 
 } // namespace ppu

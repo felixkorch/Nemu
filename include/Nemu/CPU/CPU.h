@@ -63,36 +63,11 @@ namespace cpu {
 			irq = true;
 		}
 
-
 		virtual void Execute() override
 		{
-			if (nmi) InvokeNMI();
+			if      (nmi) InvokeNMI();
 			else if (irq) InvokeIRQ();
 			Decode();
-		}
-
-		virtual void* GetMemory() override
-		{
-			return &internalRam[0];
-		}
-
-		void PrintFlags()
-		{
-            std::cout << "[C: " << +regStatus.C      << " | "
-                      << "Z:  " << +regStatus.Z      << " | "
-                      << "I:  " << +regStatus.I      << " | "
-                      << "B:  " << +regStatus.B      << " | "
-                      << "U:  " << +regStatus.Unused << " | "
-                      << "D:  " << +regStatus.D      << " | "
-                      << "N:  " << +regStatus.N      << " | "
-                      << "V:  " << +regStatus.V      << " ] " << std::endl;
-		}
-
-		void PrintRegisters()
-		{
-			std::cout << "A: " << +regA << std::endl;
-			std::cout << "X: " << +regX << std::endl;
-			std::cout << "Y: " << +regY << std::endl;
 		}
 
 	private:
@@ -299,7 +274,6 @@ namespace cpu {
 
 		void Decode() // Fetches & decodes an instruction
 		{
-			//std::cout << "0x" << std::hex << regPC << std::dec <<  std::endl;
 			switch (ReadMemory(regPC)) {
 			case 0x00: OpBRK();                             break;
 			case 0xA0: OpLD(AddressMode::Immediate, regY);  break;
@@ -459,10 +433,9 @@ namespace cpu {
 			};
 		}
 
-		/// The definition of "Overflow" on the 6502 is that
-		/// the result of a signed addition or subtraction doesn't fit
-		/// into a signed byte.
+		/// Overflow:
 		///
+		/// The result of a signed addition or subtraction doesn't fit into a signed byte.
 		/// For addition this means that bit 7 is set; the operation
 		/// overflowed into the sign bit. For subtraction this means
 		/// that bit 7 is not set; a carry from the 6th place shifted
@@ -526,23 +499,17 @@ namespace cpu {
 			regPC += InstructionSize(mode);
 		}
 		
-		/// Section - Read->Modify->Write Operations
+		/// Read -> Modify -> Write
 
 		// Rotate Left
 		void OpROL(AddressMode mode)
 		{
-			// Read
 			std::uint16_t address = GetAddress(mode);
 			unsigned oper = ReadMemory(address);
-
-			// Modify
 			oper <<= 1;                                        // Holds carry in bit 8, Shifts left one bit
 			oper = regStatus.C ? oper | Bit0 : oper & ~Bit0;   // Changes bit 0 to whatever carry is
             regStatus.C = oper & Bit8;                         // Sets carry flag to whatever bit 8 is
-
-			// Write
 			WriteMemory(address, oper & 0xFF);
-
 			SetFlagNegative(oper);
 			SetFlagZero(oper);
 			regPC += InstructionSize(mode);
@@ -550,15 +517,11 @@ namespace cpu {
 
 		void OpROLImplied()
 		{
-			// Read / Modify
 			unsigned temp = regA;
 			temp <<= 1;
             temp = regStatus.C ? temp | Bit0 : temp & ~Bit0;
             regStatus.C = temp & Bit8;
-
-			// Write
 			regA = temp & 0xFF;
-
 			SetFlagNegative(regA);
 			SetFlagZero(regA);
 			regPC += InstructionSize(AddressMode::Implied);
@@ -567,18 +530,12 @@ namespace cpu {
 		// Rotate Right
 		void OpROR(AddressMode mode)
 		{
-			// Read
 			std::uint16_t address = GetAddress(mode);
 			unsigned oper = ReadMemory(address);
-
-			// Modify
 			oper = regStatus.C ? oper | Bit8 : oper & ~Bit8;
             regStatus.C = oper & Bit0;
 			oper >>= 1;
-
-			// Write
 			WriteMemory(address, oper & 0xFF);
-
 			SetFlagNegative(oper);
 			SetFlagZero(oper);
 			regPC += InstructionSize(mode);
@@ -586,15 +543,11 @@ namespace cpu {
 
 		void OpRORImplied()
 		{
-			// Read / Modify
 			unsigned temp = regA;
             temp = regStatus.C ? temp | Bit8 : temp & ~Bit8;
             regStatus.C = temp & Bit0;
 			temp >>= 1;
-
-			// Write
 			regA = temp & 0xFF;
-
 			SetFlagNegative(regA);
 			SetFlagZero(regA);
 			regPC += InstructionSize(AddressMode::Implied);
@@ -603,17 +556,11 @@ namespace cpu {
 		// Arithmetic shift left
 		void OpASL(AddressMode mode)
 		{
-			// Read
 			std::uint16_t address = GetAddress(mode);
 			std::uint8_t oper = ReadMemory(address);
-
-			// Modify
             regStatus.C = oper & Bit7;
 			oper <<= 1;
-
-			// Write
 			WriteMemory(address, oper);
-
 			SetFlagNegative(oper);
 			SetFlagZero(oper);
 			regPC += InstructionSize(mode);
@@ -621,10 +568,8 @@ namespace cpu {
 
 		void OpASLImplied() // Special case for Accumulator ASL
         {
-			// Read / Modify / Write
             regStatus.C = regA & Bit7;
 			regA <<= 1;
-
 			SetFlagNegative(regA);
 			SetFlagZero(regA);
 			regPC += InstructionSize(AddressMode::Implied);
@@ -632,17 +577,11 @@ namespace cpu {
 		
 		void OpLSR(AddressMode mode)
 		{
-			// Read
 			std::uint16_t address = GetAddress(mode);
 			std::uint8_t oper = ReadMemory(address);
-
-			// Modify
             regStatus.C = oper & Bit0;
 			oper >>= 1;
-
-			// Write
 			WriteMemory(address, oper);
-
             regStatus.Z = oper == 0;
             regStatus.N = 0;
 			regPC += InstructionSize(mode);
@@ -650,47 +589,37 @@ namespace cpu {
 
 		void OpLSRImplied() // Special case for Accumulator LSR
         {
-			// Read / Write / Modify
             regStatus.C = regA & Bit0;
 			regA >>= 1;
-
             regStatus.Z = regA == 0;
             regStatus.N = 0;
 			regPC += InstructionSize(AddressMode::Implied);
 		}
+
+		/// Increase / Decrease Registers 
 		
 		void OpDEC(AddressMode mode)
 		{
-			// Read
 			std::uint16_t address = GetAddress(mode);
 			std::uint8_t oper = ReadMemory(address);
-
-			// Modify / Write
 			oper--;
 			WriteMemory(address, oper);
-
             regStatus.Z = oper == 0;
             regStatus.N = oper & Bit7;
 			regPC += InstructionSize(mode);
 		}
 
-		void OpINC(AddressMode mode) // Increase operations
+		void OpINC(AddressMode mode)
 		{
-			// Read
 			std::uint16_t address = GetAddress(mode);
 			std::uint8_t oper = ReadMemory(address);
-
-			// Modify / Write
 			oper++;
 			WriteMemory(address, oper);
-
 			SetFlagNegative(oper);
 			SetFlagZero(oper);
 			regPC += InstructionSize(mode);
 		}
 
-
-		/// Section - Increase / Decrease Registers 
 		void OpDEX()
 		{
 			regX--;
@@ -721,7 +650,32 @@ namespace cpu {
 			regPC++;
 		}
 
-		/* Transfer Operations */
+		/// Flow control
+		void OpJMPAbsolute()
+		{
+			regPC = Read16(regPC + 1);
+		}
+
+		void OpJMPIndirect()
+		{
+			std::uint16_t offset = Read16(regPC + 1);
+			regPC = Read16(offset);
+		}
+		void OpJSR()
+		{
+			std::uint16_t addr = Read16(regPC + 1);
+			regPC += 2;
+			stack.Push((regPC >> 8) & 0xFF); // Push PC_High
+			stack.Push(regPC & 0xFF);        // Push PC_Low
+			regPC = addr;
+		}
+		
+		void OpBRA(bool condition)
+		{
+			std::int8_t oper = ReadMemory(GetAddress(AddressMode::Immediate));
+			regPC += condition ? oper + InstructionSize(AddressMode::Immediate) : InstructionSize(AddressMode::Immediate);
+		}
+
 		void OpTXA()
 		{
 			regA = regX;
@@ -763,8 +717,6 @@ namespace cpu {
 			regPC++;
 		}
 
-		/// Section - Load Operations
-
 		void OpLD(AddressMode mode, std::uint8_t& reg)
 		{
 			reg = ReadMemory(GetAddress(mode));
@@ -772,15 +724,15 @@ namespace cpu {
 			SetFlagZero(reg);
 			regPC += InstructionSize(mode);
 		}
-		
-		/// Section - Store Operations
 
 		void OpST(AddressMode mode, std::uint8_t& reg)
 		{
 			WriteMemory(GetAddress(mode), reg);
 			regPC += InstructionSize(mode);
 		}
-		
+
+
+		/// Bit Operations
 		void OpORA(AddressMode mode)
 		{
 			regA |= ReadMemory(GetAddress(mode));
@@ -806,33 +758,6 @@ namespace cpu {
 		{
             regStatus = (unsigned)regStatus | flag;
 			regPC++;
-		}
-
-		/* Jump operations */
-
-		void OpJMPAbsolute()
-		{
-			regPC = Read16(regPC + 1);
-		}
-
-		void OpJMPIndirect()
-		{
-			std::uint16_t offset = Read16(regPC + 1);
-			regPC = Read16(offset);
-		}
-		void OpJSR()
-		{
-			std::uint16_t addr = Read16(regPC + 1);
-			regPC += 2;
-			stack.Push((regPC >> 8) & 0xFF); // Push PC_High
-			stack.Push(regPC & 0xFF);        // Push PC_Low
-			regPC = addr;
-		}
-		// Branch operations
-		void OpBRA(bool condition)
-		{
-			std::int8_t oper = ReadMemory(GetAddress(AddressMode::Immediate));
-			regPC += condition ? oper + InstructionSize(AddressMode::Immediate) : InstructionSize(AddressMode::Immediate);
 		}
 
 		// Stack operations
@@ -889,7 +814,6 @@ namespace cpu {
 			regPC = Read16(IRQVector);
 		}
 
-		// Flag Operations
 		void SetFlagNegative(unsigned oper)
 		{
             regStatus.N = oper & Bit7; // If 7th bit is 1, set negative

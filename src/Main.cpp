@@ -143,7 +143,7 @@ public:
 	NESApp()
 		: Application(props)
 	{
-		window->SetFPS(50);
+		window->SetFPS(60);
 		window->SetVSync(false);
 		PushLayer(new MainLayer);
 	}

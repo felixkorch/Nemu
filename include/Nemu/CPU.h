@@ -1,7 +1,6 @@
 #pragma once
 #include "Nemu/Common.h"
 #include "Nemu/InternalNESMapper.h"
-#include "Nemu/Stack.h"
 #include "Nemu/StatusRegister.h"
 #include <iostream>
 #include <vector>
@@ -707,7 +706,7 @@ class CPU {
         unsigned PC_high = stackPop();
         regPC = (PC_high << 8) | PC_low;
     }
-    
+
     void OpRTS() {
         unsigned PC_low = stackPop();
         unsigned PC_high = stackPop();

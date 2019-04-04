@@ -11,30 +11,38 @@
 #include "Nemu/PPU.h"
 #include "Nemu/System.h"
 
+#include <iostream>
+
 namespace nemu {
 
 class NESInstance {
-    CPU<NROM128Mapper> cpu;
-    PPU ppu;
+    std::shared_ptr<CPU<NROM128Mapper>> cpu;
+    std::shared_ptr<PPU> ppu;
 
    public:
-    NESInstance(CPU<NROM128Mapper>&& cpu, PPU&& ppu)
-        : cpu(std::move(cpu)), ppu(std::move(ppu)) {}
+    NESInstance(std::shared_ptr<CPU<NROM128Mapper>> cpu,
+                std::shared_ptr<PPU> ppu)
+        : cpu(cpu), ppu(ppu) {
+        ppu->setNMI = [this]() {
+            // std::cout << "will set NMI\n";
+            this->cpu->SetNMI();
+        };
+    }
 
     NESInstance(NESInstance&& other)
-        : NESInstance(std::move(other.cpu), std::move(other.ppu)) {}
+        : NESInstance(std::move(other.cpu), other.ppu) {}
 
     void RunFrame() {
         for (int i = 0; i < 29781; i++) {
-            cpu.Execute();
-            ppu.Step();
-            ppu.Step();
-            ppu.Step();
+            cpu->Execute();
+            ppu->Step();
+            ppu->Step();
+            ppu->Step();
         }
     }
 
     void Power() {
-        cpu.Reset();
+        cpu->Reset();
     }
 };
 
@@ -81,14 +89,12 @@ NESInstance MakeNESInstance(
     std::vector<unsigned> prgROM(prgRomBegin, chrRomBegin);
     std::vector<unsigned> chrROM(chrRomBegin, rom.end());
 
-    PPU ppu(std::move(chrROM), newFrameCallback);
-    ppu.SetMirroring(mirroringMode);
-    InternalNESMapper prgRAM(ppu);
+    std::shared_ptr<PPU> ppu(new PPU(std::move(chrROM), newFrameCallback));
+    ppu->SetMirroring(mirroringMode);
+    std::shared_ptr<CPU<NROM128Mapper>> cpu(new CPU<NROM128Mapper>(
+        InternalNESMapper(ppu), NROM128Mapper(prgROM.cbegin(), prgROM.cend())));
 
-    return NESInstance(
-        CPU<NROM128Mapper>(std::move(prgRAM),
-                           NROM128Mapper(prgROM.cbegin(), prgROM.cend())),
-        std::move(ppu));
+    return NESInstance(cpu, ppu);
 }
 
 }  // namespace nemu

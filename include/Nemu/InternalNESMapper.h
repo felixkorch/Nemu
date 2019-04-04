@@ -7,6 +7,7 @@
 
 #include <array>
 #include <cstddef>
+#include <memory>
 #include "Nemu/Joypad.h"
 #include "Nemu/PPU.h"
 
@@ -25,24 +26,22 @@ namespace nemu {
 ///     range: (0x2000, 0x3FFF)
 ///     size: 0x0008 (8 B)
 ///     mask: 0x0007
-///     offset: 0x0800
 ///
 /// NES APU and I/O registers:
 ///     range: (0x4000, 0x401F)
 ///     size: 0x0020 (36 B)
-///     offset: 0x0808
 ///
 class InternalNESMapper {
     static constexpr unsigned InternalRAMAddressMask = 0x07FF;
-    static constexpr unsigned PPUAddressMask = 0x07FF;
+    static constexpr unsigned PPUAddressMask = 0x0007;
 
     std::array<unsigned, 0x0800> internalRAM;
-    PPU& ppu;
+    std::shared_ptr<PPU> ppu;
     // TODO: APU is not fully implemented
     Joypad joypad;
 
    public:
-    InternalNESMapper(PPU& ppu) : ppu(ppu) {}
+    InternalNESMapper(std::shared_ptr<PPU> ppu) : ppu(ppu) {}
 
     std::uint8_t Read(std::size_t address) {
         if (address < 0x2000)
@@ -51,11 +50,11 @@ class InternalNESMapper {
         if (address < 0x4000) {
             switch (address & PPUAddressMask) {
                 case 2:
-                    return ppu.ReadPPUSTATUS();
+                    return ppu->ReadPPUSTATUS();
                 case 4:
-                    return ppu.ReadOAMDATA();
+                    return ppu->ReadOAMDATA();
                 case 7:
-                    return ppu.ReadPPUDATA();
+                    return ppu->ReadPPUDATA();
                 default:
                     break;
             }
@@ -75,31 +74,30 @@ class InternalNESMapper {
         } else if (address < 0x4000) {
             switch (address & PPUAddressMask) {
                 case 0:
-                    ppu.WritePPUCTRL(value);
+                    ppu->WritePPUCTRL(value);
                     break;
                 case 1:
-                    ppu.WritePPUMASK(value);
+                    ppu->WritePPUMASK(value);
                     break;
                 case 3:
-                    ppu.WriteOAMADDR(value);
+                    ppu->WriteOAMADDR(value);
                     break;
                 case 4:
-                    ppu.WriteOAMDATA(value);
+                    ppu->WriteOAMDATA(value);
                     break;
                 case 5:
-                    ppu.WritePPUSCROLL(value);
+                    ppu->WritePPUSCROLL(value);
                     break;
                 case 6:
-                    ppu.WritePPUADDR(value);
+                    ppu->WritePPUADDR(value);
                     break;
                 case 7:
-                    ppu.WritePPUDATA(value);
+                    ppu->WritePPUDATA(value);
                     break;
                 default:
                     break;
             }
-        }
-        if (address == 0x4016) {
+        } else if (address == 0x4016) {
             return joypad.Write(value & 1);
         }
         // TODO: Implement APU

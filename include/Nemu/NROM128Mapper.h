@@ -28,6 +28,7 @@ class NROM128Mapper {
         auto address = 0x8000;
         while (it != end) Write(address++, *it++);
     }
+
     std::uint8_t Read(std::size_t address) {
         if (address < 0x8000)
             return 0;

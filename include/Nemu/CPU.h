@@ -221,11 +221,6 @@ class CPU {
         if (index < 0x4000 || index == 0x4016) {
             prgRAM.Write(index, value);
         }
-        // TODO: This should be handled by the internal mapper
-        // Joypad Write strobe
-        else if (index == 0x4016) {
-            // nemu.JoypadWrite(value & 1);
-        }
         // DMA-OAM Access
         else if (index == 0x4014) {
             DmaOam(value);

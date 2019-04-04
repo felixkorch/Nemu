@@ -123,7 +123,7 @@ class PPU {
         std::uint8_t dataHigh;
     };
 
-    // Used when the CPU is communicating to change state
+    /// Used when the CPU is communicating to change state
     struct AccessOperation {
         std::uint8_t result;
         std::uint8_t buffer;
@@ -167,10 +167,16 @@ class PPU {
 
     std::vector<unsigned> chrROM;
 
+    static void emptySetNMI() {}
+
    public:
+    std::function<void()> setNMI;
+
     PPU(std::vector<unsigned>&& chrROM,
         std::function<void(std::uint8_t* pixels)> newFrameCallback)
-        : chrROM(std::move(chrROM)), HandleNewFrame(newFrameCallback) {
+        : chrROM(std::move(chrROM)),
+          setNMI(emptySetNMI),
+          HandleNewFrame(newFrameCallback) {
         Reset();
     }
 
@@ -191,6 +197,86 @@ class PPU {
         memset(secondaryOam, 0, sizeof(secondaryOam));
         memset(ciRam, 0, sizeof(ciRam));
         memset(cgRam, 0, sizeof(cgRam));
+    }
+
+    std::uint8_t ReadRegister(std::size_t index) {
+        switch (index) {
+            case 2: {  // PPUSTATUS ($2002)
+                access.result = (access.result & 0x1F) | status.reg;
+                status.vBlank = 0;
+                access.latch = false;
+                break;
+            }
+            case 4: {  // OAMDATA ($2004)
+                access.result = oamMem[oamAddr];
+                break;
+            }
+            case 7: {  // PPUDATA ($2007)
+                if (vAddr.addr <= 0x3EFF) {
+                    access.result = access.buffer;
+                    access.buffer = Read(vAddr.addr);
+                } else {
+                    access.result = access.buffer = Read(vAddr.addr);
+                }
+                vAddr.addr += ctrl.increment ? 32 : 1;
+            }
+        }
+        return access.result;
+    }
+
+    void WriteRegister(std::size_t index, std::uint8_t value) {
+        access.result = value;
+
+        switch (index) {
+            case 0: {  // PPUCTRL ($2000)
+                ctrl.reg = value;
+                tAddr.nametable = ctrl.nameTable;
+                break;
+            }
+            case 1: {  // PPUMASK ($2001)
+                mask.reg = value;
+                break;
+            }
+            case 3: {  // OAMADDR ($2003)
+                oamAddr = value;
+                break;
+            }
+            case 4: {  // OAMDATA ($2004)
+                oamMem[oamAddr++] = value;
+                break;
+            }
+            case 5: {  // PPUSCROLL ($2005)
+                // First write
+                if (!access.latch) {
+                    fineX = value & 7;
+                    tAddr.coarseX = value >> 3;
+                }
+                // Second write
+                else {
+                    tAddr.fineY = value & 7;
+                    tAddr.coarseY = value >> 3;
+                }
+                access.latch = !access.latch;
+                break;
+            }
+            case 6: {  // PPUADDR ($2006)
+                // First write
+                if (!access.latch) {
+                    tAddr.high = value & 0x3F;
+                }
+                // Second write
+                else {
+                    tAddr.low = value;
+                    vAddr.reg = tAddr.reg;
+                }
+                access.latch = !access.latch;
+                break;
+            }
+            case 7: {  // PPUDATA ($2007)
+                Write(vAddr.addr, value);
+                vAddr.addr += ctrl.increment ? 32 : 1;
+            }
+        }
     }
 
     /// Address: $2002
@@ -221,27 +307,33 @@ class PPU {
 
     /// Address: $2000
     void WritePPUCTRL(std::uint8_t value) {
+        access.result = value;
+
         ctrl.reg = value;
         tAddr.nametable = ctrl.nameTable;
     }
 
     /// Address: $2001
     void WritePPUMASK(std::uint8_t value) {
+        access.result = value;
         mask.reg = value;
     }
 
     /// Address: $2003
     void WriteOAMADDR(std::uint8_t value) {
+        access.result = value;
         oamAddr = value;
     }
 
     /// Address: $2004
     void WriteOAMDATA(std::uint8_t value) {
+        access.result = value;
         oamMem[oamAddr++] = value;
     }
 
     /// Address: $2005
     void WritePPUSCROLL(std::uint8_t value) {
+        access.result = value;
         // First write
         if (!access.latch) {
             fineX = value & 7;
@@ -257,6 +349,7 @@ class PPU {
 
     /// Address: $2006
     void WritePPUADDR(std::uint8_t value) {
+        access.result = value;
         // First write
         if (!access.latch) {
             tAddr.high = value & 0x3F;
@@ -271,6 +364,8 @@ class PPU {
 
     /// Address: $2007
     void WritePPUDATA(std::uint8_t value) {
+        access.result = value;
+
         Write(vAddr.addr, value);
         vAddr.addr += ctrl.increment ? 32 : 1;
     }
@@ -548,6 +643,7 @@ class PPU {
             if (ctrl.nmiEnable) {
                 // TODO: Something with nemu
                 // nemu.SetNMI();
+                setNMI();
             }
         } else if (phase == ScanlinePhase::POST && dot == 0) {
             HandleNewFrame(pixels.data());

@@ -45,12 +45,11 @@ namespace nemu {
 		///	Horizontal: 0x2000 == 0x2400 && 0x2800 == 0x2C00
 
         class CiRam {
-            std::uint8_t memory[0x800];
+            std::uint8_t memory[0x800]; // 2048 B
 			MirroringMode mirrormode;
         public:
             CiRam(PPU& ppu) :
-				memory{},
-				mirrormode(MirroringMode::Vertical)
+				memory{}
 			{}
 
 			void SetMirroring(MirroringMode mode)
@@ -84,7 +83,7 @@ namespace nemu {
         class InternalMemory {
 			std::reference_wrapper<PPU> ppu;
             CiRam        ciRam;       // Holds nametables (2048 B)
-            std::uint8_t cgRam[0x20]; // Holds palettes (32 B)
+            std::uint8_t cgRam[0x20]; // Holds palettes   (32 B)
         public:
             InternalMemory(PPU& ppu) :
 				ppu(ppu),
@@ -200,9 +199,9 @@ namespace nemu {
 		};
 
 		struct AccessOperation {
-			std::uint8_t result = 0;
-			std::uint8_t buffer = 0;
-			bool latch = false;
+			std::uint8_t result;
+			std::uint8_t buffer;
+			bool latch;
 		};
 
     // Member variables
@@ -316,11 +315,13 @@ namespace nemu {
 				break;
 			}
 			case 5: { // PPUSCROLL ($2005)
-				if (!access.latch) {            // First write
+				// First write
+				if (!access.latch) {
 					fineX = value & 7;
 					tAddr.coarseX = value >> 3;
 				} 
-				else {                          // Second write
+				// Second write
+				else {
 					tAddr.fineY = value & 7;
 					tAddr.coarseY = value >> 3;
 				}

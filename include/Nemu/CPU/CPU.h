@@ -233,7 +233,7 @@ namespace cpu {
 				return;
 			}
 
-			// 
+			// DMA-OAM Access
 			if (index == 0x4014) {
 				DmaOam(value);
 				return;

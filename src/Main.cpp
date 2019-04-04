@@ -43,8 +43,8 @@ public:
 		NESKeyMapper keyMapper;
 		keyMapper.Map(NESButton::Start,  SGL_KEY_ENTER);
 		keyMapper.Map(NESButton::Select, SGL_KEY_BACKSPACE);
-		keyMapper.Map(NESButton::A,      SGL_KEY_A);
-		keyMapper.Map(NESButton::B,      SGL_KEY_S);
+		keyMapper.Map(NESButton::A,      SGL_KEY_X);
+		keyMapper.Map(NESButton::B,      SGL_KEY_Z);
 		keyMapper.Map(NESButton::Left,   SGL_KEY_LEFT);
 		keyMapper.Map(NESButton::Right,  SGL_KEY_RIGHT);
 		keyMapper.Map(NESButton::Up,     SGL_KEY_UP);
@@ -133,7 +133,7 @@ public:
 const WindowProperties props {
 		Width,                 // WindowWidth
 		Height,                // WindowHeight
-		false,                 // Resizable
+		true,                  // Resizable
 		"Nemu - NES Emulator"  // Title
 };
 
@@ -143,7 +143,7 @@ public:
 	NESApp()
 		: Application(props)
 	{
-		window->SetFPS(60);
+		window->SetFPS(50);
 		window->SetVSync(false);
 		PushLayer(new MainLayer);
 	}

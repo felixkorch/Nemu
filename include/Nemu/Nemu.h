@@ -137,12 +137,12 @@ namespace nemu
 		// Currently only works for NROM(Version 0)
 		void CartridgeWritePRG(std::size_t index, unsigned value)
 		{
-			prgRom[index % prgRom.size()] = value;
+			prgRom[(index - 0x8000) % prgRom.size()] = value;
 		}
 
 		unsigned CartridgeReadPRG(std::size_t index)
 		{
-			return prgRom[index % prgRom.size()];
+			return prgRom[(index - 0x8000) % prgRom.size()];
 		}
 
 		void CartridgeWriteCHR(std::size_t index, unsigned value)

@@ -24,7 +24,8 @@ class NROM256Mapper {
     NROM256Mapper(const Iterator& begin, const Iterator& end) {
         auto it = begin;
         auto address = 0x8000;
-        while (it != end) Write(address++, *it++);
+        while (it != end)
+            Write(address++, *it++);
     }
 
     std::uint8_t Read(std::size_t address) {
@@ -40,4 +41,4 @@ class NROM256Mapper {
     }
 };
 
-}  // namespace nemu
+} // namespace nemu

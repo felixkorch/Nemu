@@ -98,9 +98,6 @@ class MainLayer : public Layer {
 
             running = true;
 
-            Joypad joypad;
-            joypad.AddInputConfig(nesInput);
-
             /*
 nemu = Nemu();
 nemu.AddJoypad(joypad);
@@ -110,10 +107,10 @@ nemu.CreatePPU<PPU>(
 nemu.LoadROM(paths[0]);
 nemu.Power();
             */
-            nesInstance =
-                std::unique_ptr<NESInstance>(new NESInstance(MakeNESInstance(
-                    paths[0], std::bind(&MainLayer::OnNewFrame, this,
-                                        std::placeholders::_1))));
+            nesInstance = std::unique_ptr<NESInstance>(new NESInstance(
+                MakeNESInstance(paths[0], nesInput,
+                                std::bind(&MainLayer::OnNewFrame, this,
+                                          std::placeholders::_1))));
             nesInstance->Power();
         }
         // Window Resized

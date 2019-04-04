@@ -1,9 +1,9 @@
 #pragma once
+#include "Nemu/Common.h"
 #include <cstddef>
 #include <cstdint>
 #include <functional>
 #include <vector>
-#include "Nemu/Common.h"
 
 namespace nemu {
 namespace ppu {
@@ -37,7 +37,7 @@ RGBA HexToRGBA(unsigned hexValue) {
     return rgbaColor;
 }
 
-}  // namespace ppu
+} // namespace ppu
 
 class PPU {
     ///	The NES has 4 nametables but the board only contains space for 2.
@@ -48,25 +48,22 @@ class PPU {
 
     unsigned MirroredAddress(unsigned addr) {
         switch (mirroring) {
-            case ppu::MirroringMode::Vertical:
-                return addr % 0x800;
-            case ppu::MirroringMode::Horizontal:
-                return ((addr / 2) & 0x400) + (addr % 0x400);
-            default:
-                return addr - 0x2000;
+        case ppu::MirroringMode::Vertical: return addr % 0x800;
+        case ppu::MirroringMode::Horizontal:
+            return ((addr / 2) & 0x400) + (addr % 0x400);
+        default: return addr - 0x2000;
         }
     }
 
     union Ctrl {
         struct {
-            unsigned
-                nameTable : 2;  // Nametable ($2000 / $2400 / $2800 / $2C00)
-            unsigned increment : 1;    // Address increment (1 / 32)
-            unsigned spriteTable : 1;  // Sprite pattern table ($0000 / $1000)
-            unsigned backgroundTable : 1;  // BG pattern table ($0000 / $1000)
-            unsigned spriteSize : 1;       // Sprite size (8x8 / 8x16)
-            unsigned slave : 1;            // PPU master / slave
-            unsigned nmiEnable : 1;        // Enable NMI
+            unsigned nameTable : 2; // Nametable ($2000 / $2400 / $2800 / $2C00)
+            unsigned increment : 1; // Address increment (1 / 32)
+            unsigned spriteTable : 1; // Sprite pattern table ($0000 / $1000)
+            unsigned backgroundTable : 1; // BG pattern table ($0000 / $1000)
+            unsigned spriteSize : 1;      // Sprite size (8x8 / 8x16)
+            unsigned slave : 1;           // PPU master / slave
+            unsigned nmiEnable : 1;       // Enable NMI
         };
         std::uint8_t reg;
     };
@@ -75,9 +72,9 @@ class PPU {
     union Status {
         struct {
             unsigned bus : 5;
-            unsigned spriteOvf : 1;  // Sprite overflow
-            unsigned spriteHit : 1;  // Sprite 0 Hit
-            unsigned vBlank : 1;     // In VBlank
+            unsigned spriteOvf : 1; // Sprite overflow
+            unsigned spriteHit : 1; // Sprite 0 Hit
+            unsigned vBlank : 1;    // In VBlank
         };
         std::uint8_t reg;
     };
@@ -85,14 +82,14 @@ class PPU {
     // PPUMASK Register
     union Mask {
         struct {
-            unsigned gray : 1;     // Grayscale
-            unsigned bgLeft : 1;   // Show background in leftmost 8 pixels
-            unsigned sprLeft : 1;  // Show sprite in leftmost 8 pixels
-            unsigned bg : 1;       // Show background
-            unsigned spr : 1;      // Show sprites
-            unsigned red : 1;      // Emphasize red
-            unsigned green : 1;    // Emphasize green
-            unsigned blue : 1;     // Emphasize blue
+            unsigned gray : 1;    // Grayscale
+            unsigned bgLeft : 1;  // Show background in leftmost 8 pixels
+            unsigned sprLeft : 1; // Show sprite in leftmost 8 pixels
+            unsigned bg : 1;      // Show background
+            unsigned spr : 1;     // Show sprites
+            unsigned red : 1;     // Emphasize red
+            unsigned green : 1;   // Emphasize green
+            unsigned blue : 1;    // Emphasize blue
         };
         std::uint8_t reg;
     };
@@ -100,10 +97,10 @@ class PPU {
     // PPUADDR Register
     union Addr {
         struct {
-            unsigned coarseX : 5;    // Coarse X.
-            unsigned coarseY : 5;    // Coarse Y.
-            unsigned nametable : 2;  // Nametable.
-            unsigned fineY : 3;      // Fine Y.
+            unsigned coarseX : 5;   // Coarse X.
+            unsigned coarseY : 5;   // Coarse Y.
+            unsigned nametable : 2; // Nametable.
+            unsigned fineY : 3;     // Fine Y.
         };
         struct {
             unsigned low : 8;
@@ -154,11 +151,11 @@ class PPU {
     // OAM Memory (Sprite data)
     Sprite oam[8];
     Sprite secondaryOam[8];
-    std::uint8_t oamMem[0x100];  // (256 B)
+    std::uint8_t oamMem[0x100]; // (256 B)
 
     // Background Memory
-    std::uint8_t ciRam[0x800];  // Nametables (2048 B)
-    std::uint8_t cgRam[0x20];   // Palettes   (32 B)
+    std::uint8_t ciRam[0x800]; // Nametables (2048 B)
+    std::uint8_t cgRam[0x20];  // Palettes   (32 B)
 
     // Renderer Counters
     int scanline;
@@ -174,8 +171,7 @@ class PPU {
 
     PPU(std::vector<unsigned>&& chrROM,
         std::function<void(std::uint8_t* pixels)> newFrameCallback)
-        : chrROM(std::move(chrROM)),
-          setNMI(emptySetNMI),
+        : chrROM(std::move(chrROM)), setNMI(emptySetNMI),
           HandleNewFrame(newFrameCallback) {
         Reset();
     }
@@ -197,86 +193,6 @@ class PPU {
         memset(secondaryOam, 0, sizeof(secondaryOam));
         memset(ciRam, 0, sizeof(ciRam));
         memset(cgRam, 0, sizeof(cgRam));
-    }
-
-    std::uint8_t ReadRegister(std::size_t index) {
-        switch (index) {
-            case 2: {  // PPUSTATUS ($2002)
-                access.result = (access.result & 0x1F) | status.reg;
-                status.vBlank = 0;
-                access.latch = false;
-                break;
-            }
-            case 4: {  // OAMDATA ($2004)
-                access.result = oamMem[oamAddr];
-                break;
-            }
-            case 7: {  // PPUDATA ($2007)
-                if (vAddr.addr <= 0x3EFF) {
-                    access.result = access.buffer;
-                    access.buffer = Read(vAddr.addr);
-                } else {
-                    access.result = access.buffer = Read(vAddr.addr);
-                }
-                vAddr.addr += ctrl.increment ? 32 : 1;
-            }
-        }
-        return access.result;
-    }
-
-    void WriteRegister(std::size_t index, std::uint8_t value) {
-        access.result = value;
-
-        switch (index) {
-            case 0: {  // PPUCTRL ($2000)
-                ctrl.reg = value;
-                tAddr.nametable = ctrl.nameTable;
-                break;
-            }
-            case 1: {  // PPUMASK ($2001)
-                mask.reg = value;
-                break;
-            }
-            case 3: {  // OAMADDR ($2003)
-                oamAddr = value;
-                break;
-            }
-            case 4: {  // OAMDATA ($2004)
-                oamMem[oamAddr++] = value;
-                break;
-            }
-            case 5: {  // PPUSCROLL ($2005)
-                // First write
-                if (!access.latch) {
-                    fineX = value & 7;
-                    tAddr.coarseX = value >> 3;
-                }
-                // Second write
-                else {
-                    tAddr.fineY = value & 7;
-                    tAddr.coarseY = value >> 3;
-                }
-                access.latch = !access.latch;
-                break;
-            }
-            case 6: {  // PPUADDR ($2006)
-                // First write
-                if (!access.latch) {
-                    tAddr.high = value & 0x3F;
-                }
-                // Second write
-                else {
-                    tAddr.low = value;
-                    vAddr.reg = tAddr.reg;
-                }
-                access.latch = !access.latch;
-                break;
-            }
-            case 7: {  // PPUDATA ($2007)
-                Write(vAddr.addr, value);
-                vAddr.addr += ctrl.increment ? 32 : 1;
-            }
-        }
     }
 
     /// Address: $2002
@@ -371,15 +287,15 @@ class PPU {
     }
 
     void Write(std::size_t address, std::uint8_t value) {
-        if (address <= 0x1FFF) {  // CHR-ROM/RAM.
+        if (address <= 0x1FFF) { // CHR-ROM/RAM.
             chrROM[address % chrROM.size()] = value;
             return;
         }
-        if (address <= 0x3EFF) {  // Nametables.
+        if (address <= 0x3EFF) { // Nametables.
             ciRam[MirroredAddress(address)] = value;
             return;
         }
-        if (address <= 0x3FFF) {  // Palettes.
+        if (address <= 0x3FFF) { // Palettes.
             if ((address & 0x13) == 0x10)
                 address &= ~0x10;
             cgRam[address & 0x1F] = value;
@@ -388,18 +304,18 @@ class PPU {
     }
 
     std::uint8_t Read(std::size_t address) {
-        if (address <= 0x1FFF) {  // CHR-ROM/RAM.
+        if (address <= 0x1FFF) { // CHR-ROM/RAM.
             return chrROM[address % chrROM.size()];
         }
-        if (address <= 0x3EFF) {  // Nametables.
+        if (address <= 0x3EFF) { // Nametables.
             return ciRam[MirroredAddress(address)];
         }
-        if (address <= 0x3FFF) {  // Palettes.
+        if (address <= 0x3FFF) { // Palettes.
             if ((address & 0x13) == 0x10)
                 address &= ~0x10;
             return cgRam[address & 0x1F] & (mask.gray ? 0x30 : 0xFF);
         }
-        return 0;  // Out of bounds.
+        return 0; // Out of bounds.
     }
 
     void Step() {
@@ -423,21 +339,13 @@ class PPU {
         }
     }
 
-    void SetMirroring(ppu::MirroringMode mode) {
-        mirroring = mode;
-    }
+    void SetMirroring(ppu::MirroringMode mode) { mirroring = mode; }
 
    private:
-    bool IsRendering() {
-        return mask.bg || mask.spr;
-    }
-    int SpriteHeight() {
-        return ctrl.spriteSize ? 16 : 8;
-    }
+    bool IsRendering() { return mask.bg || mask.spr; }
+    int SpriteHeight() { return ctrl.spriteSize ? 16 : 8; }
 
-    std::uint16_t NametableAddress() {
-        return 0x2000 | (vAddr.reg & 0xFFF);
-    }
+    std::uint16_t NametableAddress() { return 0x2000 | (vAddr.reg & 0xFFF); }
     std::uint16_t AttributeTableAddress() {
         return 0x23C0 | (vAddr.nametable << 10) | ((vAddr.coarseY / 4) << 3) |
                (vAddr.coarseX / 4);
@@ -552,7 +460,7 @@ class PPU {
             }
 
             unsigned sprY = (scanline - oam[i].y) %
-                            SpriteHeight();  // Line inside the sprite
+                            SpriteHeight(); // Line inside the sprite
 
             // Bit 7 indicates vertical flip
             if (oam[i].attributes & Bit7)
@@ -602,7 +510,7 @@ class PPU {
                         (NthBit(oam[i].dataHigh, 7 - sprX) << 1) |
                         NthBit(oam[i].dataLow, 7 - sprX);
 
-                    if (sprPalette == 0)  // Transparent pixel.
+                    if (sprPalette == 0) // Transparent pixel.
                         continue;
 
                     if (oam[i].id == 0 && palette && x != 255)
@@ -664,37 +572,27 @@ class PPU {
             if ((dot >= 2 && dot <= 255) || (dot >= 322 && dot <= 337)) {
                 Pixel();
                 switch (dot % 8) {
-                    case 1:
-                        addr = NametableAddress();
-                        ShiftBackground();
-                        break;
-                    case 2:
-                        nametable = Read(addr);
-                        break;
-                    case 3:
-                        addr = AttributeTableAddress();
-                        break;
-                    case 4: {
-                        attributes = Read(addr);
-                        if (vAddr.coarseY & 2)
-                            attributes >>= 4;
-                        if (vAddr.coarseX & 2)
-                            attributes >>= 2;
-                        break;
-                    }
-                    case 5:
-                        addr = BackgroundAddress();
-                        break;
-                    case 6:
-                        bgLow = Read(addr);
-                        break;
-                    case 7:
-                        addr += 8;
-                        break;
-                    case 0:
-                        bgHigh = Read(addr);
-                        ScrollH();
-                        break;
+                case 1:
+                    addr = NametableAddress();
+                    ShiftBackground();
+                    break;
+                case 2: nametable = Read(addr); break;
+                case 3: addr = AttributeTableAddress(); break;
+                case 4: {
+                    attributes = Read(addr);
+                    if (vAddr.coarseY & 2)
+                        attributes >>= 4;
+                    if (vAddr.coarseX & 2)
+                        attributes >>= 2;
+                    break;
+                }
+                case 5: addr = BackgroundAddress(); break;
+                case 6: bgLow = Read(addr); break;
+                case 7: addr += 8; break;
+                case 0:
+                    bgHigh = Read(addr);
+                    ScrollH();
+                    break;
                 }
                 return;
             }
@@ -726,4 +624,4 @@ class PPU {
     }
 };
 
-}  // namespace nemu
+} // namespace nemu

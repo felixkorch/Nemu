@@ -4,12 +4,12 @@
 // -----------------------------------------------------------------------------
 
 #pragma once
-#include <vector>
 #include "Nemu/CPU.h"
 #include "Nemu/InternalNESMapper.h"
 #include "Nemu/NROM128Mapper.h"
 #include "Nemu/PPU.h"
 #include "Nemu/System.h"
+#include <vector>
 
 #include <iostream>
 
@@ -41,20 +41,19 @@ class NESInstance {
         }
     }
 
-    void Power() {
-        cpu->Reset();
-    }
+    void Power() { cpu->Reset(); }
 };
 
-NESInstance MakeNESInstance(
-    const std::string& path,
-    std::function<void(std::uint8_t* pixels)> newFrameCallback) {
+NESInstance
+MakeNESInstance(const std::string& path, NESInput& input,
+                std::function<void(std::uint8_t* pixels)> newFrameCallback) {
     // Read file.
     auto file = ReadFile<std::vector<std::uint8_t>>(path);
     std::cout << "File size: " << file.size() << " B" << std::endl;
 
     std::vector<unsigned> rom;
-    for (const auto& byte : file) rom.push_back((unsigned)byte);
+    for (const auto& byte : file)
+        rom.push_back((unsigned)byte);
 
     // TODO:
     // if (rom.size() == 0)
@@ -91,10 +90,13 @@ NESInstance MakeNESInstance(
 
     std::shared_ptr<PPU> ppu(new PPU(std::move(chrROM), newFrameCallback));
     ppu->SetMirroring(mirroringMode);
+
+    InternalNESMapper prgRAM(ppu);
+    prgRAM.joypad.AddInputConfig(input);
     std::shared_ptr<CPU<NROM128Mapper>> cpu(new CPU<NROM128Mapper>(
-        InternalNESMapper(ppu), NROM128Mapper(prgROM.cbegin(), prgROM.cend())));
+        std::move(prgRAM), NROM128Mapper(prgROM.cbegin(), prgROM.cend())));
 
     return NESInstance(cpu, ppu);
 }
 
-}  // namespace nemu
+} // namespace nemu

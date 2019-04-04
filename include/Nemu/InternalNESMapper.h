@@ -5,11 +5,11 @@
 
 #pragma once
 
+#include "Nemu/Joypad.h"
+#include "Nemu/PPU.h"
 #include <array>
 #include <cstddef>
 #include <memory>
-#include "Nemu/Joypad.h"
-#include "Nemu/PPU.h"
 
 namespace nemu {
 
@@ -38,9 +38,10 @@ class InternalNESMapper {
     std::array<unsigned, 0x0800> internalRAM;
     std::shared_ptr<PPU> ppu;
     // TODO: APU is not fully implemented
-    Joypad joypad;
 
    public:
+    Joypad joypad;
+
     InternalNESMapper(std::shared_ptr<PPU> ppu) : ppu(ppu) {}
 
     std::uint8_t Read(std::size_t address) {
@@ -49,14 +50,10 @@ class InternalNESMapper {
                 internalRAM[address & InternalRAMAddressMask]);
         if (address < 0x4000) {
             switch (address & PPUAddressMask) {
-                case 2:
-                    return ppu->ReadPPUSTATUS();
-                case 4:
-                    return ppu->ReadOAMDATA();
-                case 7:
-                    return ppu->ReadPPUDATA();
-                default:
-                    break;
+            case 2: return ppu->ReadPPUSTATUS();
+            case 4: return ppu->ReadOAMDATA();
+            case 7: return ppu->ReadPPUDATA();
+            default: break;
             }
             return 0;
         }
@@ -73,29 +70,14 @@ class InternalNESMapper {
             internalRAM[address & InternalRAMAddressMask] = value;
         } else if (address < 0x4000) {
             switch (address & PPUAddressMask) {
-                case 0:
-                    ppu->WritePPUCTRL(value);
-                    break;
-                case 1:
-                    ppu->WritePPUMASK(value);
-                    break;
-                case 3:
-                    ppu->WriteOAMADDR(value);
-                    break;
-                case 4:
-                    ppu->WriteOAMDATA(value);
-                    break;
-                case 5:
-                    ppu->WritePPUSCROLL(value);
-                    break;
-                case 6:
-                    ppu->WritePPUADDR(value);
-                    break;
-                case 7:
-                    ppu->WritePPUDATA(value);
-                    break;
-                default:
-                    break;
+            case 0: ppu->WritePPUCTRL(value); break;
+            case 1: ppu->WritePPUMASK(value); break;
+            case 3: ppu->WriteOAMADDR(value); break;
+            case 4: ppu->WriteOAMDATA(value); break;
+            case 5: ppu->WritePPUSCROLL(value); break;
+            case 6: ppu->WritePPUADDR(value); break;
+            case 7: ppu->WritePPUDATA(value); break;
+            default: break;
             }
         } else if (address == 0x4016) {
             return joypad.Write(value & 1);
@@ -109,4 +91,4 @@ class InternalNESMapper {
     }
 };
 
-}  // namespace nemu
+} // namespace nemu

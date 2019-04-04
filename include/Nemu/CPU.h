@@ -9,7 +9,7 @@ namespace nemu {
 
 template <class PRGROMMapper>
 class CPU {
-    InternalNESMapper prgRAM;
+    InternalNESMapper internalMemory;
     PRGROMMapper prgROM;
     std::uint8_t regX;
     std::uint8_t regY;
@@ -19,116 +19,134 @@ class CPU {
     StatusRegister regStatus;
     bool nmi, irq;
 
-    constexpr static unsigned Flag_C = (1 << 0);
-    constexpr static unsigned Flag_Z = (1 << 1);
-    constexpr static unsigned Flag_I = (1 << 2);
-    /// Disabled on the NES (decimal).
-    constexpr static unsigned Flag_D = (1 << 3);
-    /// Bits 4 and 5 are used to indicate whether a software or hardware
-    /// interrupt occured
-    constexpr static unsigned Flag_B = (1 << 4);
-    constexpr static unsigned Flag_Unused = (1 << 5);
-    constexpr static unsigned Flag_V = (1 << 6);
-    constexpr static unsigned Flag_N = (1 << 7);
+    constexpr static unsigned Flag_C      = (1 << 0);
+    constexpr static unsigned Flag_Z      = (1 << 1);
+    constexpr static unsigned Flag_I      = (1 << 2);
+    constexpr static unsigned Flag_D      = (1 << 3); // Disabled on the NES (decimal).
+    constexpr static unsigned Flag_B      = (1 << 4); // Bits 4 and 5 are used to indicate whether a
+    constexpr static unsigned Flag_Unused = (1 << 5); // Software or hardware interrupt occured
+    constexpr static unsigned Flag_V      = (1 << 6);
+    constexpr static unsigned Flag_N      = (1 << 7);
 
     constexpr static unsigned ResetVector = 0xFFFC;
-    constexpr static unsigned NMIVector = 0xFFFA;
-    constexpr static unsigned IRQVector = 0xFFFE;
+    constexpr static unsigned NMIVector   = 0xFFFA;
+    constexpr static unsigned IRQVector   = 0xFFFE;
 
-   public:
-    CPU(InternalNESMapper&& prgRAM, PRGROMMapper&& prgROM)
-        : prgRAM(std::move(prgRAM)), prgROM(std::move(prgROM)), regX(0),
-          regY(0), regA(0), regPC(0), regSP(0xFF), regStatus(), nmi(false),
-          irq(false) {}
+  public:
+    CPU(InternalNESMapper&& internalMemory, PRGROMMapper&& prgROM)
+        : internalMemory(std::move(internalMemory))
+        , prgROM(std::move(prgROM))
+        , regX(0)
+        , regY(0)
+        , regA(0)
+        , regPC(0)
+        , regSP(0xFF)
+        , regStatus()
+        , nmi(false)
+        , irq(false) {}
 
-    void Reset() {
-        regPC = Read16(ResetVector); // Load PC with the reset vector.
+
+    void Reset()
+    {
+        regPC = Read16(ResetVector);  // Load PC with the reset vector.
     }
 
-    void SetNMI() { nmi = true; }
+    void SetNMI()
+    {
+        nmi = true;
+    }
 
-    void SetIRQ() { irq = true; }
+    void SetIRQ()
+    {
+        irq = true;
+    }
 
-    void Execute() {
-        if (nmi)
-            InvokeNMI();
-        else if (irq)
-            InvokeIRQ();
+    void Execute()
+    {
+        if      (nmi) InvokeNMI();
+        else if (irq) InvokeIRQ();
         Decode();
     }
 
-   private:
+  private:
+
     enum class AddressMode {
-        Immediate,
-        Absolute,
-        AbsoluteX,
-        AbsoluteY,
-        Indirect,
-        Relative,
-        Zeropage,
-        ZeropageX,
-        ZeropageY,
-        IndirectX,
-        IndirectY,
-        Implied
+        Immediate, Absolute,
+        AbsoluteX, AbsoluteY,
+        Indirect,  Relative,
+        Zeropage,  ZeropageX,
+        ZeropageY, IndirectX,
+        IndirectY, Implied
     };
 
     static constexpr unsigned InstructionSizeImmediate = 2;
-    static constexpr unsigned InstructionSizeAbsolute = 3;
+    static constexpr unsigned InstructionSizeAbsolute  = 3;
     static constexpr unsigned InstructionSizeAbsoluteX = 3;
     static constexpr unsigned InstructionSizeAbsoluteY = 3;
-    static constexpr unsigned InstructionSizeIndirect = 3;
-    static constexpr unsigned InstructionSizeRelative = 2;
-    static constexpr unsigned InstructionSizeZeropage = 2;
+    static constexpr unsigned InstructionSizeIndirect  = 3;
+    static constexpr unsigned InstructionSizeRelative  = 2;
+    static constexpr unsigned InstructionSizeZeropage  = 2;
     static constexpr unsigned InstructionSizeZeropageX = 2;
     static constexpr unsigned InstructionSizeZeropageY = 2;
     static constexpr unsigned InstructionSizeIndirectX = 2;
     static constexpr unsigned InstructionSizeIndirectY = 2;
-    static constexpr unsigned InstructionSizeImplied = 1;
+    static constexpr unsigned InstructionSizeImplied   = 1;
 
-    unsigned InstructionSize(AddressMode mode) {
+    unsigned InstructionSize(AddressMode mode)
+    {
         switch (mode) {
         case AddressMode::Immediate: return InstructionSizeImmediate;
-        case AddressMode::Absolute: return InstructionSizeAbsolute;
+        case AddressMode::Absolute:  return InstructionSizeAbsolute;
         case AddressMode::AbsoluteX: return InstructionSizeAbsoluteX;
         case AddressMode::AbsoluteY: return InstructionSizeAbsoluteY;
-        case AddressMode::Indirect: return InstructionSizeIndirect;
-        case AddressMode::Relative: return InstructionSizeRelative;
-        case AddressMode::Zeropage: return InstructionSizeZeropage;
+        case AddressMode::Indirect:  return InstructionSizeIndirect;
+        case AddressMode::Relative:  return InstructionSizeRelative;
+        case AddressMode::Zeropage:  return InstructionSizeZeropage;
         case AddressMode::ZeropageX: return InstructionSizeZeropageX;
         case AddressMode::ZeropageY: return InstructionSizeZeropageY;
         case AddressMode::IndirectX: return InstructionSizeIndirectX;
         case AddressMode::IndirectY: return InstructionSizeIndirectY;
-        case AddressMode::Implied: return InstructionSizeImplied;
-        default: return InstructionSizeImmediate;
+        case AddressMode::Implied:   return InstructionSizeImplied;
+        default:                     return InstructionSizeImmediate;
         }
     }
 
-    void stackPush(std::uint8_t value) {
-        prgRAM.Write(0x0100 | regSP, value);
+    void stackPush(std::uint8_t value) 
+    {
+        internalMemory.Write(0x0100 | regSP, value);
         regSP--;
     }
 
-    std::uint8_t stackPop() {
+    std::uint8_t stackPop() 
+    {
         regSP++;
-        auto temp = prgRAM.Read(0x0100 | regSP);
+        auto temp = internalMemory.Read(0x0100 | regSP);
         return temp;
     }
 
-    std::uint16_t GetAddressImmediate() { return regPC + 1; }
-    std::uint16_t GetAddressAbsolute() {
+    std::uint16_t GetAddressImmediate()
+    {
+        return regPC + 1;
+    }
+    std::uint16_t GetAddressAbsolute()
+    {
         std::uint16_t addr = Read16(regPC + 1);
         return addr;
     }
-    std::uint16_t GetAddressAbsoluteX() {
+    std::uint16_t GetAddressAbsoluteX()
+    {
         std::uint16_t addr = Read16(regPC + 1) + regX;
         return addr;
     }
-    std::uint16_t GetAddressAbsoluteY() {
+    std::uint16_t GetAddressAbsoluteY()
+    {
         std::uint16_t addr = Read16(regPC + 1) + regY;
         return addr;
     }
-    std::uint16_t GetAddressRelative() { return regPC + 1; }
+    std::uint16_t GetAddressRelative()
+    {
+        return regPC + 1;
+    }
     std::uint16_t GetAddressIndirectX() // Add first then fetch
     {
         std::uint8_t offset = ReadMemory(regPC + 1) + regX;
@@ -141,45 +159,51 @@ class CPU {
         std::uint16_t addr = Read16(offset) + regY;
         return addr;
     }
-    std::uint16_t GetAddressZeropage() {
+    std::uint16_t GetAddressZeropage()
+    {
         std::uint8_t addr = ReadMemory(regPC + 1);
         return addr;
     }
 
-    std::uint16_t GetAddressZeropageX() {
+    std::uint16_t GetAddressZeropageX()
+    {
         std::uint8_t addr = ReadMemory(regPC + 1) + regX;
         return addr;
     }
-    std::uint16_t GetAddressZeropageY() {
+    std::uint16_t GetAddressZeropageY()
+    {
         std::uint8_t addr = ReadMemory(regPC + 1) + regY;
         return addr;
     }
 
-    std::uint16_t GetAddress(AddressMode mode) {
+    std::uint16_t GetAddress(AddressMode mode)
+    {
         switch (mode) {
         case AddressMode::Immediate: return GetAddressImmediate();
-        case AddressMode::Absolute: return GetAddressAbsolute();
+        case AddressMode::Absolute:  return GetAddressAbsolute();
         case AddressMode::AbsoluteX: return GetAddressAbsoluteX();
         case AddressMode::AbsoluteY: return GetAddressAbsoluteY();
-        case AddressMode::Relative: return GetAddressRelative();
-        case AddressMode::Zeropage: return GetAddressZeropage();
+        case AddressMode::Relative:  return GetAddressRelative();
+        case AddressMode::Zeropage:  return GetAddressZeropage();
         case AddressMode::ZeropageX: return GetAddressZeropageX();
         case AddressMode::ZeropageY: return GetAddressZeropageY();
         case AddressMode::IndirectX: return GetAddressIndirectX();
         case AddressMode::IndirectY: return GetAddressIndirectY();
-        default: return GetAddressImmediate();
+        default:                     return GetAddressImmediate();
         }
     }
 
     // Write 256 successive bytes to the OAMDMA register.
-    void DmaOam(unsigned bank) {
+    void DmaOam(unsigned bank)
+    {
         for (int i = 0; i < 256; i++)
             WriteMemory(0x2014, ReadMemory(bank * 0x100 + i));
     }
 
-    void WriteMemory(std::size_t index, unsigned value) {
+    void WriteMemory(std::size_t index, unsigned value) 
+    {
         if (index < 0x4000 || index == 0x4016) {
-            prgRAM.Write(index, value);
+            internalMemory.Write(index, value);
         }
         // DMA-OAM Access
         else if (index == 0x4014) {
@@ -191,21 +215,24 @@ class CPU {
         }
     }
 
-    unsigned ReadMemory(std::size_t index) {
+    unsigned ReadMemory(std::size_t index) 
+    {
         if (index < 0x4020) {
-            return prgRAM.Read(index);
+            return internalMemory.Read(index);
         }
         if (index >= 0x4020 && index <= 0xFFFF) {
             return prgROM.Read(index);
         }
         return 0; // Default
-    }
+}
 
-    unsigned Read16(std::size_t index) {
+    unsigned Read16(std::size_t index)
+    {
         return ReadMemory(index) | (ReadMemory(index + 1) << 8);
     }
 
-    void InvokeNMI() {
+    void InvokeNMI()
+    {
         stackPush((regPC >> 8) & 0xFF);
         stackPush(regPC & 0xFF);
         stackPush((regStatus & ~Flag_B) | Flag_Unused);
@@ -214,7 +241,8 @@ class CPU {
         nmi = false;
     }
 
-    void InvokeIRQ() {
+    void InvokeIRQ()
+    {
         if (!regStatus.I) {
             stackPush((regPC >> 8) & 0xFF);
             stackPush(regPC & 0xFF);
@@ -227,159 +255,158 @@ class CPU {
 
     void Decode() // Fetches & decodes an instruction
     {
-        // std::cout << regPC << ": " << ReadMemory(regPC) << '\n';
         switch (ReadMemory(regPC)) {
-        case 0x00: OpBRK(); break;
-        case 0xA0: OpLD(AddressMode::Immediate, regY); break;
-        case 0xA4: OpLD(AddressMode::Zeropage, regY); break;
-        case 0xB4: OpLD(AddressMode::ZeropageX, regY); break;
-        case 0xAC: OpLD(AddressMode::Absolute, regY); break;
-        case 0xBC: OpLD(AddressMode::AbsoluteX, regY); break;
-        case 0xA2: OpLD(AddressMode::Immediate, regX); break;
-        case 0xA6: OpLD(AddressMode::Zeropage, regX); break;
-        case 0xB6: OpLD(AddressMode::ZeropageY, regX); break;
-        case 0xAE: OpLD(AddressMode::Absolute, regX); break;
-        case 0xBE: OpLD(AddressMode::AbsoluteY, regX); break;
-        case 0xEA: OpNOP(); break;
-        case 0x18: OpCLR(Flag_C); break;
-        case 0xD8: OpCLR(Flag_D); break;
-        case 0x58: OpCLR(Flag_I); break;
-        case 0xB8: OpCLR(Flag_V); break;
-        case 0x38: OpSET(Flag_C); break;
-        case 0xF8: OpSET(Flag_D); break;
-        case 0x78: OpSET(Flag_I); break;
-        case 0xA9: OpLD(AddressMode::Immediate, regA); break;
-        case 0xA5: OpLD(AddressMode::Zeropage, regA); break;
-        case 0xB5: OpLD(AddressMode::ZeropageX, regA); break;
-        case 0xAD: OpLD(AddressMode::Absolute, regA); break;
-        case 0xBD: OpLD(AddressMode::AbsoluteX, regA); break;
-        case 0xB9: OpLD(AddressMode::AbsoluteY, regA); break;
-        case 0xA1: OpLD(AddressMode::IndirectX, regA); break;
-        case 0xB1: OpLD(AddressMode::IndirectY, regA); break;
-        case 0x69: OpADC(AddressMode::Immediate); break;
-        case 0x65: OpADC(AddressMode::Zeropage); break;
-        case 0x75: OpADC(AddressMode::ZeropageX); break;
-        case 0x6D: OpADC(AddressMode::Absolute); break;
-        case 0x7D: OpADC(AddressMode::AbsoluteX); break;
-        case 0x79: OpADC(AddressMode::AbsoluteY); break;
-        case 0x61: OpADC(AddressMode::IndirectX); break;
-        case 0x71: OpADC(AddressMode::IndirectY); break;
-        case 0xE9: OpSBC(AddressMode::Immediate); break;
-        case 0xE5: OpSBC(AddressMode::Zeropage); break;
-        case 0xF5: OpSBC(AddressMode::ZeropageX); break;
-        case 0xED: OpSBC(AddressMode::Absolute); break;
-        case 0xFD: OpSBC(AddressMode::AbsoluteX); break;
-        case 0xF9: OpSBC(AddressMode::AbsoluteY); break;
-        case 0xE1: OpSBC(AddressMode::IndirectX); break;
-        case 0xF1: OpSBC(AddressMode::IndirectY); break;
-        case 0x85: OpST(AddressMode::Zeropage, regA); break;
-        case 0x95: OpST(AddressMode::ZeropageX, regA); break;
-        case 0x8D: OpST(AddressMode::Absolute, regA); break;
-        case 0x9D: OpST(AddressMode::AbsoluteX, regA); break;
-        case 0x99: OpST(AddressMode::AbsoluteY, regA); break;
-        case 0x81: OpST(AddressMode::IndirectX, regA); break;
-        case 0x91: OpST(AddressMode::IndirectY, regA); break;
-        case 0x86: OpST(AddressMode::Zeropage, regX); break;
-        case 0x96: OpST(AddressMode::ZeropageY, regX); break;
-        case 0x8E: OpST(AddressMode::Absolute, regX); break;
-        case 0x84: OpST(AddressMode::Zeropage, regY); break;
-        case 0x94: OpST(AddressMode::ZeropageX, regY); break;
-        case 0x8C: OpST(AddressMode::Absolute, regY); break;
-        case 0x4C: OpJMPAbsolute(); break;
-        case 0x6C: OpJMPIndirect(); break;
-        case 0x20: OpJSR(); break;
-        case 0x48: OpPHA(); break;
-        case 0x08: OpPHP(); break;
-        case 0x68: OpPLA(); break;
-        case 0x28: OpPLP(); break;
-        case 0x40: OpRTI(); break;
-        case 0x60: OpRTS(); break;
-        case 0x10: OpBRA(!regStatus.N); break;
-        case 0xF0: OpBRA(regStatus.Z); break;
-        case 0x90: OpBRA(!regStatus.C); break;
-        case 0xB0: OpBRA(regStatus.C); break;
-        case 0x30: OpBRA(regStatus.N); break;
-        case 0xD0: OpBRA(!regStatus.Z); break;
-        case 0x50: OpBRA(!regStatus.V); break;
-        case 0x70: OpBRA(regStatus.V); break;
-        case 0x24: OpBIT(AddressMode::Zeropage); break;
-        case 0x2C: OpBIT(AddressMode::Absolute); break;
-        case 0x88: OpDEY(); break;
-        case 0xCA: OpDEX(); break;
-        case 0xC6: OpDEC(AddressMode::Zeropage); break;
-        case 0xD6: OpDEC(AddressMode::ZeropageX); break;
-        case 0xCE: OpDEC(AddressMode::Absolute); break;
-        case 0xDE: OpDEC(AddressMode::AbsoluteX); break;
-        case 0x8A: OpTXA(); break;
-        case 0xAA: OpTAX(); break;
-        case 0xA8: OpTAY(); break;
-        case 0xBA: OpTSX(); break;
-        case 0x9A: OpTXS(); break;
-        case 0x98: OpTYA(); break;
-        case 0x0A: OpASLImplied(); break;
-        case 0x06: OpASL(AddressMode::Zeropage); break;
-        case 0x16: OpASL(AddressMode::ZeropageX); break;
-        case 0x0E: OpASL(AddressMode::Absolute); break;
-        case 0x1E: OpASL(AddressMode::AbsoluteX); break;
-        case 0x4A: OpLSRImplied(); break;
-        case 0x46: OpLSR(AddressMode::Zeropage); break;
-        case 0x56: OpLSR(AddressMode::ZeropageX); break;
-        case 0x4E: OpLSR(AddressMode::Absolute); break;
-        case 0x5E: OpLSR(AddressMode::AbsoluteX); break;
-        case 0x2A: OpROLImplied(); break;
-        case 0x26: OpROL(AddressMode::Zeropage); break;
-        case 0x36: OpROL(AddressMode::ZeropageX); break;
-        case 0x2E: OpROL(AddressMode::Absolute); break;
-        case 0x3E: OpROL(AddressMode::AbsoluteX); break;
-        case 0x6A: OpRORImplied(); break;
-        case 0x66: OpROR(AddressMode::Zeropage); break;
-        case 0x76: OpROR(AddressMode::ZeropageX); break;
-        case 0x6E: OpROR(AddressMode::Absolute); break;
-        case 0x7E: OpROR(AddressMode::AbsoluteX); break;
-        case 0x29: OpAND(AddressMode::Immediate); break;
-        case 0x25: OpAND(AddressMode::Zeropage); break;
-        case 0x35: OpAND(AddressMode::ZeropageX); break;
-        case 0x2D: OpAND(AddressMode::Absolute); break;
-        case 0x3D: OpAND(AddressMode::AbsoluteX); break;
-        case 0x39: OpAND(AddressMode::AbsoluteY); break;
-        case 0x21: OpAND(AddressMode::IndirectX); break;
-        case 0x31: OpAND(AddressMode::IndirectY); break;
+        case 0x00: OpBRK();                             break;
+        case 0xA0: OpLD(AddressMode::Immediate, regY);  break;
+        case 0xA4: OpLD(AddressMode::Zeropage, regY);   break;
+        case 0xB4: OpLD(AddressMode::ZeropageX, regY);  break;
+        case 0xAC: OpLD(AddressMode::Absolute, regY);   break;
+        case 0xBC: OpLD(AddressMode::AbsoluteX, regY);  break;
+        case 0xA2: OpLD(AddressMode::Immediate, regX);  break;
+        case 0xA6: OpLD(AddressMode::Zeropage, regX);   break;
+        case 0xB6: OpLD(AddressMode::ZeropageY, regX);  break;
+        case 0xAE: OpLD(AddressMode::Absolute, regX);   break;
+        case 0xBE: OpLD(AddressMode::AbsoluteY, regX);  break;
+        case 0xEA: OpNOP();                             break;
+        case 0x18: OpCLR(Flag_C);                       break;
+        case 0xD8: OpCLR(Flag_D);                       break;
+        case 0x58: OpCLR(Flag_I);                       break;
+        case 0xB8: OpCLR(Flag_V);                       break;
+        case 0x38: OpSET(Flag_C);                       break;
+        case 0xF8: OpSET(Flag_D);                       break;
+        case 0x78: OpSET(Flag_I);                       break;
+        case 0xA9: OpLD(AddressMode::Immediate, regA);  break;
+        case 0xA5: OpLD(AddressMode::Zeropage, regA);   break;
+        case 0xB5: OpLD(AddressMode::ZeropageX, regA);  break;
+        case 0xAD: OpLD(AddressMode::Absolute, regA);   break;
+        case 0xBD: OpLD(AddressMode::AbsoluteX, regA);  break;
+        case 0xB9: OpLD(AddressMode::AbsoluteY, regA);  break;
+        case 0xA1: OpLD(AddressMode::IndirectX, regA);  break;
+        case 0xB1: OpLD(AddressMode::IndirectY, regA);  break;
+        case 0x69: OpADC(AddressMode::Immediate);       break;
+        case 0x65: OpADC(AddressMode::Zeropage);        break;
+        case 0x75: OpADC(AddressMode::ZeropageX);       break;
+        case 0x6D: OpADC(AddressMode::Absolute);        break;
+        case 0x7D: OpADC(AddressMode::AbsoluteX);       break;
+        case 0x79: OpADC(AddressMode::AbsoluteY);       break;
+        case 0x61: OpADC(AddressMode::IndirectX);       break;
+        case 0x71: OpADC(AddressMode::IndirectY);       break;
+        case 0xE9: OpSBC(AddressMode::Immediate);       break;
+        case 0xE5: OpSBC(AddressMode::Zeropage);        break;
+        case 0xF5: OpSBC(AddressMode::ZeropageX);       break;
+        case 0xED: OpSBC(AddressMode::Absolute);        break;
+        case 0xFD: OpSBC(AddressMode::AbsoluteX);       break;
+        case 0xF9: OpSBC(AddressMode::AbsoluteY);       break;
+        case 0xE1: OpSBC(AddressMode::IndirectX);       break;
+        case 0xF1: OpSBC(AddressMode::IndirectY);       break;
+        case 0x85: OpST(AddressMode::Zeropage, regA);   break;
+        case 0x95: OpST(AddressMode::ZeropageX, regA);  break;
+        case 0x8D: OpST(AddressMode::Absolute, regA);   break;
+        case 0x9D: OpST(AddressMode::AbsoluteX, regA);  break;
+        case 0x99: OpST(AddressMode::AbsoluteY, regA);  break;
+        case 0x81: OpST(AddressMode::IndirectX, regA);  break;
+        case 0x91: OpST(AddressMode::IndirectY, regA);  break;
+        case 0x86: OpST(AddressMode::Zeropage, regX);   break;
+        case 0x96: OpST(AddressMode::ZeropageY, regX);  break;
+        case 0x8E: OpST(AddressMode::Absolute, regX);   break;
+        case 0x84: OpST(AddressMode::Zeropage, regY);   break;
+        case 0x94: OpST(AddressMode::ZeropageX, regY);  break;
+        case 0x8C: OpST(AddressMode::Absolute, regY);   break;
+        case 0x4C: OpJMPAbsolute();                     break;
+        case 0x6C: OpJMPIndirect();                     break;
+        case 0x20: OpJSR();                             break;
+        case 0x48: OpPHA();                             break;
+        case 0x08: OpPHP();                             break;
+        case 0x68: OpPLA();                             break;
+        case 0x28: OpPLP();                             break;
+        case 0x40: OpRTI();                             break;
+        case 0x60: OpRTS();                             break;
+        case 0x10: OpBRA(!regStatus.N);                 break;
+        case 0xF0: OpBRA(regStatus.Z);                  break;
+        case 0x90: OpBRA(!regStatus.C);                 break;
+        case 0xB0: OpBRA(regStatus.C);                  break;
+        case 0x30: OpBRA(regStatus.N);                  break;
+        case 0xD0: OpBRA(!regStatus.Z);                 break;
+        case 0x50: OpBRA(!regStatus.V);                 break;
+        case 0x70: OpBRA(regStatus.V);                  break;
+        case 0x24: OpBIT(AddressMode::Zeropage);        break;
+        case 0x2C: OpBIT(AddressMode::Absolute);        break;
+        case 0x88: OpDEY();                             break;
+        case 0xCA: OpDEX();                             break;
+        case 0xC6: OpDEC(AddressMode::Zeropage);        break;
+        case 0xD6: OpDEC(AddressMode::ZeropageX);       break;
+        case 0xCE: OpDEC(AddressMode::Absolute);        break;
+        case 0xDE: OpDEC(AddressMode::AbsoluteX);       break;
+        case 0x8A: OpTXA();                             break;
+        case 0xAA: OpTAX();                             break;
+        case 0xA8: OpTAY();                             break;
+        case 0xBA: OpTSX();                             break;
+        case 0x9A: OpTXS();                             break;
+        case 0x98: OpTYA();                             break;
+        case 0x0A: OpASLImplied();                      break;
+        case 0x06: OpASL(AddressMode::Zeropage);        break;
+        case 0x16: OpASL(AddressMode::ZeropageX);       break;
+        case 0x0E: OpASL(AddressMode::Absolute);        break;
+        case 0x1E: OpASL(AddressMode::AbsoluteX);       break;
+        case 0x4A: OpLSRImplied();                      break;
+        case 0x46: OpLSR(AddressMode::Zeropage);        break;
+        case 0x56: OpLSR(AddressMode::ZeropageX);       break;
+        case 0x4E: OpLSR(AddressMode::Absolute);        break;
+        case 0x5E: OpLSR(AddressMode::AbsoluteX);       break;
+        case 0x2A: OpROLImplied();                      break;
+        case 0x26: OpROL(AddressMode::Zeropage);        break;
+        case 0x36: OpROL(AddressMode::ZeropageX);       break;
+        case 0x2E: OpROL(AddressMode::Absolute);        break;
+        case 0x3E: OpROL(AddressMode::AbsoluteX);       break;
+        case 0x6A: OpRORImplied();                      break;
+        case 0x66: OpROR(AddressMode::Zeropage);        break;
+        case 0x76: OpROR(AddressMode::ZeropageX);       break;
+        case 0x6E: OpROR(AddressMode::Absolute);        break;
+        case 0x7E: OpROR(AddressMode::AbsoluteX);       break;
+        case 0x29: OpAND(AddressMode::Immediate);       break;
+        case 0x25: OpAND(AddressMode::Zeropage);        break;
+        case 0x35: OpAND(AddressMode::ZeropageX);       break;
+        case 0x2D: OpAND(AddressMode::Absolute);        break;
+        case 0x3D: OpAND(AddressMode::AbsoluteX);       break;
+        case 0x39: OpAND(AddressMode::AbsoluteY);       break;
+        case 0x21: OpAND(AddressMode::IndirectX);       break;
+        case 0x31: OpAND(AddressMode::IndirectY);       break;
         case 0xC9: OpCMP(AddressMode::Immediate, regA); break;
-        case 0xC5: OpCMP(AddressMode::Zeropage, regA); break;
+        case 0xC5: OpCMP(AddressMode::Zeropage, regA);  break;
         case 0xD5: OpCMP(AddressMode::ZeropageX, regA); break;
-        case 0xCD: OpCMP(AddressMode::Absolute, regA); break;
+        case 0xCD: OpCMP(AddressMode::Absolute, regA);  break;
         case 0xDD: OpCMP(AddressMode::AbsoluteX, regA); break;
         case 0xD9: OpCMP(AddressMode::AbsoluteY, regA); break;
         case 0xC1: OpCMP(AddressMode::IndirectX, regA); break;
         case 0xD1: OpCMP(AddressMode::IndirectY, regA); break;
         case 0xE0: OpCMP(AddressMode::Immediate, regX); break;
-        case 0xE4: OpCMP(AddressMode::Zeropage, regX); break;
-        case 0xEC: OpCMP(AddressMode::Absolute, regX); break;
+        case 0xE4: OpCMP(AddressMode::Zeropage, regX);  break;
+        case 0xEC: OpCMP(AddressMode::Absolute, regX);  break;
         case 0xC0: OpCMP(AddressMode::Immediate, regY); break;
-        case 0xC4: OpCMP(AddressMode::Zeropage, regY); break;
-        case 0xCC: OpCMP(AddressMode::Absolute, regY); break;
-        case 0x09: OpORA(AddressMode::Immediate); break;
-        case 0x05: OpORA(AddressMode::Zeropage); break;
-        case 0x15: OpORA(AddressMode::ZeropageX); break;
-        case 0x0D: OpORA(AddressMode::Absolute); break;
-        case 0x1D: OpORA(AddressMode::AbsoluteX); break;
-        case 0x19: OpORA(AddressMode::AbsoluteY); break;
-        case 0x01: OpORA(AddressMode::IndirectX); break;
-        case 0x11: OpORA(AddressMode::IndirectY); break;
-        case 0x49: OpEOR(AddressMode::Immediate); break;
-        case 0x45: OpEOR(AddressMode::Zeropage); break;
-        case 0x55: OpEOR(AddressMode::ZeropageX); break;
-        case 0x4D: OpEOR(AddressMode::Absolute); break;
-        case 0x5D: OpEOR(AddressMode::AbsoluteX); break;
-        case 0x59: OpEOR(AddressMode::AbsoluteY); break;
-        case 0x41: OpEOR(AddressMode::IndirectX); break;
-        case 0x51: OpEOR(AddressMode::IndirectY); break;
-        case 0xE6: OpINC(AddressMode::Zeropage); break;
-        case 0xF6: OpINC(AddressMode::ZeropageX); break;
-        case 0xEE: OpINC(AddressMode::Absolute); break;
-        case 0xFE: OpINC(AddressMode::AbsoluteX); break;
-        case 0xE8: OpINX(); break;
-        case 0xC8: OpINY(); break;
+        case 0xC4: OpCMP(AddressMode::Zeropage, regY);  break;
+        case 0xCC: OpCMP(AddressMode::Absolute, regY);  break;
+        case 0x09: OpORA(AddressMode::Immediate);       break;
+        case 0x05: OpORA(AddressMode::Zeropage);        break;
+        case 0x15: OpORA(AddressMode::ZeropageX);       break;
+        case 0x0D: OpORA(AddressMode::Absolute);        break;
+        case 0x1D: OpORA(AddressMode::AbsoluteX);       break;
+        case 0x19: OpORA(AddressMode::AbsoluteY);       break;
+        case 0x01: OpORA(AddressMode::IndirectX);       break;
+        case 0x11: OpORA(AddressMode::IndirectY);       break;
+        case 0x49: OpEOR(AddressMode::Immediate);       break;
+        case 0x45: OpEOR(AddressMode::Zeropage);        break;
+        case 0x55: OpEOR(AddressMode::ZeropageX);       break;
+        case 0x4D: OpEOR(AddressMode::Absolute);        break;
+        case 0x5D: OpEOR(AddressMode::AbsoluteX);       break;
+        case 0x59: OpEOR(AddressMode::AbsoluteY);       break;
+        case 0x41: OpEOR(AddressMode::IndirectX);       break;
+        case 0x51: OpEOR(AddressMode::IndirectY);       break;
+        case 0xE6: OpINC(AddressMode::Zeropage);        break;
+        case 0xF6: OpINC(AddressMode::ZeropageX);       break;
+        case 0xEE: OpINC(AddressMode::Absolute);        break;
+        case 0xFE: OpINC(AddressMode::AbsoluteX);       break;
+        case 0xE8: OpINX();                             break;
+        case 0xC8: OpINY();                             break;
         default: // Illegal opcode
             std::cout << "Error: Illegal op-code" << std::endl;
             std::cin.get();
@@ -389,14 +416,17 @@ class CPU {
 
     /// Overflow:
     ///
-    /// The result of a signed addition or subtraction doesn't fit into a signed
-    /// byte. For addition this means that bit 7 is set; the operation
-    /// overflowed into the sign bit. For subtraction this means that bit 7 is
-    /// not set; a carry from the 6th place shifted the sign bit out of its
-    /// place. Note that overflow can't occur if the operands have different
-    /// signs, since it will always be less than the positive one.
+    /// The result of a signed addition or subtraction doesn't fit into a signed byte.
+    /// For addition this means that bit 7 is set; the operation
+    /// overflowed into the sign bit. For subtraction this means
+    /// that bit 7 is not set; a carry from the 6th place shifted
+    /// the sign bit out of its place. Note that overflow can't
+    /// occur if the operands have different signs, since it will
+    /// always be less than the positive one.
 
-    void OpADC(AddressMode mode) {
+        
+    void OpADC(AddressMode mode)
+    {
         auto oper = ReadMemory(GetAddress(mode));
         unsigned result = regA + oper + regStatus.C;
         bool overflow = !((regA ^ oper) & Bit7) && ((regA ^ result) & Bit7);
@@ -408,7 +438,9 @@ class CPU {
         regPC += InstructionSize(mode);
     }
 
-    void OpSBC(AddressMode mode) {
+        
+    void OpSBC(AddressMode mode)
+    {
         auto oper = ReadMemory(GetAddress(mode));
         unsigned result = regA - oper - !regStatus.C;
         bool overflow = ((regA ^ result) & Bit7) && ((regA ^ oper) & Bit7);
@@ -419,8 +451,9 @@ class CPU {
         regA = result & 0xFF;
         regPC += InstructionSize(mode);
     }
-
-    void OpCMP(AddressMode mode, std::uint8_t& reg) {
+        
+    void OpCMP(AddressMode mode, std::uint8_t& reg)
+    {
         auto oper = ReadMemory(GetAddress(mode));
         unsigned result = reg - oper;
         regStatus.Z = reg == oper;
@@ -428,40 +461,43 @@ class CPU {
         regStatus.C = result < Bit8;
         regPC += InstructionSize(mode);
     }
-
-    void OpAND(AddressMode mode) {
+        
+    void OpAND(AddressMode mode)
+    {
         auto oper = ReadMemory(GetAddress(mode));
         regA &= oper;
         SetFlagNegative(regA);
         SetFlagZero(regA);
         regPC += InstructionSize(mode);
     }
-
-    void OpEOR(AddressMode mode) {
+        
+    void OpEOR(AddressMode mode)
+    {
         auto oper = ReadMemory(GetAddress(mode));
         regA ^= oper;
         SetFlagNegative(regA);
         SetFlagZero(regA);
         regPC += InstructionSize(mode);
     }
-
-    /// Read -> Modify -> Write
+        
+    /// Read -> Modify -> Write    
 
     // Rotate Left
-    void OpROL(AddressMode mode) {
+    void OpROL(AddressMode mode)
+    {
         std::uint16_t address = GetAddress(mode);
         unsigned oper = ReadMemory(address);
-        oper <<= 1; // Holds carry in bit 8, Shifts left one bit
-        oper = regStatus.C ? oper | Bit0
-                           : oper & ~Bit0; // Changes bit 0 to whatever carry is
-        regStatus.C = oper & Bit8; // Sets carry flag to whatever bit 8 is
+        oper <<= 1;                                        // Holds carry in bit 8, Shifts left one bit
+        oper = regStatus.C ? oper | Bit0 : oper & ~Bit0;   // Changes bit 0 to whatever carry is
+        regStatus.C = oper & Bit8;                         // Sets carry flag to whatever bit 8 is
         WriteMemory(address, oper & 0xFF);
         SetFlagNegative(oper);
         SetFlagZero(oper);
         regPC += InstructionSize(mode);
     }
 
-    void OpROLImplied() {
+    void OpROLImplied()
+    {
         unsigned temp = regA;
         temp <<= 1;
         temp = regStatus.C ? temp | Bit0 : temp & ~Bit0;
@@ -471,9 +507,10 @@ class CPU {
         SetFlagZero(regA);
         regPC += InstructionSize(AddressMode::Implied);
     }
-
+        
     // Rotate Right
-    void OpROR(AddressMode mode) {
+    void OpROR(AddressMode mode)
+    {
         std::uint16_t address = GetAddress(mode);
         unsigned oper = ReadMemory(address);
         oper = regStatus.C ? oper | Bit8 : oper & ~Bit8;
@@ -485,7 +522,8 @@ class CPU {
         regPC += InstructionSize(mode);
     }
 
-    void OpRORImplied() {
+    void OpRORImplied()
+    {
         unsigned temp = regA;
         temp = regStatus.C ? temp | Bit8 : temp & ~Bit8;
         regStatus.C = temp & Bit0;
@@ -495,9 +533,10 @@ class CPU {
         SetFlagZero(regA);
         regPC += InstructionSize(AddressMode::Implied);
     }
-
+        
     // Arithmetic shift left
-    void OpASL(AddressMode mode) {
+    void OpASL(AddressMode mode)
+    {
         std::uint16_t address = GetAddress(mode);
         std::uint8_t oper = ReadMemory(address);
         regStatus.C = oper & Bit7;
@@ -516,8 +555,9 @@ class CPU {
         SetFlagZero(regA);
         regPC += InstructionSize(AddressMode::Implied);
     }
-
-    void OpLSR(AddressMode mode) {
+        
+    void OpLSR(AddressMode mode)
+    {
         std::uint16_t address = GetAddress(mode);
         std::uint8_t oper = ReadMemory(address);
         regStatus.C = oper & Bit0;
@@ -537,9 +577,10 @@ class CPU {
         regPC += InstructionSize(AddressMode::Implied);
     }
 
-    /// Increase / Decrease Registers
-
-    void OpDEC(AddressMode mode) {
+    /// Increase / Decrease Registers 
+        
+    void OpDEC(AddressMode mode)
+    {
         std::uint16_t address = GetAddress(mode);
         std::uint8_t oper = ReadMemory(address);
         oper--;
@@ -549,7 +590,8 @@ class CPU {
         regPC += InstructionSize(mode);
     }
 
-    void OpINC(AddressMode mode) {
+    void OpINC(AddressMode mode)
+    {
         std::uint16_t address = GetAddress(mode);
         std::uint8_t oper = ReadMemory(address);
         oper++;
@@ -559,26 +601,30 @@ class CPU {
         regPC += InstructionSize(mode);
     }
 
-    void OpDEX() {
+    void OpDEX()
+    {
         regX--;
         SetFlagNegative(regX);
         SetFlagZero(regX);
         regPC++;
     }
-    void OpDEY() {
+    void OpDEY()
+    {
         regY--;
         regStatus.Z = regY == 0;
         regStatus.N = regY & Bit7;
         regPC++;
     }
 
-    void OpINX() {
+    void OpINX()
+    {
         regX++;
         SetFlagNegative(regX);
         SetFlagZero(regX);
         regPC++;
     }
-    void OpINY() {
+    void OpINY()
+    {
         regY++;
         SetFlagNegative(regY);
         SetFlagZero(regY);
@@ -586,137 +632,161 @@ class CPU {
     }
 
     /// Flow control
-    void OpJMPAbsolute() { regPC = Read16(regPC + 1); }
+    void OpJMPAbsolute()
+    {
+        regPC = Read16(regPC + 1);
+    }
 
-    void OpJMPIndirect() {
+    void OpJMPIndirect()
+    {
         std::uint16_t offset = Read16(regPC + 1);
         regPC = Read16(offset);
     }
-    void OpJSR() {
+    void OpJSR()
+    {
         std::uint16_t addr = Read16(regPC + 1);
         regPC += 2;
         stackPush((regPC >> 8) & 0xFF); // Push PC_High
         stackPush(regPC & 0xFF);        // Push PC_Low
         regPC = addr;
     }
-
-    void OpBRA(bool condition) {
+        
+    void OpBRA(bool condition)
+    {
         std::int8_t oper = ReadMemory(GetAddress(AddressMode::Immediate));
-        regPC += condition ? oper + InstructionSize(AddressMode::Immediate)
-                           : InstructionSize(AddressMode::Immediate);
+        regPC += condition ? oper + InstructionSize(AddressMode::Immediate) : InstructionSize(AddressMode::Immediate);
     }
 
-    void OpTXA() {
+    void OpTXA()
+    {
         regA = regX;
         SetFlagNegative(regA);
         SetFlagZero(regA);
         regPC++;
     }
-    void OpTAX() {
+    void OpTAX()
+    {
         regX = regA;
         SetFlagNegative(regX);
         SetFlagZero(regX);
         regPC++;
     }
-    void OpTAY() {
+    void OpTAY()
+    {
         regY = regA;
         SetFlagNegative(regY);
         SetFlagZero(regY);
         regPC++;
     }
-    void OpTSX() {
+    void OpTSX()
+    {
         regX = regSP;
         SetFlagNegative(regX);
         SetFlagZero(regX);
         regPC++;
     }
-    void OpTXS() {
+    void OpTXS()
+    {
         regSP = regX;
         regPC++;
     }
-    void OpTYA() {
+    void OpTYA()
+    {
         regA = regY;
         SetFlagNegative(regA);
         SetFlagZero(regA);
         regPC++;
     }
 
-    void OpLD(AddressMode mode, std::uint8_t& reg) {
+    void OpLD(AddressMode mode, std::uint8_t& reg)
+    {
         reg = ReadMemory(GetAddress(mode));
         SetFlagNegative(reg);
         SetFlagZero(reg);
         regPC += InstructionSize(mode);
     }
 
-    void OpST(AddressMode mode, std::uint8_t& reg) {
+    void OpST(AddressMode mode, std::uint8_t& reg)
+    {
         WriteMemory(GetAddress(mode), reg);
         regPC += InstructionSize(mode);
     }
 
+
     /// Bit Operations
-    void OpORA(AddressMode mode) {
+    void OpORA(AddressMode mode)
+    {
         regA |= ReadMemory(GetAddress(mode));
         SetFlagNegative(regA);
         SetFlagZero(regA);
         regPC += InstructionSize(mode);
     }
-
-    void OpBIT(AddressMode mode) {
+        
+    void OpBIT(AddressMode mode)
+    {
         auto oper = ReadMemory(GetAddress(mode));
         regStatus.N = oper & Bit7;
         regStatus.V = oper & Bit6;
         regStatus.Z = (oper & regA) == 0;
         regPC += InstructionSize(mode);
     }
-    void OpCLR(unsigned flag) {
+    void OpCLR(unsigned flag)
+    {
         regStatus = (unsigned)regStatus & ~flag;
         regPC++;
     }
-    void OpSET(unsigned flag) {
+    void OpSET(unsigned flag)
+    {
         regStatus = (unsigned)regStatus | flag;
         regPC++;
     }
 
     // Stack operations
-    void OpPHA() {
+    void OpPHA()
+    {
         stackPush(regA);
         regPC++;
     }
 
-    void OpPHP() {
+    void OpPHP()
+    {
         stackPush(regStatus | Flag_B | Flag_Unused);
         regPC++;
     }
-
-    void OpPLA() {
+    void OpPLA()
+    {
         regA = stackPop();
         SetFlagNegative(regA);
         SetFlagZero(regA);
         regPC++;
     }
-
-    void OpPLP() {
+    void OpPLP()
+    {
         regStatus = stackPop();
         regPC++;
     }
-
-    void OpRTI() {
+    void OpRTI()
+    {
         regStatus = stackPop();
         unsigned PC_low = stackPop();
         unsigned PC_high = stackPop();
         regPC = (PC_high << 8) | PC_low;
     }
-
-    void OpRTS() {
+    void OpRTS()
+    {
         unsigned PC_low = stackPop();
         unsigned PC_high = stackPop();
         regPC = ((PC_high << 8) | PC_low) + 1;
     }
 
-    void OpNOP() { regPC++; }
-
+    void OpNOP()
+    {
+        regPC++;
+    }
+        
     // Software Interrupt
-    void OpBRK() {
+    void OpBRK()
+    {
         regPC += 2;
         stackPush((regPC >> 8) & 0xFF);
         stackPush(regPC & 0xFF);
@@ -725,13 +795,16 @@ class CPU {
         regPC = Read16(IRQVector);
     }
 
-    void SetFlagNegative(unsigned oper) {
+    void SetFlagNegative(unsigned oper)
+    {
         regStatus.N = oper & Bit7; // If 7th bit is 1, set negative
     }
 
-    void SetFlagZero(unsigned oper) {
-        regStatus.Z = oper == 0; // If register is 0, set zero
+    void SetFlagZero(unsigned oper)
+    {
+        regStatus.Z = oper == 0;   // If register is 0, set zero
     }
+
 };
 
 } // namespace nemu

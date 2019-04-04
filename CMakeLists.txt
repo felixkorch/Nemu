@@ -12,22 +12,17 @@ add_subdirectory(deps/Sgl)
 
 set(Nemu_SOURCE
     src/Main.cpp
-    include/Nemu/Nemu.h
     include/Nemu/Common.h
-    include/Nemu/CPU/CPU.h
-    include/Nemu/PPU/PPU.h
-    include/Nemu/CPU/CPUInterface.h
-    include/Nemu/PPU/PPUInterface.h
-    include/Nemu/MemoryPermission.h
+    include/Nemu/CPU.h
+    include/Nemu/PPU.h
     include/Nemu/NESInput.h
-    include/Nemu/NESMemory.h
     include/Nemu/Stack.h
     include/Nemu/StatusRegister.h
     include/Nemu/System.h
-    include/Nemu/Mapper/InternalNESMapper.h
-    include/Nemu/Mapper/Mapper.h
-    include/Nemu/Mapper/NROM128Mapper.h
-    include/Nemu/Mapper/NROM256Mapper.h
+    include/Nemu/InternalNESMapper.h
+    include/Nemu/NROM128Mapper.h
+    include/Nemu/NROM256Mapper.h
+    include/Nemu/NESInstance.h
 )
 
 add_executable(${PROJECT_NAME} ${Nemu_SOURCE})

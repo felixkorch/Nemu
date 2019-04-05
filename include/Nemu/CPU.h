@@ -9,14 +9,16 @@ namespace nemu {
 
 template <class PRGROMMapper>
 class CPU {
-    InternalNESMapper internalMemory;
+    InternalNESMapper internalMapper;
     PRGROMMapper prgROM;
-    std::uint8_t regX;
-    std::uint8_t regY;
-    std::uint8_t regA;
-    std::uint16_t regPC;
-    std::uint8_t regSP;
+
+    std::uint8_t   regX;
+    std::uint8_t   regY;
+    std::uint8_t   regA;
+    std::uint8_t   regSP;
+    std::uint16_t  regPC;
     StatusRegister regStatus;
+
     bool nmi, irq;
 
     constexpr static unsigned Flag_C      = (1 << 0);
@@ -34,13 +36,13 @@ class CPU {
 
   public:
     CPU(InternalNESMapper&& internalMemory, PRGROMMapper&& prgROM)
-        : internalMemory(std::move(internalMemory))
+        : internalMapper(std::move(internalMemory))
         , prgROM(std::move(prgROM))
         , regX(0)
         , regY(0)
         , regA(0)
-        , regPC(0)
         , regSP(0xFF)
+        , regPC(0)
         , regStatus()
         , nmi(false)
         , irq(false) {}
@@ -111,16 +113,16 @@ class CPU {
         }
     }
 
-    void stackPush(std::uint8_t value) 
+    void StackPush(std::uint8_t value) 
     {
-        internalMemory.Write(0x0100 | regSP, value);
+        internalMapper.Write(0x0100 | regSP, value);
         regSP--;
     }
 
-    std::uint8_t stackPop() 
+    std::uint8_t StackPop() 
     {
         regSP++;
-        auto temp = internalMemory.Read(0x0100 | regSP);
+        auto temp = internalMapper.Read(0x0100 | regSP);
         return temp;
     }
 
@@ -202,8 +204,8 @@ class CPU {
 
     void WriteMemory(std::size_t index, unsigned value) 
     {
-        if (index < 0x4000 || index == 0x4016) {
-            internalMemory.Write(index, value);
+        if (index <= 0x3FFF || index == 0x4016) {
+            internalMapper.Write(index, value);
         }
         // DMA-OAM Access
         else if (index == 0x4014) {
@@ -218,7 +220,7 @@ class CPU {
     unsigned ReadMemory(std::size_t index) 
     {
         if (index < 0x4020) {
-            return internalMemory.Read(index);
+            return internalMapper.Read(index);
         }
         if (index >= 0x4020 && index <= 0xFFFF) {
             return prgROM.Read(index);
@@ -233,9 +235,9 @@ class CPU {
 
     void InvokeNMI()
     {
-        stackPush((regPC >> 8) & 0xFF);
-        stackPush(regPC & 0xFF);
-        stackPush((regStatus & ~Flag_B) | Flag_Unused);
+        StackPush((regPC >> 8) & 0xFF);
+        StackPush(regPC & 0xFF);
+        StackPush((regStatus & ~Flag_B) | Flag_Unused);
         regStatus.I = 1;
         regPC = Read16(NMIVector);
         nmi = false;
@@ -244,9 +246,9 @@ class CPU {
     void InvokeIRQ()
     {
         if (!regStatus.I) {
-            stackPush((regPC >> 8) & 0xFF);
-            stackPush(regPC & 0xFF);
-            stackPush((regStatus & ~Flag_B) | Flag_Unused);
+            StackPush((regPC >> 8) & 0xFF);
+            StackPush(regPC & 0xFF);
+            StackPush((regStatus & ~Flag_B) | Flag_Unused);
             regStatus.I = 1;
             regPC = Read16(IRQVector);
             irq = false;
@@ -646,8 +648,8 @@ class CPU {
     {
         std::uint16_t addr = Read16(regPC + 1);
         regPC += 2;
-        stackPush((regPC >> 8) & 0xFF); // Push PC_High
-        stackPush(regPC & 0xFF);        // Push PC_Low
+        StackPush((regPC >> 8) & 0xFF); // Push PC_High
+        StackPush(regPC & 0xFF);        // Push PC_Low
         regPC = addr;
     }
         
@@ -744,38 +746,38 @@ class CPU {
     // Stack operations
     void OpPHA()
     {
-        stackPush(regA);
+        StackPush(regA);
         regPC++;
     }
 
     void OpPHP()
     {
-        stackPush(regStatus | Flag_B | Flag_Unused);
+        StackPush(regStatus | Flag_B | Flag_Unused);
         regPC++;
     }
     void OpPLA()
     {
-        regA = stackPop();
+        regA = StackPop();
         SetFlagNegative(regA);
         SetFlagZero(regA);
         regPC++;
     }
     void OpPLP()
     {
-        regStatus = stackPop();
+        regStatus = StackPop();
         regPC++;
     }
     void OpRTI()
     {
-        regStatus = stackPop();
-        unsigned PC_low = stackPop();
-        unsigned PC_high = stackPop();
+        regStatus = StackPop();
+        unsigned PC_low = StackPop();
+        unsigned PC_high = StackPop();
         regPC = (PC_high << 8) | PC_low;
     }
     void OpRTS()
     {
-        unsigned PC_low = stackPop();
-        unsigned PC_high = stackPop();
+        unsigned PC_low = StackPop();
+        unsigned PC_high = StackPop();
         regPC = ((PC_high << 8) | PC_low) + 1;
     }
 
@@ -788,9 +790,9 @@ class CPU {
     void OpBRK()
     {
         regPC += 2;
-        stackPush((regPC >> 8) & 0xFF);
-        stackPush(regPC & 0xFF);
-        stackPush(regStatus | Flag_B | Flag_Unused);
+        StackPush((regPC >> 8) & 0xFF);
+        StackPush(regPC & 0xFF);
+        StackPush(regStatus | Flag_B | Flag_Unused);
         regStatus.I = 1;
         regPC = Read16(IRQVector);
     }

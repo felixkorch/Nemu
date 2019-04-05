@@ -25,9 +25,8 @@ namespace nemu
             }
         };
 
-	private:
-		unsigned data;
     public:
+		unsigned data;
         Bit<0> C;
         Bit<1> Z;
         Bit<2> I;
@@ -48,6 +47,30 @@ namespace nemu
                 , V(data)
                 , N(data)
         {}
+
+		constexpr StatusRegister(const StatusRegister& other)
+			: data(other.data)
+			, C(data)
+			, Z(data)
+			, I(data)
+			, D(data)
+			, B(data)
+			, Unused(data)
+			, V(data)
+			, N(data)
+		{}
+
+		constexpr StatusRegister(unsigned value)
+			: data(value)
+			, C(data)
+			, Z(data)
+			, I(data)
+			, D(data)
+			, B(data)
+			, Unused(data)
+			, V(data)
+			, N(data)
+		{}
 
         constexpr operator unsigned() const
         {

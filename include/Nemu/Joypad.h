@@ -6,13 +6,13 @@ namespace nemu
 {
 	class Joypad {
 		NESInput input;
-		std::uint8_t states[2];
+		std::uint8_t shiftReg[2];
 		bool strobe;
 
 	public:
 
 		Joypad() :
-			states{},
+			shiftReg{},
 			strobe(false)
 		{}
 
@@ -21,26 +21,29 @@ namespace nemu
 			input = _input;
 		}
 
+		// TODO: Some games requires 0x40 / 0x41 to be returned
 		std::uint8_t Read(unsigned n)
 		{
-			// When strobe is high, it keeps reading A:
+			// When strobe is high, return the first bit (A)
 			if (strobe)
-				return 0x40 | (input.GetState() & 1);
+				return input.GetState() & 1;
 
-			// Get the status of a button and shift the register:
-			std::uint8_t j = 0x40 | (states[n] & 1);
-			states[n] = 0x80 | (states[n] >> 1);
-			return j;
+			// Get the status of a button
+			std::uint8_t btn = shiftReg[n] & 1;
+			// Read and shift the register to allow the next button to be read
+			// A Nintendo brand controller requires a 1 to be shifted in
+			shiftReg[n] = Bit7 | (shiftReg[n] >> 1);
+			return btn;
 		}
 
-		void Write(bool v)
+		void Write(bool value)
 		{
-			// Read the joypad data on strobe's transition 1 -> 0.
-			if (strobe && !v)
+			// 1 -> 0 write is required to read the states
+			if (strobe && !value)
 				for (int i = 0; i < 2; i++)
-					states[i] = input.GetState();
+					shiftReg[i] = input.GetState();
 
-			strobe = v;
+			strobe = value;
 		}
 	};
 }

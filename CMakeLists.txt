@@ -16,7 +16,6 @@ set(Nemu_SOURCE
     include/Nemu/CPU.h
     include/Nemu/PPU.h
     include/Nemu/NESInput.h
-    include/Nemu/Stack.h
     include/Nemu/StatusRegister.h
     include/Nemu/System.h
     include/Nemu/InternalNESMapper.h

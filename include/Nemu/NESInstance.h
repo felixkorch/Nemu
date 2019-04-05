@@ -7,6 +7,7 @@
 #include "Nemu/CPU.h"
 #include "Nemu/InternalNESMapper.h"
 #include "Nemu/NROM128Mapper.h"
+#include "Nemu/NROM256Mapper.h"
 #include "Nemu/PPU.h"
 #include "Nemu/System.h"
 #include <vector>
@@ -16,23 +17,23 @@
 namespace nemu {
 
 class NESInstance {
-    std::shared_ptr<CPU<NROM128Mapper>> cpu;
+    std::shared_ptr<CPU<NROM256Mapper>> cpu;
     std::shared_ptr<PPU> ppu;
 
-   public:
-    NESInstance(std::shared_ptr<CPU<NROM128Mapper>> cpu,
-                std::shared_ptr<PPU> ppu)
-        : cpu(cpu), ppu(ppu) {
-        ppu->setNMI = [this]() {
-            // std::cout << "will set NMI\n";
-            this->cpu->SetNMI();
-        };
+public:
+    NESInstance(std::shared_ptr<CPU<NROM256Mapper>> cpu, std::shared_ptr<PPU> ppu)
+        : cpu(cpu)
+		, ppu(ppu)
+	{
+		ppu->setNMI = [this]() { this->cpu->SetNMI(); };
     }
 
     NESInstance(NESInstance&& other)
-        : NESInstance(std::move(other.cpu), other.ppu) {}
+        : NESInstance(std::move(other.cpu), other.ppu)
+	{}
 
-    void RunFrame() {
+    void RunFrame()
+	{
         for (int i = 0; i < 29781; i++) {
             cpu->Execute();
             ppu->Step();
@@ -41,12 +42,14 @@ class NESInstance {
         }
     }
 
-    void Power() { cpu->Reset(); }
+    void Power()
+	{
+		cpu->Reset();
+	}
 };
 
-NESInstance
-MakeNESInstance(const std::string& path, NESInput& input,
-                std::function<void(std::uint8_t* pixels)> newFrameCallback) {
+NESInstance MakeNESInstance(const std::string& path, NESInput& input, std::function<void(std::uint8_t* pixels)> newFrameCallback)
+{
     // Read file.
     auto file = ReadFile<std::vector<std::uint8_t>>(path);
     std::cout << "File size: " << file.size() << " B" << std::endl;
@@ -69,9 +72,8 @@ MakeNESInstance(const std::string& path, NESInput& input,
 
     // Upper nybble of flag 7 and 6 represents the mapper version
     int version = (rom[7] & 0xF0) | (rom[6] >> 4);
-    ppu::MirroringMode mirroringMode = rom[6] & 1
-                                           ? ppu::MirroringMode::Vertical
-                                           : ppu::MirroringMode::Horizontal;
+    ppu::MirroringMode mirroringMode = rom[6] & 1 ? ppu::MirroringMode::Vertical : ppu::MirroringMode::Horizontal;
+
     // TODO:
     // SetMirroring(mirroringMode);
 
@@ -91,10 +93,9 @@ MakeNESInstance(const std::string& path, NESInput& input,
     std::shared_ptr<PPU> ppu(new PPU(std::move(chrROM), newFrameCallback));
     ppu->SetMirroring(mirroringMode);
 
-    InternalNESMapper prgRAM(ppu);
-    prgRAM.joypad.AddInputConfig(input);
-    std::shared_ptr<CPU<NROM128Mapper>> cpu(new CPU<NROM128Mapper>(
-        std::move(prgRAM), NROM128Mapper(prgROM.cbegin(), prgROM.cend())));
+    InternalNESMapper internalMapper(ppu);
+	internalMapper.joypad.AddInputConfig(input);
+    std::shared_ptr<CPU<NROM256Mapper>> cpu(new CPU<NROM256Mapper>(std::move(internalMapper), NROM256Mapper(prgROM.cbegin(), prgROM.cend())));
 
     return NESInstance(cpu, ppu);
 }

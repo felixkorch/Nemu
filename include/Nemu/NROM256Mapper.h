@@ -31,7 +31,7 @@ class NROM256Mapper {
     std::uint8_t Read(std::size_t address) {
         if (address < 0x8000)
             return 0;
-        return static_cast<std::uint8_t>(data[address & 0x8000]);
+        return static_cast<std::uint8_t>(data[address % 0x8000]);
     }
 
     void Write(std::size_t address, std::uint8_t value) {

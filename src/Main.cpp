@@ -12,53 +12,52 @@ using namespace nemu;
 #define TexHeight 240
 
 class MainLayer : public Layer {
-   private:
+
     static constexpr float aspectRatio = (float)TexWidth / (float)TexHeight;
     std::unique_ptr<Renderer2D> renderer;
     Renderable2D frame;
     Texture2D frameTexture;
 
-    // Nemu nemu;
     std::unique_ptr<NESInstance> nesInstance;
+    std::unique_ptr<NESInstance> state;
     NESInput nesInput;
     bool running;
 
    public:
     MainLayer()
-        : Layer("MainLayer"),
-          renderer(Renderer2D::Create(Width, Height)),
-          frame(),
-          frameTexture(TexWidth, TexHeight),
-          nesInput(),
-          running(false) {
+        : Layer("MainLayer")
+		, renderer(Renderer2D::Create(Width, Height))
+		, frame()
+		, frameTexture(TexWidth, TexHeight)
+		, nesInput()
+		, running(false)
+	{
         const float scaledWidth = (float)Height * aspectRatio;
         const float xPosition = Width / 2 - scaledWidth / 2;
 
-        frame = Renderable2D(glm::vec2(scaledWidth, Height),
-                             glm::vec2(xPosition, 0));
-        frame.uv = {glm::vec2(0, 1), glm::vec2(1, 1), glm::vec2(1, 0),
-                    glm::vec2(0, 0)};
+        frame = Renderable2D(glm::vec2(scaledWidth, Height), glm::vec2(xPosition, 0));
+        frame.uv = { glm::vec2(0, 1), glm::vec2(1, 1), glm::vec2(1, 0), glm::vec2(0, 0) };
 
         // Input - Key Mapping
         NESKeyMapper keyMapper;
-        keyMapper.Map(NESButton::Start, SGL_KEY_ENTER);
+        keyMapper.Map(NESButton::Start,  SGL_KEY_ENTER);
         keyMapper.Map(NESButton::Select, SGL_KEY_BACKSPACE);
-        keyMapper.Map(NESButton::A, SGL_KEY_X);
-        keyMapper.Map(NESButton::B, SGL_KEY_Z);
-        keyMapper.Map(NESButton::Left, SGL_KEY_LEFT);
-        keyMapper.Map(NESButton::Right, SGL_KEY_RIGHT);
-        keyMapper.Map(NESButton::Up, SGL_KEY_UP);
-        keyMapper.Map(NESButton::Down, SGL_KEY_DOWN);
+        keyMapper.Map(NESButton::A,      SGL_KEY_X);
+        keyMapper.Map(NESButton::B,      SGL_KEY_Z);
+        keyMapper.Map(NESButton::Left,   SGL_KEY_LEFT);
+        keyMapper.Map(NESButton::Right,  SGL_KEY_RIGHT);
+        keyMapper.Map(NESButton::Up,     SGL_KEY_UP);
+        keyMapper.Map(NESButton::Down,   SGL_KEY_DOWN);
         nesInput.AddKeyboardConfig(keyMapper);
 
         // Input - Joystick Mapping
-        AxisConfig left{0, AxisConfig::Value::Negative};
+        AxisConfig left {0, AxisConfig::Value::Negative};
         AxisConfig right{0, AxisConfig::Value::Positive};
-        AxisConfig up{1, AxisConfig::Value::Negative};
-        AxisConfig down{1, AxisConfig::Value::Positive};
+        AxisConfig up   {1, AxisConfig::Value::Negative};
+        AxisConfig down {1, AxisConfig::Value::Positive};
 
         NESJoystickMapper joystickMapper;
-        joystickMapper.MapKey(NESButton::A, 0);
+        joystickMapper.MapKey (NESButton::A, 0);
         joystickMapper.MapAxis(NESButton::Left, left);
         joystickMapper.MapAxis(NESButton::Right, right);
         joystickMapper.MapAxis(NESButton::Up, up);
@@ -66,14 +65,17 @@ class MainLayer : public Layer {
         nesInput.AddJoystickConfig(joystickMapper);
     }
 
-    ~MainLayer() override {}
+    ~MainLayer() override
+	{}
 
     // Callback from the PPU
-    void OnNewFrame(std::uint8_t* pixels) {
+    void OnNewFrame(std::uint8_t* pixels)
+	{
         frameTexture.SetData(pixels);
     }
 
-    void OnUpdate() override {
+    void OnUpdate() override
+	{
         // Update
         if (running)
             nesInstance->RunFrame();
@@ -86,7 +88,8 @@ class MainLayer : public Layer {
         renderer->Flush();
     }
 
-    void OnEvent(Event& event) override {
+    void OnEvent(Event& event) override
+	{
         // Handling Rom-Loading
         if (event.GetEventType() == EventType::DropEvent) {
             auto& e = (DropEvent&)event;
@@ -98,19 +101,10 @@ class MainLayer : public Layer {
 
             running = true;
 
-            /*
-nemu = Nemu();
-nemu.AddJoypad(joypad);
-nemu.CreateCPU<CPU>();
-nemu.CreatePPU<PPU>(
-    std::bind(&MainLayer::OnNewFrame, this, std::placeholders::_1));
-nemu.LoadROM(paths[0]);
-nemu.Power();
-            */
-            nesInstance = std::unique_ptr<NESInstance>(new NESInstance(
-                MakeNESInstance(paths[0], nesInput,
-                                std::bind(&MainLayer::OnNewFrame, this,
-                                          std::placeholders::_1))));
+            nesInstance = std::unique_ptr<NESInstance>(new NESInstance(MakeNESInstance(
+				paths[0],
+				nesInput,
+				std::bind(&MainLayer::OnNewFrame, this, std::placeholders::_1))));
             nesInstance->Power();
         }
         // Window Resized
@@ -128,6 +122,10 @@ nemu.Power();
             // Set size of camera
             renderer->SetScreenSize(e.GetWidth(), e.GetHeight());
         }
+		else if (event.GetEventType() == EventType::KeyPressed) {
+			auto& e = (KeyPressedEvent&)event;
+			// TODO: Load / Save State
+		}
     }
 };
 
@@ -138,9 +136,11 @@ const WindowProperties props{
     "Nemu - NES Emulator"  // Title
 };
 
-class NESApp : public Application {
-   public:
-    NESApp() : Application(props) {
+class NESApp : public sgl::Application {
+public:
+	NESApp()
+		: sgl::Application(props)
+	{
         window->SetFPS(50);
         window->SetVSync(true);
         PushLayer(new MainLayer);

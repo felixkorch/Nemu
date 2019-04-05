@@ -48,22 +48,21 @@ class PPU {
 
     unsigned MirroredAddress(unsigned addr) {
         switch (mirroring) {
-        case ppu::MirroringMode::Vertical: return addr % 0x800;
-        case ppu::MirroringMode::Horizontal:
-            return ((addr / 2) & 0x400) + (addr % 0x400);
+        case ppu::MirroringMode::Vertical:   return addr % 0x800;
+        case ppu::MirroringMode::Horizontal: return ((addr / 2) & 0x400) + (addr % 0x400);
         default: return addr - 0x2000;
         }
     }
 
     union Ctrl {
         struct {
-            unsigned nameTable : 2; // Nametable ($2000 / $2400 / $2800 / $2C00)
-            unsigned increment : 1; // Address increment (1 / 32)
-            unsigned spriteTable : 1; // Sprite pattern table ($0000 / $1000)
+            unsigned nameTable       : 2; // Nametable ($2000 / $2400 / $2800 / $2C00)
+            unsigned increment       : 1; // Address increment (1 / 32)
+            unsigned spriteTable     : 1; // Sprite pattern table ($0000 / $1000)
             unsigned backgroundTable : 1; // BG pattern table ($0000 / $1000)
-            unsigned spriteSize : 1;      // Sprite size (8x8 / 8x16)
-            unsigned slave : 1;           // PPU master / slave
-            unsigned nmiEnable : 1;       // Enable NMI
+            unsigned spriteSize      : 1; // Sprite size (8x8 / 8x16)
+            unsigned slave           : 1; // PPU master / slave
+            unsigned nmiEnable       : 1; // Enable NMI
         };
         std::uint8_t reg;
     };
@@ -71,10 +70,10 @@ class PPU {
     // PPUSTATUS Register
     union Status {
         struct {
-            unsigned bus : 5;
+            unsigned bus       : 5;
             unsigned spriteOvf : 1; // Sprite overflow
             unsigned spriteHit : 1; // Sprite 0 Hit
-            unsigned vBlank : 1;    // In VBlank
+            unsigned vBlank    : 1; // In VBlank
         };
         std::uint8_t reg;
     };
@@ -82,14 +81,14 @@ class PPU {
     // PPUMASK Register
     union Mask {
         struct {
-            unsigned gray : 1;    // Grayscale
-            unsigned bgLeft : 1;  // Show background in leftmost 8 pixels
+            unsigned gray    : 1; // Grayscale
+            unsigned bgLeft  : 1; // Show background in leftmost 8 pixels
             unsigned sprLeft : 1; // Show sprite in leftmost 8 pixels
-            unsigned bg : 1;      // Show background
-            unsigned spr : 1;     // Show sprites
-            unsigned red : 1;     // Emphasize red
-            unsigned green : 1;   // Emphasize green
-            unsigned blue : 1;    // Emphasize blue
+            unsigned bg      : 1; // Show background
+            unsigned spr     : 1; // Show sprites
+            unsigned red     : 1; // Emphasize red
+            unsigned green   : 1; // Emphasize green
+            unsigned blue    : 1; // Emphasize blue
         };
         std::uint8_t reg;
     };
@@ -97,17 +96,17 @@ class PPU {
     // PPUADDR Register
     union Addr {
         struct {
-            unsigned coarseX : 5;   // Coarse X.
-            unsigned coarseY : 5;   // Coarse Y.
+            unsigned coarseX   : 5; // Coarse X.
+            unsigned coarseY   : 5; // Coarse Y.
             unsigned nametable : 2; // Nametable.
-            unsigned fineY : 3;     // Fine Y.
+            unsigned fineY     : 3; // Fine Y.
         };
         struct {
-            unsigned low : 8;
+            unsigned low  : 8;
             unsigned high : 7;
         };
         unsigned addr : 14;
-        unsigned reg : 15;
+        unsigned reg  : 15;
     };
 
     struct Sprite {
@@ -144,8 +143,8 @@ class PPU {
 
     // Background shift registers
     std::uint16_t bgShiftLow, bgShiftHigh;
-    std::uint8_t atShiftLow, atShiftHigh;
-    std::uint8_t nametable, attributes, bgLow, bgHigh;
+    std::uint8_t  atShiftLow, atShiftHigh;
+    std::uint8_t  nametable, attributes, bgLow, bgHigh;
     bool atLatchLow, atLatchHigh;
 
     // OAM Memory (Sprite data)
@@ -169,34 +168,36 @@ class PPU {
    public:
     std::function<void()> setNMI;
 
-    PPU(std::vector<unsigned>&& chrROM,
-        std::function<void(std::uint8_t* pixels)> newFrameCallback)
-        : chrROM(std::move(chrROM)), setNMI(emptySetNMI),
-          HandleNewFrame(newFrameCallback) {
-        Reset();
+    PPU(std::vector<unsigned>&& chrROM, std::function<void(std::uint8_t* pixels)> newFrameCallback)
+        : chrROM(std::move(chrROM))
+		, setNMI(emptySetNMI)
+		, HandleNewFrame(newFrameCallback)
+	{
+		Reset();
     }
 
     ~PPU() {}
 
     void Reset() {
-        pixels = std::vector<std::uint8_t>(256 * 240 * 4);
-        ctrl = {};
-        mask = {};
-        vAddr = tAddr = {};
-        access = {};
+        pixels  = std::vector<std::uint8_t>(256 * 240 * 4);
+        ctrl    = {};
+        mask    = {};
+		vAddr   = {};
+		tAddr   = {};
+        access  = {};
         oamAddr = fineX = scanline = dot = 0;
-        bgShiftLow = bgShiftHigh = atShiftLow = atLatchHigh = nametable =
-            attributes = bgLow = bgHigh = 0;
+        bgShiftLow = bgShiftHigh = atShiftLow = atLatchHigh = nametable = attributes = bgLow = bgHigh = 0;
         frameOdd = atLatchLow = atLatchHigh = false;
-        memset(oam, 0, sizeof(oam));
-        memset(oamMem, 0, sizeof(oamMem));
+        memset(oam,          0, sizeof(oam));
+        memset(oamMem,       0, sizeof(oamMem));
         memset(secondaryOam, 0, sizeof(secondaryOam));
-        memset(ciRam, 0, sizeof(ciRam));
-        memset(cgRam, 0, sizeof(cgRam));
+        memset(ciRam,        0, sizeof(ciRam));
+        memset(cgRam,        0, sizeof(cgRam));
     }
 
     /// Address: $2002
-    std::uint8_t ReadPPUSTATUS() {
+    std::uint8_t ReadPPUSTATUS()
+	{
         access.result = (access.result & 0x1F) | status.reg;
         status.vBlank = 0;
         access.latch = false;
@@ -204,13 +205,15 @@ class PPU {
     }
 
     /// Address: $2004
-    std::uint8_t ReadOAMDATA() {
+    std::uint8_t ReadOAMDATA()
+	{
         access.result = oamMem[oamAddr];
         return access.result;
     }
 
     /// Address: $2007
-    std::uint8_t ReadPPUDATA() {
+    std::uint8_t ReadPPUDATA()
+	{
         if (vAddr.addr <= 0x3EFF) {
             access.result = access.buffer;
             access.buffer = Read(vAddr.addr);
@@ -222,7 +225,8 @@ class PPU {
     }
 
     /// Address: $2000
-    void WritePPUCTRL(std::uint8_t value) {
+    void WritePPUCTRL(std::uint8_t value)
+	{
         access.result = value;
 
         ctrl.reg = value;
@@ -230,25 +234,29 @@ class PPU {
     }
 
     /// Address: $2001
-    void WritePPUMASK(std::uint8_t value) {
+    void WritePPUMASK(std::uint8_t value)
+	{
         access.result = value;
         mask.reg = value;
     }
 
     /// Address: $2003
-    void WriteOAMADDR(std::uint8_t value) {
+    void WriteOAMADDR(std::uint8_t value)
+	{
         access.result = value;
         oamAddr = value;
     }
 
     /// Address: $2004
-    void WriteOAMDATA(std::uint8_t value) {
+    void WriteOAMDATA(std::uint8_t value)
+	{
         access.result = value;
         oamMem[oamAddr++] = value;
     }
 
     /// Address: $2005
-    void WritePPUSCROLL(std::uint8_t value) {
+    void WritePPUSCROLL(std::uint8_t value)
+	{
         access.result = value;
         // First write
         if (!access.latch) {
@@ -264,7 +272,8 @@ class PPU {
     }
 
     /// Address: $2006
-    void WritePPUADDR(std::uint8_t value) {
+    void WritePPUADDR(std::uint8_t value)
+	{
         access.result = value;
         // First write
         if (!access.latch) {
@@ -279,14 +288,16 @@ class PPU {
     }
 
     /// Address: $2007
-    void WritePPUDATA(std::uint8_t value) {
+    void WritePPUDATA(std::uint8_t value)
+	{
         access.result = value;
 
         Write(vAddr.addr, value);
         vAddr.addr += ctrl.increment ? 32 : 1;
     }
 
-    void Write(std::size_t address, std::uint8_t value) {
+    void Write(std::size_t address, std::uint8_t value)
+	{
         if (address <= 0x1FFF) { // CHR-ROM/RAM.
             chrROM[address % chrROM.size()] = value;
             return;
@@ -303,7 +314,8 @@ class PPU {
         }
     }
 
-    std::uint8_t Read(std::size_t address) {
+    std::uint8_t Read(std::size_t address)
+	{
         if (address <= 0x1FFF) { // CHR-ROM/RAM.
             return chrROM[address % chrROM.size()];
         }
@@ -318,7 +330,8 @@ class PPU {
         return 0; // Out of bounds.
     }
 
-    void Step() {
+    void Step()
+	{
         if (scanline >= 0 && scanline <= 239) {
             Scanline(ScanlinePhase::VISIBLE);
         } else if (scanline == 240) {
@@ -391,14 +404,16 @@ class PPU {
         }
     }
 
-    void ShiftBackground() {
+    void ShiftBackground()
+	{
         bgShiftLow = (bgShiftLow & 0xFF00) | bgLow;
         bgShiftHigh = (bgShiftHigh & 0xFF00) | bgHigh;
         atLatchLow = (attributes & 1);
         atLatchHigh = (attributes & 2);
     }
 
-    void ClearOAM() {
+    void ClearOAM()
+	{
         for (int i = 0; i < 8; i++) {
             secondaryOam[i].id = 64;
             secondaryOam[i].y = 0xFF;
@@ -410,7 +425,8 @@ class PPU {
         }
     }
 
-    void EvalSprites() {
+    void EvalSprites()
+	{
         // Dummy scanline
         if (scanline == 261)
             return;
@@ -437,7 +453,8 @@ class PPU {
         }
     }
 
-    void LoadSprites() {
+    void LoadSprites()
+	{
         unsigned addr;
         for (unsigned i = 0; i < 8; i++) {
             oam[i] = secondaryOam[i];
@@ -475,7 +492,8 @@ class PPU {
     }
 
     // Evaluates which pixel should be drawn
-    void Pixel() {
+    void Pixel()
+	{
         std::uint8_t palette = 0, objPalette = 0;
         bool objPriority = false;
         int x = dot - 2;
@@ -543,7 +561,8 @@ class PPU {
 
     enum class ScanlinePhase { PRE, VISIBLE, POST, NMI };
 
-    void Scanline(ScanlinePhase phase) {
+    void Scanline(ScanlinePhase phase)
+	{
         static std::uint16_t addr;
 
         if (phase == ScanlinePhase::NMI && dot == 1) {

@@ -42,6 +42,7 @@ public:
     void Power()
 	{
 		cpu->Reset();
+		ppu->Reset();
 	}
 
 	void Tick()

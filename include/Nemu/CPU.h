@@ -59,7 +59,7 @@ class CPU {
 		Tick(); Tick(); Tick(); Tick();
 		remainingCycles = 0;
 		nmi = irq = false;
-		regStatus = {};
+		regStatus.data = 0x04;
 		regSP = 0xFF;
 		regX  = regY = regA = regPC = 0;
 		regPC = Read16(ResetVector);

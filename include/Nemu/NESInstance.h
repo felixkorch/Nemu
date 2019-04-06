@@ -26,7 +26,8 @@ public:
         : cpu(cpu)
 		, ppu(ppu)
 	{
-		ppu->setNMI = [this]() { this->cpu->SetNMI(); };
+		ppu->setNMI  = [this]() { this->cpu->SetNMI(); };
+		cpu->Tick    = [this]() { this->Tick(); };
     }
 
     NESInstance(NESInstance&& other)
@@ -35,24 +36,25 @@ public:
 
     void RunFrame()
 	{
-        for (int i = 0; i < 29781; i++) {
-            cpu->Execute();
-            ppu->Step();
-            ppu->Step();
-            ppu->Step();
-        }
+		cpu->RunFrame();
     }
 
     void Power()
 	{
 		cpu->Reset();
 	}
+
+	void Tick()
+	{
+		ppu->Step();
+		ppu->Step();
+		ppu->Step();
+		cpu->DecrementCycles();
+	}
 };
 
 NESInstance MakeNESInstance(const std::string& path, NESInput& input, std::function<void(std::uint8_t* pixels)> newFrameCallback)
 {
-	using It = std::vector<unsigned>::iterator;
-
     // Read file.
     auto file = ReadFile<std::vector<std::uint8_t>>(path);
     std::cout << "File size: " << file.size() << " B" << std::endl;

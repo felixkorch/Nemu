@@ -142,7 +142,7 @@ public:
 		: sgl::Application(props)
 	{
         window->SetFPS(50);
-        window->SetVSync(true);
+        window->SetVSync(false);
         PushLayer(new MainLayer);
     }
 

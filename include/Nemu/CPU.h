@@ -21,6 +21,8 @@ class CPU {
 
     bool nmi, irq;
 
+	int remainingCycles;
+
     constexpr static unsigned Flag_C      = (1 << 0);
     constexpr static unsigned Flag_Z      = (1 << 1);
     constexpr static unsigned Flag_I      = (1 << 2);
@@ -45,12 +47,22 @@ class CPU {
         , regPC(0)
         , regStatus()
         , nmi(false)
-        , irq(false) {}
+        , irq(false)
+		, remainingCycles(0)
+	{}
 
+	std::function<void()> Tick;
 
     void Reset()
     {
-        regPC = Read16(ResetVector);  // Load PC with the reset vector.
+		regSP -= 3;
+		Tick(); Tick(); Tick(); Tick();
+		remainingCycles = 0;
+		nmi = irq = false;
+		regStatus = {};
+		regSP = 0xFF;
+		regX  = regY = regA = regPC = 0;
+		regPC = Read16(ResetVector);
     }
 
     void SetNMI()
@@ -63,12 +75,23 @@ class CPU {
         irq = true;
     }
 
-    void Execute()
-    {
-        if      (nmi) InvokeNMI();
-        else if (irq) InvokeIRQ();
-        Decode();
-    }
+	void RunFrame()
+	{
+		remainingCycles += 29781;
+
+		while (remainingCycles > 0) {
+			if (nmi)
+				InvokeNMI();
+			else if (irq && !regStatus.I)
+				InvokeIRQ();
+			Decode();
+		}
+	}
+
+	void DecrementCycles()
+	{
+		remainingCycles--;
+	}
 
   private:
 
@@ -126,6 +149,11 @@ class CPU {
         return temp;
     }
 
+	bool HasCrossedPage(std::uint16_t a, std::uint8_t b)
+	{
+		return ((a + b) & 0xFF00) != ((a & 0xFF00));
+	}
+
     std::uint16_t GetAddressImmediate()
     {
         return regPC + 1;
@@ -137,12 +165,15 @@ class CPU {
     }
     std::uint16_t GetAddressAbsoluteX()
     {
+		Tick();
         std::uint16_t addr = Read16(regPC + 1) + regX;
+		if (HasCrossedPage(addr, regX)) Tick();
         return addr;
     }
     std::uint16_t GetAddressAbsoluteY()
     {
         std::uint16_t addr = Read16(regPC + 1) + regY;
+		if (HasCrossedPage(addr, regY)) Tick();
         return addr;
     }
     std::uint16_t GetAddressRelative()
@@ -159,6 +190,7 @@ class CPU {
     {
         std::uint8_t offset = ReadMemory(regPC + 1);
         std::uint16_t addr = Read16(offset) + regY;
+		if (HasCrossedPage(addr - regY, regY)) Tick();
         return addr;
     }
     std::uint16_t GetAddressZeropage()
@@ -169,11 +201,13 @@ class CPU {
 
     std::uint16_t GetAddressZeropageX()
     {
+		Tick();
         std::uint8_t addr = ReadMemory(regPC + 1) + regX;
         return addr;
     }
     std::uint16_t GetAddressZeropageY()
     {
+		Tick();
         std::uint8_t addr = ReadMemory(regPC + 1) + regY;
         return addr;
     }
@@ -204,6 +238,7 @@ class CPU {
 
     void WriteMemory(std::size_t index, unsigned value) 
     {
+		Tick();
         if (index <= 0x3FFF || index == 0x4016) {
             internalMapper.Write(index, value);
         }
@@ -217,6 +252,7 @@ class CPU {
 
     unsigned ReadMemory(std::size_t index) 
     {
+		Tick();
         if (index < 0x4020) {
             return internalMapper.Read(index);
         }
@@ -233,6 +269,7 @@ class CPU {
 
     void InvokeNMI()
     {
+		Tick(); Tick();
         StackPush((regPC >> 8) & 0xFF);
         StackPush(regPC & 0xFF);
         StackPush((regStatus & ~Flag_B) | Flag_Unused);
@@ -243,14 +280,13 @@ class CPU {
 
     void InvokeIRQ()
     {
-        if (!regStatus.I) {
-            StackPush((regPC >> 8) & 0xFF);
-            StackPush(regPC & 0xFF);
-            StackPush((regStatus & ~Flag_B) | Flag_Unused);
-            regStatus.I = 1;
-            regPC = Read16(IRQVector);
-            irq = false;
-        }
+		Tick(); Tick();
+		StackPush((regPC >> 8) & 0xFF);
+		StackPush(regPC & 0xFF);
+		StackPush((regStatus & ~Flag_B) | Flag_Unused);
+		regStatus.I = 1;
+		regPC = Read16(IRQVector);
+		irq = false;
     }
 
     void Decode() // Fetches & decodes an instruction
@@ -466,8 +502,8 @@ class CPU {
     {
         auto oper = ReadMemory(GetAddress(mode));
         regA &= oper;
-        SetFlagNegative(regA);
-        SetFlagZero(regA);
+        UpdateFlagN(regA);
+        UpdateFlagZ(regA);
         regPC += InstructionSize(mode);
     }
         
@@ -475,8 +511,8 @@ class CPU {
     {
         auto oper = ReadMemory(GetAddress(mode));
         regA ^= oper;
-        SetFlagNegative(regA);
-        SetFlagZero(regA);
+        UpdateFlagN(regA);
+        UpdateFlagZ(regA);
         regPC += InstructionSize(mode);
     }
         
@@ -487,12 +523,14 @@ class CPU {
     {
         std::uint16_t address = GetAddress(mode);
         unsigned oper = ReadMemory(address);
+		Tick();
+
         oper <<= 1;                                        // Holds carry in bit 8, Shifts left one bit
         oper = regStatus.C ? oper | Bit0 : oper & ~Bit0;   // Changes bit 0 to whatever carry is
         regStatus.C = oper & Bit8;                         // Sets carry flag to whatever bit 8 is
         WriteMemory(address, oper & 0xFF);
-        SetFlagNegative(oper);
-        SetFlagZero(oper);
+        UpdateFlagN(oper);
+        UpdateFlagZ(oper);
         regPC += InstructionSize(mode);
     }
 
@@ -503,9 +541,10 @@ class CPU {
         temp = regStatus.C ? temp | Bit0 : temp & ~Bit0;
         regStatus.C = temp & Bit8;
         regA = temp & 0xFF;
-        SetFlagNegative(regA);
-        SetFlagZero(regA);
+        UpdateFlagN(regA);
+        UpdateFlagZ(regA);
         regPC += InstructionSize(AddressMode::Implied);
+		Tick();
     }
         
     // Rotate Right
@@ -513,12 +552,14 @@ class CPU {
     {
         std::uint16_t address = GetAddress(mode);
         unsigned oper = ReadMemory(address);
+		Tick();
+
         oper = regStatus.C ? oper | Bit8 : oper & ~Bit8;
         regStatus.C = oper & Bit0;
         oper >>= 1;
         WriteMemory(address, oper & 0xFF);
-        SetFlagNegative(oper);
-        SetFlagZero(oper);
+        UpdateFlagN(oper);
+        UpdateFlagZ(oper);
         regPC += InstructionSize(mode);
     }
 
@@ -529,9 +570,10 @@ class CPU {
         regStatus.C = temp & Bit0;
         temp >>= 1;
         regA = temp & 0xFF;
-        SetFlagNegative(regA);
-        SetFlagZero(regA);
+        UpdateFlagN(regA);
+        UpdateFlagZ(regA);
         regPC += InstructionSize(AddressMode::Implied);
+		Tick();
     }
         
     // Arithmetic shift left
@@ -539,11 +581,13 @@ class CPU {
     {
         std::uint16_t address = GetAddress(mode);
         std::uint8_t oper = ReadMemory(address);
+		Tick();
+
         regStatus.C = oper & Bit7;
         oper <<= 1;
         WriteMemory(address, oper);
-        SetFlagNegative(oper);
-        SetFlagZero(oper);
+        UpdateFlagN(oper);
+        UpdateFlagZ(oper);
         regPC += InstructionSize(mode);
     }
 
@@ -551,15 +595,18 @@ class CPU {
     {
         regStatus.C = regA & Bit7;
         regA <<= 1;
-        SetFlagNegative(regA);
-        SetFlagZero(regA);
+        UpdateFlagN(regA);
+        UpdateFlagZ(regA);
         regPC += InstructionSize(AddressMode::Implied);
+		Tick();
     }
         
     void OpLSR(AddressMode mode)
     {
         std::uint16_t address = GetAddress(mode);
         std::uint8_t oper = ReadMemory(address);
+		Tick();
+
         regStatus.C = oper & Bit0;
         oper >>= 1;
         WriteMemory(address, oper);
@@ -575,14 +622,15 @@ class CPU {
         regStatus.Z = regA == 0;
         regStatus.N = 0;
         regPC += InstructionSize(AddressMode::Implied);
+		Tick();
     }
-
-    /// Increase / Decrease Registers 
         
     void OpDEC(AddressMode mode)
     {
         std::uint16_t address = GetAddress(mode);
         std::uint8_t oper = ReadMemory(address);
+		Tick();
+
         oper--;
         WriteMemory(address, oper);
         regStatus.Z = oper == 0;
@@ -594,19 +642,22 @@ class CPU {
     {
         std::uint16_t address = GetAddress(mode);
         std::uint8_t oper = ReadMemory(address);
+		Tick();
+
         oper++;
         WriteMemory(address, oper);
-        SetFlagNegative(oper);
-        SetFlagZero(oper);
+        UpdateFlagN(oper);
+        UpdateFlagZ(oper);
         regPC += InstructionSize(mode);
     }
 
     void OpDEX()
     {
         regX--;
-        SetFlagNegative(regX);
-        SetFlagZero(regX);
+        UpdateFlagN(regX);
+        UpdateFlagZ(regX);
         regPC++;
+		Tick();
     }
     void OpDEY()
     {
@@ -614,21 +665,24 @@ class CPU {
         regStatus.Z = regY == 0;
         regStatus.N = regY & Bit7;
         regPC++;
+		Tick();
     }
 
     void OpINX()
     {
         regX++;
-        SetFlagNegative(regX);
-        SetFlagZero(regX);
+        UpdateFlagN(regX);
+        UpdateFlagZ(regX);
         regPC++;
+		Tick();
     }
     void OpINY()
     {
         regY++;
-        SetFlagNegative(regY);
-        SetFlagZero(regY);
+        UpdateFlagN(regY);
+        UpdateFlagZ(regY);
         regPC++;
+		Tick();
     }
 
     /// Flow control
@@ -653,6 +707,7 @@ class CPU {
         
     void OpBRA(bool condition)
     {
+		if(condition) Tick();
         std::int8_t oper = ReadMemory(GetAddress(AddressMode::Immediate));
         regPC += condition ? oper + InstructionSize(AddressMode::Immediate) : InstructionSize(AddressMode::Immediate);
     }
@@ -660,54 +715,62 @@ class CPU {
     void OpTXA()
     {
         regA = regX;
-        SetFlagNegative(regA);
-        SetFlagZero(regA);
+        UpdateFlagN(regA);
+        UpdateFlagZ(regA);
         regPC++;
+		Tick();
     }
     void OpTAX()
     {
         regX = regA;
-        SetFlagNegative(regX);
-        SetFlagZero(regX);
+        UpdateFlagN(regX);
+        UpdateFlagZ(regX);
         regPC++;
+		Tick();
     }
     void OpTAY()
     {
         regY = regA;
-        SetFlagNegative(regY);
-        SetFlagZero(regY);
+        UpdateFlagN(regY);
+        UpdateFlagZ(regY);
         regPC++;
+		Tick();
     }
     void OpTSX()
     {
         regX = regSP;
-        SetFlagNegative(regX);
-        SetFlagZero(regX);
+        UpdateFlagN(regX);
+        UpdateFlagZ(regX);
         regPC++;
+		Tick();
     }
     void OpTXS()
     {
         regSP = regX;
         regPC++;
+		Tick();
     }
     void OpTYA()
     {
         regA = regY;
-        SetFlagNegative(regA);
-        SetFlagZero(regA);
+        UpdateFlagN(regA);
+        UpdateFlagZ(regA);
         regPC++;
+		Tick();
     }
 
     void OpLD(AddressMode mode, std::uint8_t& reg)
     {
         reg = ReadMemory(GetAddress(mode));
-        SetFlagNegative(reg);
-        SetFlagZero(reg);
+        UpdateFlagN(reg);
+        UpdateFlagZ(reg);
         regPC += InstructionSize(mode);
     }
 
     void OpST(AddressMode mode, std::uint8_t& reg)
     {
+		if (mode == AddressMode::AbsoluteX || mode == AddressMode::AbsoluteY || mode == AddressMode::ZeropageY)
+			Tick();
         WriteMemory(GetAddress(mode), reg);
         regPC += InstructionSize(mode);
     }
@@ -717,8 +780,8 @@ class CPU {
     void OpORA(AddressMode mode)
     {
         regA |= ReadMemory(GetAddress(mode));
-        SetFlagNegative(regA);
-        SetFlagZero(regA);
+        UpdateFlagN(regA);
+        UpdateFlagZ(regA);
         regPC += InstructionSize(mode);
     }
         
@@ -734,34 +797,40 @@ class CPU {
     {
         regStatus = (unsigned)regStatus & ~flag;
         regPC++;
+		Tick();
     }
     void OpSET(unsigned flag)
     {
         regStatus = (unsigned)regStatus | flag;
         regPC++;
+		Tick();
     }
 
     // Stack operations
     void OpPHA()
     {
+		Tick();
         StackPush(regA);
         regPC++;
     }
 
     void OpPHP()
     {
+		Tick();
         StackPush(regStatus | Flag_B | Flag_Unused);
         regPC++;
     }
     void OpPLA()
     {
+		Tick(); Tick();
         regA = StackPop();
-        SetFlagNegative(regA);
-        SetFlagZero(regA);
+        UpdateFlagN(regA);
+        UpdateFlagZ(regA);
         regPC++;
     }
     void OpPLP()
-    {
+	{
+		Tick(); Tick();
         regStatus = StackPop();
         regPC++;
     }
@@ -774,19 +843,23 @@ class CPU {
     }
     void OpRTS()
     {
+		Tick(); Tick();
         unsigned PC_low = StackPop();
         unsigned PC_high = StackPop();
         regPC = ((PC_high << 8) | PC_low) + 1;
+		Tick();
     }
 
     void OpNOP()
     {
         regPC++;
+		Tick();
     }
         
     // Software Interrupt
     void OpBRK()
     {
+		Tick();
         regPC += 2;
         StackPush((regPC >> 8) & 0xFF);
         StackPush(regPC & 0xFF);
@@ -795,12 +868,12 @@ class CPU {
         regPC = Read16(IRQVector);
     }
 
-    void SetFlagNegative(unsigned oper)
+    void UpdateFlagN(std::uint8_t oper)
     {
         regStatus.N = oper & Bit7; // If 7th bit is 1, set negative
     }
 
-    void SetFlagZero(unsigned oper)
+    void UpdateFlagZ(std::uint8_t oper)
     {
         regStatus.Z = oper == 0;   // If register is 0, set zero
     }

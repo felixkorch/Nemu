@@ -16,7 +16,7 @@ namespace nemu {
 /// Mapping:
 ///     Block0:
 ///             range: (0x8000, 0xFFFF)
-///             size: 0x8000 (16kB)
+///             size: 0x4000 (16kB)
 ///             modulus: 0x4000
 ///
 class NROM128Mapper : public NESMapper {

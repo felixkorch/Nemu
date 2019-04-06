@@ -84,7 +84,7 @@ class CPU {
 				InvokeNMI();
 			else if (irq && !regStatus.I)
 				InvokeIRQ();
-			Decode();
+			Execute();
 		}
 	}
 
@@ -289,7 +289,7 @@ class CPU {
 		irq = false;
     }
 
-    void Decode() // Fetches & decodes an instruction
+    void Execute() // Fetches / decode / execute
     {
         switch (ReadMemory(regPC)) {
         case 0x00: OpBRK();                             break;

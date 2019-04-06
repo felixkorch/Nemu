@@ -1,16 +1,16 @@
 #pragma once
 #include "Nemu/Common.h"
 #include "Nemu/InternalNESMapper.h"
+#include "Nemu/NESMapper.h"
 #include "Nemu/StatusRegister.h"
 #include <iostream>
 #include <vector>
 
 namespace nemu {
 
-template <class PRGROMMapper>
 class CPU {
     InternalNESMapper internalMapper;
-    PRGROMMapper prgROM;
+    std::shared_ptr<NESMapper> cartridgeMapper;
 
     std::uint8_t   regX;
     std::uint8_t   regY;
@@ -35,9 +35,9 @@ class CPU {
     constexpr static unsigned IRQVector   = 0xFFFE;
 
   public:
-    CPU(InternalNESMapper&& internalMemory, PRGROMMapper&& prgROM)
-        : internalMapper(std::move(internalMemory))
-        , prgROM(std::move(prgROM))
+    CPU(InternalNESMapper&& internalMapper, std::shared_ptr<NESMapper>& mapper)
+        : internalMapper(std::move(internalMapper))
+        , cartridgeMapper(std::move(mapper))
         , regX(0)
         , regY(0)
         , regA(0)
@@ -207,13 +207,11 @@ class CPU {
         if (index <= 0x3FFF || index == 0x4016) {
             internalMapper.Write(index, value);
         }
-        // DMA-OAM Access
         else if (index == 0x4014) {
             DmaOam(value);
         }
-        // Cartridge Access
         else if (index >= 0x4020 && index <= 0xFFFF) {
-            prgROM.Write(index, value);
+            cartridgeMapper->Write(index, value);
         }
     }
 
@@ -223,9 +221,9 @@ class CPU {
             return internalMapper.Read(index);
         }
         if (index >= 0x4020 && index <= 0xFFFF) {
-            return prgROM.Read(index);
+            return cartridgeMapper->Read(index);
         }
-        return 0; // Default
+        return 0;
 }
 
     unsigned Read16(std::size_t index)

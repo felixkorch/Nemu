@@ -161,15 +161,15 @@ class PPU {
     int dot;
     bool frameOdd;
 
-    std::vector<unsigned> chrROM;
+    std::vector<unsigned> chrMem;
 
     static void emptySetNMI() {}
 
    public:
     std::function<void()> setNMI;
 
-    PPU(std::vector<unsigned>&& chrROM, std::function<void(std::uint8_t* pixels)> newFrameCallback)
-        : chrROM(std::move(chrROM))
+    PPU(std::vector<unsigned>&& chrMem, std::function<void(std::uint8_t* pixels)> newFrameCallback)
+        : chrMem(std::move(chrMem))
 		, setNMI(emptySetNMI)
 		, HandleNewFrame(newFrameCallback)
 	{
@@ -299,7 +299,7 @@ class PPU {
     void Write(std::size_t address, std::uint8_t value)
 	{
         if (address <= 0x1FFF) { // CHR-ROM/RAM.
-            chrROM[address % chrROM.size()] = value;
+            chrMem[address % chrMem.size()] = value;
             return;
         }
         if (address <= 0x3EFF) { // Nametables.
@@ -317,7 +317,7 @@ class PPU {
     std::uint8_t Read(std::size_t address)
 	{
         if (address <= 0x1FFF) { // CHR-ROM/RAM.
-            return chrROM[address % chrROM.size()];
+            return chrMem[address % chrMem.size()];
         }
         if (address <= 0x3EFF) { // Nametables.
             return ciRam[MirroredAddress(address)];

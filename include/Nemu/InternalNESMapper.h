@@ -44,7 +44,8 @@ class InternalNESMapper {
 
     InternalNESMapper(std::shared_ptr<PPU> ppu) : ppu(ppu) {}
 
-    std::uint8_t Read(std::size_t address) {
+    std::uint8_t Read(std::size_t address)
+	{
         if (address <= 0x1FFF)
             return static_cast<std::uint8_t>(internalRAM[address & InternalRAMAddressMask]);
         if (address <= 0x3FFF) {
@@ -64,18 +65,19 @@ class InternalNESMapper {
         return 0;
     }
 
-    void Write(std::size_t address, std::uint8_t value) {
+    void Write(std::size_t address, std::uint8_t value)
+	{
         if (address <= 0x1FFF) {
             internalRAM[address & InternalRAMAddressMask] = value;
         } else if (address <= 0x3FFF) {
             switch (address & PPUAddressMask) {
-            case 0: ppu->WritePPUCTRL(value); break;
-            case 1: ppu->WritePPUMASK(value); break;
-            case 3: ppu->WriteOAMADDR(value); break;
-            case 4: ppu->WriteOAMDATA(value); break;
+            case 0: ppu->WritePPUCTRL(value);   break;
+            case 1: ppu->WritePPUMASK(value);   break;
+            case 3: ppu->WriteOAMADDR(value);   break;
+            case 4: ppu->WriteOAMDATA(value);   break;
             case 5: ppu->WritePPUSCROLL(value); break;
-            case 6: ppu->WritePPUADDR(value); break;
-            case 7: ppu->WritePPUDATA(value); break;
+			case 6: ppu->WritePPUADDR(value);   break;
+			case 7: ppu->WritePPUDATA(value);   break;
             default: break;
             }
         } else if (address == 0x4016) {
@@ -88,16 +90,6 @@ class InternalNESMapper {
             return;
         }
     }
-
-	std::array<unsigned, 0x800> GetMemory()
-	{
-		return internalRAM;
-	}
-
-	void SetMemory(const std::array<unsigned, 0x800> mem)
-	{
-		internalRAM = mem;
-	}
 };
 
 } // namespace nemu

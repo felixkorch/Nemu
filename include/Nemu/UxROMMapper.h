@@ -21,7 +21,7 @@ namespace nemu {
 	///
 	///    Block1 (Fixed):
 	///           range: (0xC000, 0xFFFF)
-	///           size: 0x8000 (16kB)
+	///           size: 0x4000 (16kB)
 	///           modulus: 0x4000
 	///
 

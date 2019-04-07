@@ -31,18 +31,18 @@ namespace nemu {
 ///     range: (0x4000, 0x401F)
 ///     size: 0x0020 (36 B)
 ///
+template <class CPU>
 class InternalNESMapper {
     static constexpr unsigned InternalRAMAddressMask = 0x07FF;
     static constexpr unsigned PPUAddressMask = 0x0007;
 
     std::array<unsigned, 0x0800> internalRAM;
-    std::shared_ptr<PPU> ppu;
     // TODO: APU is not fully implemented
 
-   public:
+  public:
+    std::shared_ptr<CPU> cpu;
+    std::shared_ptr<PPU> ppu;
     Joypad joypad;
-
-    InternalNESMapper(std::shared_ptr<PPU> ppu) : ppu(ppu) {}
 
     std::uint8_t Read(std::size_t address)
 	{
@@ -80,6 +80,8 @@ class InternalNESMapper {
 			case 7: ppu->WritePPUDATA(value);   break;
             default: break;
             }
+        } else if (address == 0x4014) {
+            cpu->DmaOam(value);
         } else if (address == 0x4016) {
             return joypad.Write(value & 1);
         }

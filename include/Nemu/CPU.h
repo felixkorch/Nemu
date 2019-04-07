@@ -1,16 +1,17 @@
 #pragma once
 #include "Nemu/Common.h"
-#include "Nemu/InternalNESMapper.h"
-#include "Nemu/NESMapper.h"
 #include "Nemu/StatusRegister.h"
 #include <iostream>
 #include <vector>
+#include <memory>
 
 namespace nemu {
 
+template <class Mapper>
 class CPU {
-    InternalNESMapper internalMapper;
-    std::shared_ptr<NESMapper> cartridgeMapper;
+    // TODO:
+    //  For simplicity everything is shared pointers. There are probably more static solutions.
+    std::shared_ptr<Mapper> mapper;
 
     std::uint8_t   regX;
     std::uint8_t   regY;
@@ -37,9 +38,8 @@ class CPU {
     constexpr static unsigned IRQVector   = 0xFFFE;
 
   public:
-    CPU(InternalNESMapper&& internalMapper, std::shared_ptr<NESMapper>& mapper)
-        : internalMapper(std::move(internalMapper))
-        , cartridgeMapper(std::move(mapper))
+    CPU(std::shared_ptr<Mapper> mapper)
+        : mapper(mapper)
         , regX(0)
         , regY(0)
         , regA(0)
@@ -93,6 +93,13 @@ class CPU {
 		remainingCycles--;
 	}
 
+    /// Write 256 successive bytes to the OAMDMA register.
+    void DmaOam(unsigned bank)
+    {
+        for (int i = 0; i < 256; i++)
+            WriteMemory(0x2014, ReadMemory(bank * 0x100 + i));
+    }
+
   private:
 
     enum class AddressMode {
@@ -138,14 +145,14 @@ class CPU {
 
     void StackPush(std::uint8_t value) 
     {
-        internalMapper.Write(0x0100 | regSP, value);
+        mapper->Write(0x0100 | regSP, value);
         regSP--;
     }
 
     std::uint8_t StackPop() 
     {
         regSP++;
-        auto temp = internalMapper.Read(0x0100 | regSP);
+        auto temp = mapper->Read(0x0100 | regSP);
         return temp;
     }
 
@@ -229,37 +236,16 @@ class CPU {
         }
     }
 
-    // Write 256 successive bytes to the OAMDMA register.
-    void DmaOam(unsigned bank)
-    {
-        for (int i = 0; i < 256; i++)
-            WriteMemory(0x2014, ReadMemory(bank * 0x100 + i));
-    }
-
     void WriteMemory(std::size_t index, unsigned value) 
     {
 		Tick();
-        if (index <= 0x3FFF || index == 0x4016) {
-            internalMapper.Write(index, value);
-        }
-        else if (index == 0x4014) {
-            DmaOam(value);
-        }
-        else if (index >= 0x4020 && index <= 0xFFFF) {
-            cartridgeMapper->Write(index, value);
-        }
+        mapper->Write(index, value);
     }
 
     unsigned ReadMemory(std::size_t index) 
     {
 		Tick();
-        if (index < 0x4020) {
-            return internalMapper.Read(index);
-        }
-        if (index >= 0x4020 && index <= 0xFFFF) {
-            return cartridgeMapper->Read(index);
-        }
-        return 0;
+        return mapper->Read(index);
 }
 
     unsigned Read16(std::size_t index)
@@ -291,6 +277,7 @@ class CPU {
 
     void Execute() // Fetches / decode / execute
     {
+        // std::cout << "regPC: " << regPC << ", opcode: " << ReadMemory(regPC) << '\n';
         switch (ReadMemory(regPC)) {
         case 0x00: OpBRK();                             break;
         case 0xA0: OpLD(AddressMode::Immediate, regY);  break;

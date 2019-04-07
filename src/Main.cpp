@@ -101,10 +101,15 @@ class MainLayer : public Layer {
 
             running = true;
 
-            nesInstance = std::unique_ptr<NESInstance>(new NESInstance(MakeNESInstance(
-				paths[0],
-				nesInput,
-				std::bind(&MainLayer::OnNewFrame, this, std::placeholders::_1))));
+            nesInstance = MakeNESInstance(
+                paths[0],
+                nesInput,
+                std::bind(&MainLayer::OnNewFrame, this, std::placeholders::_1));
+
+            if (nesInstance == nullptr) {
+                std::cout << "Failed to load ROM\n";
+                return;
+            }
             nesInstance->Power();
         }
         // Window Resized

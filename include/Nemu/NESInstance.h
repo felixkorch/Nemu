@@ -4,57 +4,107 @@
 // -----------------------------------------------------------------------------
 
 #pragma once
+
 #include "Nemu/CPU.h"
 #include "Nemu/InternalNESMapper.h"
+#include "Nemu/NESCPUMemoryMapper.h"
 #include "Nemu/NROM128Mapper.h"
 #include "Nemu/NROM256Mapper.h"
 #include "Nemu/UxROMMapper.h"
 #include "Nemu/PPU.h"
 #include "Nemu/System.h"
-#include <vector>
-
+#include <cstdint>
 #include <iostream>
+#include <vector>
 
 namespace nemu {
 
 class NESInstance {
+  public:
+    virtual void RunFrame() = 0;
+    virtual void Power() = 0;
+    virtual std::vector<unsigned> DumpCPUMemory() = 0;
+    virtual void AddInput(const NESInput& input) = 0;
+};
+
+template <class CartridgePRGROM>
+class NESInstanceBase: public NESInstance {
+    using CPUMemory = NESCPUMemoryMapper<CartridgePRGROM>;
+    using CPU = CPU<CPUMemory>;
+
+    // TODO:
+    //  For simplicity everything is shared pointers. There are probably more static solutions.
+    std::shared_ptr<CPUMemory> cpuMemory;
     std::shared_ptr<CPU> cpu;
     std::shared_ptr<PPU> ppu;
 
-public:
-    NESInstance(std::shared_ptr<CPU> cpu, std::shared_ptr<PPU> ppu)
-        : cpu(cpu)
-		, ppu(ppu)
-	{
-		ppu->setNMI  = [this]() { this->cpu->SetNMI(); };
-		cpu->Tick    = [this]() { this->Tick(); };
+  public:
+    NESInstanceBase(std::shared_ptr<PPU> ppu, std::shared_ptr<CartridgePRGROM> prgROM)
+        : ppu(ppu)
+    {
+        // Create the memory of the CPU.
+        cpuMemory = std::make_shared<CPUMemory>();
+        cpuMemory->internalMapper = std::make_shared<InternalNESMapper<CPU>>();
+        cpuMemory->cartridgeMapper = prgROM;
+
+        // Create the CPU.
+        cpu = std::make_shared<CPU>(cpuMemory);
+
+        // Connect CPU and PPU to the internal CPU memory.
+        cpuMemory->internalMapper->cpu = cpu;
+        cpuMemory->internalMapper->ppu = ppu;
+
+        // Set connector lambdas for communication between CPU and PPU.
+        ppu->setNMI = [this]() { this->cpu->SetNMI(); };
+        cpu->Tick = [this]() {
+            this->ppu->Step();
+            this->ppu->Step();
+            this->ppu->Step();
+            this->cpu->DecrementCycles();
+        };
+    }
+    
+    virtual void RunFrame() override
+    {
+        cpu->RunFrame();
     }
 
-    NESInstance(NESInstance&& other)
-        : NESInstance(std::move(other.cpu), other.ppu)
-	{}
-
-    void RunFrame()
-	{
-		cpu->RunFrame();
+    virtual void Power() override
+    {
+        cpu->Reset();
+        ppu->Reset();
     }
 
-    void Power()
-	{
-		cpu->Reset();
-		ppu->Reset();
-	}
+    /// Placeholder idea for future implementation of save state and debugging tools.
+    virtual std::vector<unsigned> DumpCPUMemory() override
+    {
+        std::vector<unsigned> memory(0xFFFF);
+        for(std::size_t i = 0; i < 0xFFFF; ++i)
+            memory[i] = cpuMemory->Read(i);
+        return memory;
+    }
 
-	void Tick()
-	{
-		ppu->Step();
-		ppu->Step();
-		ppu->Step();
-		cpu->DecrementCycles();
-	}
+    virtual void AddInput(const NESInput& input) override
+    {
+        cpuMemory->internalMapper->joypad.AddInputConfig(input);
+    }
 };
 
-NESInstance MakeNESInstance(const std::string& path, NESInput& input, std::function<void(std::uint8_t* pixels)> newFrameCallback)
+template <class CartridgePRGROM>
+std::unique_ptr<NESInstanceBase<CartridgePRGROM>>
+MakeNESInstance(const NESInput& input, std::shared_ptr<PPU> ppu,
+                const std::vector<unsigned>& prgROM)
+{
+    std::unique_ptr<NESInstanceBase<CartridgePRGROM>> instance(new NESInstanceBase<CartridgePRGROM>(
+        ppu, std::make_shared<CartridgePRGROM>(prgROM.cbegin(), prgROM.cend())));
+    instance->AddInput(input);
+    return instance;
+}
+
+std::unique_ptr<NESInstance> 
+MakeNESInstance(const std::string& path,
+                NESInput& input, 
+                std::function<void(std::uint8_t* pixels)> newFrameCallback)
 {
     // Read file.
     auto file = ReadFile<std::vector<std::uint8_t>>(path);
@@ -105,25 +155,15 @@ NESInstance MakeNESInstance(const std::string& path, NESInput& input, std::funct
 
     ppu->SetMirroring(mirroringMode);
 
-    InternalNESMapper internalMapper(ppu);
-	internalMapper.joypad.AddInputConfig(input);
-
 	std::shared_ptr<NESMapper> mapper;
 
-	switch (version) {
-	case 0: {
-		if(chrRomSize > 0x4000)
-			mapper = std::make_shared<NROM256Mapper>(prgROM.begin(), prgROM.end());
-		else
-			mapper = std::make_shared<NROM128Mapper>(prgROM.begin(), prgROM.end());
-	}
-	case 2:  mapper = std::make_shared<UxROMMapper>(prgROM.begin(), prgROM.end());
-	default: mapper = std::make_shared<UxROMMapper>(prgROM.begin(), prgROM.end());
-	}
-
-	std::shared_ptr<CPU> cpu(new CPU(std::move(internalMapper), mapper));
-
-    return NESInstance(cpu, ppu);
+    switch (version) {
+    case 0:
+        if (prgRomSize > 0x4000) return MakeNESInstance<NROM256Mapper>(input, ppu, prgROM);
+        else                     return MakeNESInstance<NROM128Mapper>(input, ppu, prgROM);
+    case 2: return MakeNESInstance<UxROMMapper>(input, ppu, prgROM);
+    default: return nullptr;
+    }
 }
 
 } // namespace nemu

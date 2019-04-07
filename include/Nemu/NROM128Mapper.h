@@ -6,7 +6,7 @@
 #pragma once
 
 #include "Nemu/NESMapper.h"
-#include <array>
+#include <vector>
 #include <cstddef>
 
 namespace nemu {
@@ -19,7 +19,7 @@ namespace nemu {
 ///             size: 0x4000 (16kB)
 ///             modulus: 0x4000
 ///
-class NROM128Mapper : public NESMapper {
+class NROM128Mapper {
 	using Iterator = std::vector<unsigned>::iterator;
     std::vector<unsigned> data;
 
@@ -28,14 +28,19 @@ class NROM128Mapper : public NESMapper {
 		: data(begin, end)
 	{}
 
-    virtual std::uint8_t Read(std::size_t address) override
+    NROM128Mapper(std::vector<unsigned>::const_iterator begin, 
+                  std::vector<unsigned>::const_iterator end) 
+        : data(begin, end) 
+    {}
+
+    std::uint8_t Read(std::size_t address)
 	{
         if (address < 0x8000)
             return 0;
         return static_cast<std::uint8_t>(data[address % 0x4000]);
     }
 
-    virtual void Write(std::size_t address, std::uint8_t value) override
+    void Write(std::size_t address, std::uint8_t value)
 	{
         if (address < 0x8000)
             return;

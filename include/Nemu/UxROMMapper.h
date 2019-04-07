@@ -24,8 +24,7 @@ namespace nemu {
 	///           size: 0x4000 (16kB)
 	///           modulus: 0x4000
 	///
-
-	class UxROMMapper : public NESMapper {
+	class UxROMMapper {
 		using Iterator = std::vector<unsigned>::iterator;
 		std::vector<unsigned> data;
 		Iterator lastBank;
@@ -38,7 +37,14 @@ namespace nemu {
 			, lastBank(std::prev(data.end(), 0x4000))
 		{}
 
-		virtual std::uint8_t Read(std::size_t address) override
+		UxROMMapper(std::vector<unsigned>::const_iterator begin, 
+                    std::vector<unsigned>::const_iterator end) 
+            : data(begin, end)
+            , currentBank(data.begin())
+            , lastBank(std::prev(data.end(), 0x4000))
+		{}
+
+		std::uint8_t Read(std::size_t address)
 		{
 			if (address < 0x8000)
 				return 0;
@@ -48,7 +54,7 @@ namespace nemu {
 		}
 
 		// Bankswitching
-		virtual void Write(std::size_t address, std::uint8_t value) override
+		void Write(std::size_t address, std::uint8_t value)
 		{
 			// If address is in range [0x8000, 0xFFFF]
 			if (address & 0x8000)

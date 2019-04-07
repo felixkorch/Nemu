@@ -121,7 +121,7 @@ NESInstance MakeNESInstance(const std::string& path, NESInput& input, std::funct
 	default: mapper = std::make_shared<UxROMMapper>(prgROM.begin(), prgROM.end());
 	}
 
-	std::shared_ptr<CPU> cpu = std::make_shared<CPU>(std::move(internalMapper), std::move(mapper));
+	std::shared_ptr<CPU> cpu(new CPU(std::move(internalMapper), mapper));
 
     return NESInstance(cpu, ppu);
 }

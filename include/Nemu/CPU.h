@@ -277,7 +277,6 @@ class CPU {
 
     void Execute() // Fetches / decode / execute
     {
-        // std::cout << "regPC: " << regPC << ", opcode: " << ReadMemory(regPC) << '\n';
         switch (ReadMemory(regPC)) {
         case 0x00: OpBRK();                             break;
         case 0xA0: OpLD(AddressMode::Immediate, regY);  break;

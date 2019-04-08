@@ -11,7 +11,7 @@
 namespace nemu {
 namespace test {
 
-class TestBase {
+class Test {
   public:
     void Run() {
         nemu::StatusRegister reg;

@@ -155,8 +155,6 @@ MakeNESInstance(const std::string& path,
 
     ppu->SetMirroring(mirroringMode);
 
-	std::shared_ptr<NESMapper> mapper;
-
     switch (version) {
     case 0:
         if (prgRomSize > 0x4000) return MakeNESInstance<NROM256Mapper>(input, ppu, prgROM);

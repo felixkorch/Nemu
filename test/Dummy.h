@@ -11,7 +11,7 @@ namespace nemu {
 namespace test {
 
 /// Used to try out the class Test and Main program.
-class TestBase {
+class Test {
   public:
     void Run() {}
 };

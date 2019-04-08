@@ -13,13 +13,6 @@ class CPU {
     //  For simplicity everything is shared pointers. There are probably more static solutions.
     std::shared_ptr<Mapper> mapper;
 
-    std::uint8_t   regX;
-    std::uint8_t   regY;
-    std::uint8_t   regA;
-    std::uint8_t   regSP;
-    std::uint16_t  regPC;
-    StatusRegister regStatus;
-
     bool nmi, irq;
 
 	int remainingCycles;
@@ -38,6 +31,13 @@ class CPU {
     constexpr static unsigned IRQVector   = 0xFFFE;
 
   public:
+    std::uint8_t   regX;
+    std::uint8_t   regY;
+    std::uint8_t   regA;
+    std::uint8_t   regSP;
+    std::uint16_t  regPC;
+    StatusRegister regStatus;
+
     CPU(std::shared_ptr<Mapper> mapper)
         : mapper(mapper)
         , regX(0)
@@ -87,6 +87,11 @@ class CPU {
 			Execute();
 		}
 	}
+
+    void StepInstruction() 
+    {
+        Execute();
+    }
 
 	void DecrementCycles()
 	{
@@ -242,13 +247,13 @@ class CPU {
         mapper->Write(index, value);
     }
 
-    unsigned ReadMemory(std::size_t index) 
+    std::uint8_t ReadMemory(std::size_t index) 
     {
-		Tick();
+        Tick();
         return mapper->Read(index);
-}
+    }
 
-    unsigned Read16(std::size_t index)
+    std::uint16_t Read16(std::size_t index)
     {
         return ReadMemory(index) | (ReadMemory(index + 1) << 8);
     }
@@ -473,17 +478,17 @@ class CPU {
         regA = result & 0xFF;
         regPC += InstructionSize(mode);
     }
-        
+
     void OpCMP(AddressMode mode, std::uint8_t& reg)
     {
-        auto oper = ReadMemory(GetAddress(mode));
+        unsigned oper = ReadMemory(GetAddress(mode));
         unsigned result = reg - oper;
-        regStatus.Z = reg == oper;
+        regStatus.Z = result == 0;
         regStatus.N = result & Bit7;
         regStatus.C = result < Bit8;
         regPC += InstructionSize(mode);
     }
-        
+
     void OpAND(AddressMode mode)
     {
         auto oper = ReadMemory(GetAddress(mode));
@@ -690,10 +695,10 @@ class CPU {
         StackPush(regPC & 0xFF);        // Push PC_Low
         regPC = addr;
     }
-        
+
     void OpBRA(bool condition)
     {
-		if(condition) Tick();
+        if(condition) Tick();
         std::int8_t oper = ReadMemory(GetAddress(AddressMode::Immediate));
         regPC += condition ? oper + InstructionSize(AddressMode::Immediate) : InstructionSize(AddressMode::Immediate);
     }

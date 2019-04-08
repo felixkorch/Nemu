@@ -14,23 +14,21 @@
 namespace nemu {
 namespace test {
 
-template <class T>
-class Test: T {
-    T* Super() { return static_cast<T*>(this); }
-  public:
-    void Run() { Super()->Run(); }
-};
+std::string TestName(const std::string& fileName)
+{ return fileName.substr(0, fileName.find(".h")); }
 
 } // namespace test
 } // namespace nemu
 
+using namespace nemu::test;
+
 int main(int argc, char** argv)
 {
-    nemu::test::Test<nemu::test::TestBase> test;
+    Test test;
 
-    std::cout << "Start test from \"" << NEMU_TEST_FILE << "\"\t\n\t" << std::flush;
+    std::cout << "Start test " << TestName(NEMU_TEST_FILE) << "\t\n\t" << std::flush;
     test.Run();
-    std::cout << "> test finished successfully\n";
+    std::cout << "test finished successfully\n";
 
     return 0;
 }

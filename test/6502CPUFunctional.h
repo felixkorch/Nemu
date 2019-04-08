@@ -23,6 +23,7 @@ class Memory {
   public:
     Memory() : data(ReadFile<std::vector<std::uint8_t>>(NEMU_6502CPUFUNCTIONAL_ASMFILE))
     {
+        // Set reset vector.
         data[0xFFFC] = 0x00;
         data[0xFFFD] = 0x04;
     }
@@ -34,20 +35,31 @@ class Memory {
     { data[address] = value; }
 };
 
-class TestBase {
+class Test {
   public:
-    void Run() {
+    void Run() {        
         CPU<Memory> cpu(std::make_shared<Memory>());
         cpu.Tick = []() {};
-        cpu.Reset();
 
         auto timeout = std::chrono::system_clock::now() + std::chrono::seconds(5);
+        int i = 0;
+        cpu.Reset();
 
-        // TODO: 
-        //  End test when completed. Timeout should only accure if something fails.
         while (true) {
             assert(std::chrono::system_clock::now() < timeout);
-            cpu.DecrementCycles();
+
+            cpu.StepInstruction();
+
+            switch (cpu.regPC) {
+            // Skip decimal add/subtract test.
+            case 0x336D: cpu.regPC = 0x3405; break;
+            // Skip decimal/binary switch test.
+            case 0x3411: cpu.regPC = 0x345D; break;
+            // Success address reached!
+            case 0x3469: return;
+
+            default: break;
+            }
         }
     }
 };

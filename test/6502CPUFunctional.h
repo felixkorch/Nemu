@@ -37,16 +37,20 @@ class Memory {
 
 class Test {
   public:
-    void Run() {        
+    void Run() {
         CPU<Memory> cpu(std::make_shared<Memory>());
         cpu.Tick = []() {};
 
-        auto timeout = std::chrono::system_clock::now() + std::chrono::seconds(5);
-        int i = 0;
+        auto timeout = std::chrono::steady_clock::now() + std::chrono::seconds(5);
         cpu.Reset();
 
+        int i = 0;
         while (true) {
-            assert(std::chrono::system_clock::now() < timeout);
+            // Check for timeout every 4096 instruction to speed up test.
+            if (++i == 4096) {
+                assert(std::chrono::steady_clock::now() < timeout);
+                i = 0;
+            }
 
             cpu.StepInstruction();
 

@@ -3,6 +3,7 @@
 //
 // -----------------------------------------------------------------------------
 
+#include <chrono>
 #include <iostream>
 
 #ifndef NEMU_TEST_FILE
@@ -24,11 +25,18 @@ using namespace nemu::test;
 
 int main(int argc, char** argv)
 {
+    using Clock = std::chrono::steady_clock;
+    using Seconds = std::chrono::duration<double, std::ratio<1, 1>>;
+
     Test test;
 
     std::cout << "Start test " << TestName(NEMU_TEST_FILE) << "\t\n\t" << std::flush;
+
+    auto beginTime = Clock::now();
     test.Run();
-    std::cout << "test finished successfully\n";
+    auto duration = std::chrono::duration_cast<Seconds>(Clock::now() - beginTime).count();
+
+    std::cout << "test finished successfully in " << duration << " seconds\n";
 
     return 0;
 }

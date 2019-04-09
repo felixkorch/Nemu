@@ -10,9 +10,9 @@
 #include "Nemu/NESCPUMemoryMapper.h"
 #include "Nemu/NROM128Mapper.h"
 #include "Nemu/NROM256Mapper.h"
-#include "Nemu/UxROMMapper.h"
 #include "Nemu/PPU.h"
-#include "Nemu/System.h"
+#include "Nemu/ROMLayout.h"
+#include "Nemu/UxROMMapper.h"
 #include <cstdint>
 #include <iostream>
 #include <vector>
@@ -21,6 +21,7 @@ namespace nemu {
 
 class NESInstance {
   public:
+    virtual ~NESInstance() = default;
     virtual void RunFrame() = 0;
     virtual void Power() = 0;
     virtual std::vector<unsigned> DumpCPUMemory() = 0;
@@ -63,7 +64,7 @@ class NESInstanceBase: public NESInstance {
             this->cpu->DecrementCycles();
         };
     }
-    
+
     virtual void RunFrame() override
     {
         cpu->RunFrame();
@@ -101,63 +102,39 @@ MakeNESInstance(const NESInput& input, std::shared_ptr<PPU> ppu,
     return instance;
 }
 
-std::unique_ptr<NESInstance> 
+std::unique_ptr<NESInstance>
 MakeNESInstance(const std::string& path,
-                NESInput& input, 
+                NESInput& input,
                 std::function<void(std::uint8_t* pixels)> newFrameCallback)
 {
-    // Read file.
-    auto file = ReadFile<std::vector<std::uint8_t>>(path);
-    std::cout << "File size: " << file.size() << " B" << std::endl;
+    ROMLayout rom(path);
 
-    std::vector<unsigned> rom;
-    for (const auto& byte : file)
-        rom.push_back((unsigned)byte);
+    auto prgROMSize = (rom.EndPRGROM() - rom.BeginPRGROM());
+    auto chrROMSize = (rom.EndCHRROM() - rom.BeginCHRROM());
 
-    // TODO:
-    // if (rom.size() == 0)
-    //    return;
+    std::cout << "PRG-ROM Size: " << prgROMSize << " B" << std::endl;
+    std::cout << "PRG-RAM Size: " << (rom.EndPRGRAM() - rom.BeginPRGRAM()) << " B" << std::endl;
+    std::cout << "CHR-ROM Size: " << chrROMSize << " B" << std::endl;
 
-    // Number of prg-blocks in 16KB units
-    int prgRomSize = rom[4] * 0x4000;
-
-    // Number of chr-blocks in 8KB units (0 indicates chr-ram)
-    int chrRomSize = rom[5] * 0x2000;
-
-	// If 0 CHR-RAM is present, size will be 8KB
-	int chrRamSize = 0x2000;
-
-    // Upper nybble of flag 7 and 6 represents the mapper version
-    int version = (rom[7] & 0xF0) | (rom[6] >> 4);
-	std::cout << "Mapper version: " << version << std::endl;
-    ppu::MirroringMode mirroringMode = rom[6] & 1 ? ppu::MirroringMode::Vertical : ppu::MirroringMode::Horizontal;
-
-    // Number of prgRam-blocks in 8KB units
-    int prgRamSize = rom[8] ? rom[8] * 0x2000 : 0x2000;
-
-    auto prgRomBegin = rom.begin() + 16;
-    auto chrRomBegin = prgRomBegin + prgRomSize;
-
-    std::cout << "PRG-ROM Size: " << prgRomSize << " B" << std::endl;
-    std::cout << "PRG-RAM Size: " << prgRamSize << " B" << std::endl;
-    std::cout << "CHR-ROM Size: " << chrRomSize << " B" << std::endl;
-	std::cout << "CHR-RAM Size: " << (chrRomSize ? 0 : chrRamSize) << " B" << std::endl;
-
-    std::vector<unsigned> prgROM(prgRomBegin, chrRomBegin);
-    std::vector<unsigned> chrROM(chrRomBegin, rom.end());
+    std::vector<unsigned> prgROM(rom.BeginPRGROM(), rom.EndPRGROM());
+    std::vector<unsigned> chrROM(rom.BeginCHRROM(), rom.EndCHRROM());
     std::vector<unsigned> chrRAM(0x2000);
 
 	std::shared_ptr<PPU> ppu;
-	if(chrRomSize == 0)
+
+	if(chrROMSize == 0)
 		ppu = std::make_shared<PPU>(std::move(chrRAM), newFrameCallback);
 	else
 		ppu = std::make_shared<PPU>(std::move(chrROM), newFrameCallback);
 
-    ppu->SetMirroring(mirroringMode);
+    ppu->SetMirroring(rom.MirroringMode());
 
-    switch (version) {
+    auto mapperCode = rom.MapperCode();
+    std::cout << "MapperCode: " << mapperCode << std::endl;
+
+    switch (mapperCode) {
     case 0:
-        if (prgRomSize > 0x4000) return MakeNESInstance<NROM256Mapper>(input, ppu, prgROM);
+        if (prgROMSize > 0x4000) return MakeNESInstance<NROM256Mapper>(input, ppu, prgROM);
         else                     return MakeNESInstance<NROM128Mapper>(input, ppu, prgROM);
     case 2: return MakeNESInstance<UxROMMapper>(input, ppu, prgROM);
     default: return nullptr;

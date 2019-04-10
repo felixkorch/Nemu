@@ -12,8 +12,5 @@ namespace nemu
 	constexpr static unsigned Bit8 = (1 << 8);
 
 	// Determines if the nth bit is set
-	bool constexpr NthBit(unsigned x, unsigned n)
-	{
-		return (((x) >> (n)) & 1);
-	}
+	#define NthBit(x, n) (((x) >> (n)) & 1)
 }

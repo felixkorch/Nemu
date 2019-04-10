@@ -55,7 +55,7 @@ class NESInstanceBase: public NESInstance {
         cpuMemory->internalMapper->ppu = ppu;
 
         // Set connector lambdas for communication between CPU and PPU.
-        ppu->setNMI = [this]() { this->cpu->SetNMI(); };
+        ppu->SetNMI = [this]() { this->cpu->SetNMI(); };
         cpu->Tick = [this]() {
             this->ppu->Step();
             this->ppu->Step();
@@ -160,7 +160,7 @@ MakeNESInstance(const std::string& path,
         if (prgRomSize > 0x4000) return MakeNESInstance<NROM256Mapper>(input, ppu, prgROM);
         else                     return MakeNESInstance<NROM128Mapper>(input, ppu, prgROM);
     case 2: return MakeNESInstance<UxROMMapper>(input, ppu, prgROM);
-    default: return nullptr;
+    default: return MakeNESInstance<UxROMMapper>(input, ppu, prgROM);;
     }
 }
 

@@ -42,9 +42,11 @@ class NROM128Mapper {
 
     void Write(std::size_t address, std::uint8_t value)
 	{
-        if (address < 0x8000)
+		// ROM not writable
+
+        /*if (address < 0x8000)
             return;
-        data[address % 0x4000] = value;
+        data[address % 0x4000] = value;*/
     }
 };
 

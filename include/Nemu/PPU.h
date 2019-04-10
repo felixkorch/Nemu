@@ -163,14 +163,14 @@ class PPU {
 
     std::vector<unsigned> chrMem;
 
-    static void emptySetNMI() {}
+    static void EmptySetNMI() {}
 
    public:
-    std::function<void()> setNMI;
+    std::function<void()> SetNMI;
 
     PPU(std::vector<unsigned>&& chrMem, std::function<void(std::uint8_t* pixels)> newFrameCallback)
         : chrMem(std::move(chrMem))
-		, setNMI(emptySetNMI)
+		, SetNMI(EmptySetNMI)
 		, HandleNewFrame(newFrameCallback)
 	{
 		Reset();
@@ -211,18 +211,20 @@ class PPU {
         return access.result;
     }
 
-    /// Address: $2007
-    std::uint8_t ReadPPUDATA()
+	/// Address: $2007
+	std::uint8_t ReadPPUDATA()
 	{
-        if (vAddr.addr <= 0x3EFF) {
-            access.result = access.buffer;
-            access.buffer = Read(vAddr.addr);
-        } else {
-            access.result = access.buffer = Read(vAddr.addr);
-        }
-        vAddr.addr += ctrl.increment ? 32 : 1;
-        return access.result;
-    }
+		if (vAddr.addr <= 0x3EFF) {
+			access.result = access.buffer;
+			access.buffer = Read(vAddr.addr);
+		}
+		else {
+			access.result = Read(vAddr.addr);
+			access.buffer = Read(vAddr.addr & ~0x1000);
+		}
+		vAddr.addr += ctrl.increment ? 32 : 1;
+		return access.result;
+	}
 
     /// Address: $2000
     void WritePPUCTRL(std::uint8_t value)
@@ -332,15 +334,14 @@ class PPU {
 
     void Step()
 	{
-        if (scanline >= 0 && scanline <= 239) {
-            Scanline(ScanlinePhase::VISIBLE);
-        } else if (scanline == 240) {
-            Scanline(ScanlinePhase::POST);
-        } else if (scanline == 241) {
-            Scanline(ScanlinePhase::NMI);
-        } else if (scanline == 261) {
-            Scanline(ScanlinePhase::PRE);
-        }
+		if (scanline >= 0 && scanline <= 239)
+			Scanline(ScanlinePhase::VISIBLE);
+		else if (scanline == 240)
+			Scanline(ScanlinePhase::POST);
+		else if (scanline == 241)
+			Scanline(ScanlinePhase::NMI);
+		else if (scanline == 261)
+			Scanline(ScanlinePhase::PRE);
 
         // Update dot and scanline counters:
         if (++dot > 340) {
@@ -425,33 +426,34 @@ class PPU {
         }
     }
 
-    void EvalSprites()
+	void EvalSprites()
 	{
-        // Dummy scanline
-        if (scanline == 261)
-            return;
+		// Dummy scanline
+		if (scanline == 261)
+			return;
 
-        // Number of sprites in the scanline
-        unsigned count = 0;
+		// Number of sprites in the scanline
+		unsigned count = 0;
 
-        for (unsigned i = 0; i < 64; i++) {
-            const int diff = scanline - oamMem[i * 4 + 0];
-            // Checks if the sprite is on the scanline
-            if (diff >= 0 && diff < SpriteHeight()) {
-                secondaryOam[count].id = i;
-                secondaryOam[count].y = oamMem[i * 4 + 0];
-                secondaryOam[count].tile = oamMem[i * 4 + 1];
-                secondaryOam[count].attributes = oamMem[i * 4 + 2];
-                secondaryOam[count].x = oamMem[i * 4 + 3];
+		for (unsigned i = 0; i < 64; i++) {
+			const int diff = scanline - oamMem[i * 4 + 0];
+			// Checks if the sprite is on the scanline
+			if (diff >= 0 && diff < SpriteHeight()) {
+				secondaryOam[count].id         = i;
+				secondaryOam[count].y          = oamMem[i * 4 + 0];
+				secondaryOam[count].tile       = oamMem[i * 4 + 1];
+				secondaryOam[count].attributes = oamMem[i * 4 + 2];
+				secondaryOam[count].x          = oamMem[i * 4 + 3];
 
-                // Maximum of 8 sprites is possible
-                if (++count > 8) {
-                    status.spriteOvf = true;
-                    return;
-                }
-            }
-        }
-    }
+				// Maximum of 8 sprites is possible
+				if (++count > 8) {
+					if (mask.reg != 0)
+						status.spriteOvf = true;
+					return;
+				}
+			}
+		}
+	}
 
     void LoadSprites()
 	{
@@ -514,8 +516,7 @@ class PPU {
                     if (oam[i].id == 64)
                         continue;
 
-                    // If the sprite is outside of the tile, it should not be
-                    // drawn
+                    // If the sprite is outside of the tile, it should not be drawn
                     unsigned sprX = x - oam[i].x;
                     if (sprX >= 8)
                         continue;
@@ -531,7 +532,7 @@ class PPU {
                     if (sprPalette == 0) // Transparent pixel.
                         continue;
 
-                    if (oam[i].id == 0 && palette && x != 255)
+					if (oam[i].id == 0 && palette && x != 255 && !status.spriteHit)
                         status.spriteHit = true;
 
                     sprPalette |= (oam[i].attributes & 3) << 2;
@@ -565,13 +566,18 @@ class PPU {
 	{
         static std::uint16_t addr;
 
+		static int vblankCycles = 0;
+		if(status.vBlank == true)
+			vblankCycles++;
+
+		if (vblankCycles == 2269) {
+			status.vBlank = false;
+			vblankCycles = 0;
+		}
+
         if (phase == ScanlinePhase::NMI && dot == 1) {
-            status.vBlank = true;
-            if (ctrl.nmiEnable) {
-                // TODO: Something with nemu
-                // nemu.SetNMI();
-                setNMI();
-            }
+			status.vBlank = true;
+			if (ctrl.nmiEnable) SetNMI();
         } else if (phase == ScanlinePhase::POST && dot == 0) {
             HandleNewFrame(pixels.data());
         } else if (phase == ScanlinePhase::VISIBLE ||
@@ -628,8 +634,9 @@ class PPU {
                     UpdateScrollV();
             } else if (dot == 1) {
                 addr = NametableAddress();
-                if (phase == ScanlinePhase::PRE)
-                    status.vBlank = false;
+				if (phase == ScanlinePhase::PRE) {
+					status.vBlank = false;
+				}
             } else if (dot >= 321 && dot <= 339) {
                 addr = NametableAddress();
             } else if (dot == 338) {

@@ -134,7 +134,7 @@ class MainLayer : public Layer {
     }
 };
 
-const WindowProperties props{
+const WindowProperties props {
     Width,                 // WindowWidth
     Height,                // WindowHeight
     true,                  // Resizable
@@ -154,6 +154,7 @@ public:
     ~NESApp() {}
 };
 
-sgl::Application* sgl::CreateApplication() {
+sgl::Application* sgl::CreateApplication()
+{
     return new NESApp;
 }

@@ -566,7 +566,7 @@ class PPU {
 	{
         static std::uint16_t addr;
 
-		static int vblankCycles = 0;
+		/*static int vblankCycles = 0;
 		if(status.vBlank == true)
 			vblankCycles++;
 
@@ -574,6 +574,7 @@ class PPU {
 			status.vBlank = false;
 			vblankCycles = 0;
 		}
+*/
 
         if (phase == ScanlinePhase::NMI && dot == 1) {
 			status.vBlank = true;

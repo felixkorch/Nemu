@@ -1,9 +1,18 @@
+// -----------------------------------------------------------------------------------------* C++ *-
+// PPU.h
+//
+// -------------------------------------------------------------------------------------------------
+
+
 #pragma once
-#include "Nemu/Common.h"
+
 #include <cstddef>
 #include <cstdint>
 #include <functional>
 #include <vector>
+
+/// Determines if the nth bit is set
+#define NthBit(x, n) (((x) >> (n)) & 1)
 
 namespace nemu {
 namespace ppu {
@@ -170,10 +179,10 @@ class PPU {
 
     PPU(std::vector<unsigned>&& chrMem, std::function<void(std::uint8_t* pixels)> newFrameCallback)
         : chrMem(std::move(chrMem))
-		, SetNMI(EmptySetNMI)
-		, HandleNewFrame(newFrameCallback)
-	{
-		Reset();
+        , SetNMI(EmptySetNMI)
+        , HandleNewFrame(newFrameCallback)
+    {
+        Reset();
     }
 
     ~PPU() {}
@@ -182,8 +191,8 @@ class PPU {
         pixels  = std::vector<std::uint8_t>(256 * 240 * 4);
         ctrl    = {};
         mask    = {};
-		vAddr   = {};
-		tAddr   = {};
+        vAddr   = {};
+        tAddr   = {};
         access  = {};
         oamAddr = fineX = scanline = dot = 0;
         bgShiftLow = bgShiftHigh = atShiftLow = atLatchHigh = nametable = attributes = bgLow = bgHigh = 0;
@@ -197,7 +206,7 @@ class PPU {
 
     /// Address: $2002
     std::uint8_t ReadPPUSTATUS()
-	{
+    {
         access.result = (access.result & 0x1F) | status.reg;
         status.vBlank = 0;
         access.latch = false;
@@ -206,29 +215,29 @@ class PPU {
 
     /// Address: $2004
     std::uint8_t ReadOAMDATA()
-	{
+    {
         access.result = oamMem[oamAddr];
         return access.result;
     }
 
-	/// Address: $2007
-	std::uint8_t ReadPPUDATA()
-	{
-		if (vAddr.addr <= 0x3EFF) {
-			access.result = access.buffer;
-			access.buffer = Read(vAddr.addr);
-		}
-		else {
-			access.result = Read(vAddr.addr);
-			access.buffer = Read(vAddr.addr & ~0x1000);
-		}
-		vAddr.addr += ctrl.increment ? 32 : 1;
-		return access.result;
-	}
+    /// Address: $2007
+    std::uint8_t ReadPPUDATA()
+    {
+        if (vAddr.addr <= 0x3EFF) {
+            access.result = access.buffer;
+            access.buffer = Read(vAddr.addr);
+        }
+        else {
+            access.result = Read(vAddr.addr);
+            access.buffer = Read(vAddr.addr & ~0x1000);
+        }
+        vAddr.addr += ctrl.increment ? 32 : 1;
+        return access.result;
+    }
 
     /// Address: $2000
     void WritePPUCTRL(std::uint8_t value)
-	{
+    {
         access.result = value;
 
         ctrl.reg = value;
@@ -237,28 +246,28 @@ class PPU {
 
     /// Address: $2001
     void WritePPUMASK(std::uint8_t value)
-	{
+    {
         access.result = value;
         mask.reg = value;
     }
 
     /// Address: $2003
     void WriteOAMADDR(std::uint8_t value)
-	{
+    {
         access.result = value;
         oamAddr = value;
     }
 
     /// Address: $2004
     void WriteOAMDATA(std::uint8_t value)
-	{
+    {
         access.result = value;
         oamMem[oamAddr++] = value;
     }
 
     /// Address: $2005
     void WritePPUSCROLL(std::uint8_t value)
-	{
+    {
         access.result = value;
         // First write
         if (!access.latch) {
@@ -275,7 +284,7 @@ class PPU {
 
     /// Address: $2006
     void WritePPUADDR(std::uint8_t value)
-	{
+    {
         access.result = value;
         // First write
         if (!access.latch) {
@@ -291,7 +300,7 @@ class PPU {
 
     /// Address: $2007
     void WritePPUDATA(std::uint8_t value)
-	{
+    {
         access.result = value;
 
         Write(vAddr.addr, value);
@@ -299,7 +308,7 @@ class PPU {
     }
 
     void Write(std::size_t address, std::uint8_t value)
-	{
+    {
         if (address <= 0x1FFF) { // CHR-ROM/RAM.
             chrMem[address % chrMem.size()] = value;
             return;
@@ -317,7 +326,7 @@ class PPU {
     }
 
     std::uint8_t Read(std::size_t address)
-	{
+    {
         if (address <= 0x1FFF) { // CHR-ROM/RAM.
             return chrMem[address % chrMem.size()];
         }
@@ -333,15 +342,15 @@ class PPU {
     }
 
     void Step()
-	{
-		if (scanline >= 0 && scanline <= 239)
-			Scanline(ScanlinePhase::VISIBLE);
-		else if (scanline == 240)
-			Scanline(ScanlinePhase::POST);
-		else if (scanline == 241)
-			Scanline(ScanlinePhase::NMI);
-		else if (scanline == 261)
-			Scanline(ScanlinePhase::PRE);
+    {
+        if (scanline >= 0 && scanline <= 239)
+            Scanline(ScanlinePhase::VISIBLE);
+        else if (scanline == 240)
+            Scanline(ScanlinePhase::POST);
+        else if (scanline == 241)
+            Scanline(ScanlinePhase::NMI);
+        else if (scanline == 261)
+            Scanline(ScanlinePhase::PRE);
 
         // Update dot and scanline counters:
         if (++dot > 340) {
@@ -406,7 +415,7 @@ class PPU {
     }
 
     void ShiftBackground()
-	{
+    {
         bgShiftLow = (bgShiftLow & 0xFF00) | bgLow;
         bgShiftHigh = (bgShiftHigh & 0xFF00) | bgHigh;
         atLatchLow = (attributes & 1);
@@ -414,7 +423,7 @@ class PPU {
     }
 
     void ClearOAM()
-	{
+    {
         for (int i = 0; i < 8; i++) {
             secondaryOam[i].id = 64;
             secondaryOam[i].y = 0xFF;
@@ -426,37 +435,37 @@ class PPU {
         }
     }
 
-	void EvalSprites()
-	{
-		// Dummy scanline
-		if (scanline == 261)
-			return;
+    void EvalSprites()
+    {
+        // Dummy scanline
+        if (scanline == 261)
+            return;
 
-		// Number of sprites in the scanline
-		unsigned count = 0;
+        // Number of sprites in the scanline
+        unsigned count = 0;
 
-		for (unsigned i = 0; i < 64; i++) {
-			const int diff = scanline - oamMem[i * 4 + 0];
-			// Checks if the sprite is on the scanline
-			if (diff >= 0 && diff < SpriteHeight()) {
-				secondaryOam[count].id         = i;
-				secondaryOam[count].y          = oamMem[i * 4 + 0];
-				secondaryOam[count].tile       = oamMem[i * 4 + 1];
-				secondaryOam[count].attributes = oamMem[i * 4 + 2];
-				secondaryOam[count].x          = oamMem[i * 4 + 3];
+        for (unsigned i = 0; i < 64; i++) {
+            const int diff = scanline - oamMem[i * 4 + 0];
+            // Checks if the sprite is on the scanline
+            if (diff >= 0 && diff < SpriteHeight()) {
+                secondaryOam[count].id         = i;
+                secondaryOam[count].y          = oamMem[i * 4 + 0];
+                secondaryOam[count].tile       = oamMem[i * 4 + 1];
+                secondaryOam[count].attributes = oamMem[i * 4 + 2];
+                secondaryOam[count].x          = oamMem[i * 4 + 3];
 
-				// Maximum of 8 sprites is possible
-				if (++count > 8) {
-					if (mask.reg != 0)
-						status.spriteOvf = true;
-					return;
-				}
-			}
-		}
-	}
+                // Maximum of 8 sprites is possible
+                if (++count > 8) {
+                    if (mask.reg != 0)
+                        status.spriteOvf = true;
+                    return;
+                }
+            }
+        }
+    }
 
     void LoadSprites()
-	{
+    {
         unsigned addr;
         for (unsigned i = 0; i < 8; i++) {
             oam[i] = secondaryOam[i];
@@ -464,9 +473,9 @@ class PPU {
             // 8x16
             if (SpriteHeight() == 16) {
                 // Bit 0 selects either Pattern table 0 or 1 (0x0000 / 0x1000)
-                const unsigned table = oam[i].tile & Bit0;
+                const unsigned table = oam[i].tile & 1;
                 // The 7 MSB represents the index (Each tile is 16 bytes)
-                const unsigned index = (oam[i].tile & ~Bit0) * 16;
+                const unsigned index = (oam[i].tile & ~1) * 16;
                 addr = (table ? 0x1000 : 0x0000) + index;
             }
             // 8x8
@@ -482,7 +491,7 @@ class PPU {
                             SpriteHeight(); // Line inside the sprite
 
             // Bit 7 indicates vertical flip
-            if (oam[i].attributes & Bit7)
+            if (oam[i].attributes & 0x80)
                 sprY ^= SpriteHeight() - 1;
 
             // Select the second tile if on 8x16
@@ -495,7 +504,7 @@ class PPU {
 
     // Evaluates which pixel should be drawn
     void Pixel()
-	{
+    {
         std::uint8_t palette = 0, objPalette = 0;
         bool objPriority = false;
         int x = dot - 2;
@@ -522,7 +531,7 @@ class PPU {
                         continue;
 
                     // Bit 6 indicates horizontal flip
-                    if (oam[i].attributes & Bit6)
+                    if (oam[i].attributes & 0x40)
                         sprX ^= 7;
 
                     std::uint8_t sprPalette =
@@ -532,7 +541,7 @@ class PPU {
                     if (sprPalette == 0) // Transparent pixel.
                         continue;
 
-					if (oam[i].id == 0 && palette && x != 255 && !status.spriteHit)
+                    if (oam[i].id == 0 && palette && x != 255 && !status.spriteHit)
                         status.spriteHit = true;
 
                     sprPalette |= (oam[i].attributes & 3) << 2;
@@ -563,22 +572,23 @@ class PPU {
     enum class ScanlinePhase { PRE, VISIBLE, POST, NMI };
 
     void Scanline(ScanlinePhase phase)
-	{
+    {
         static std::uint16_t addr;
 
-		/*static int vblankCycles = 0;
-		if(status.vBlank == true)
-			vblankCycles++;
+        /*
+        static int vblankCycles = 0;
+        if(status.vBlank == true)
+            vblankCycles++;
 
-		if (vblankCycles == 2269) {
-			status.vBlank = false;
-			vblankCycles = 0;
-		}
-*/
+        if (vblankCycles == 2269) {
+            status.vBlank = false;
+            vblankCycles = 0;
+        }
+        */
 
         if (phase == ScanlinePhase::NMI && dot == 1) {
-			status.vBlank = true;
-			if (ctrl.nmiEnable) SetNMI();
+            status.vBlank = true;
+            if (ctrl.nmiEnable) SetNMI();
         } else if (phase == ScanlinePhase::POST && dot == 0) {
             HandleNewFrame(pixels.data());
         } else if (phase == ScanlinePhase::VISIBLE ||
@@ -635,9 +645,9 @@ class PPU {
                     UpdateScrollV();
             } else if (dot == 1) {
                 addr = NametableAddress();
-				if (phase == ScanlinePhase::PRE) {
-					status.vBlank = false;
-				}
+                if (phase == ScanlinePhase::PRE) {
+                    status.vBlank = false;
+                }
             } else if (dot >= 321 && dot <= 339) {
                 addr = NametableAddress();
             } else if (dot == 338) {

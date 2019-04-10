@@ -17,7 +17,7 @@ class ROMLayout {
 
     const Data data;
 
-  public:
+   public:
     using const_iterator = Data::const_iterator;
 
     /// Initialize by reading the file at path.

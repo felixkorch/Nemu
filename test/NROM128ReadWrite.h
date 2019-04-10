@@ -1,11 +1,11 @@
-// ---------------------------------------------------------------------* C++ *-
+// -----------------------------------------------------------------------------------------* C++ *-
 // NROM128ReadWrite.h
 //
-// -----------------------------------------------------------------------------
+// -------------------------------------------------------------------------------------------------
 
 #pragma once
 
-#include "Nemu/NROM128Mapper.h"
+#include "Nemu/Mapper/NROM128Mapper.h"
 #include <cassert>
 #include <vector>
 
@@ -23,7 +23,7 @@ class Test {
             data[i] = data[i - 2] + data[i - 1];
         }
 
-        NROM128Mapper mapper(data.cbegin(), data.cend());
+        mapper::NROM128Mapper mapper(data.cbegin(), data.cend());
 
         for (unsigned i = 0; i <= 0xFFFF; ++i) {            
             if (i <= 0x7FFF)

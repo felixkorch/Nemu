@@ -23,6 +23,7 @@ set(Nemu_SOURCE
     include/Nemu/NROM128Mapper.h
     include/Nemu/NROM256Mapper.h
     include/Nemu/NESInstance.h
+    include/Nemu/ROMLayout.h
 )
 
 add_executable(${PROJECT_NAME} ${Nemu_SOURCE})

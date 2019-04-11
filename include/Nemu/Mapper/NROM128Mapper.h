@@ -5,43 +5,101 @@
 
 #pragma once
 
-#include <vector>
 #include <cstddef>
+#include <cstdint>
+#include <iterator>
+#include <type_traits>
+#include <vector>
+#include <algorithm>
+
+#include <iostream>
 
 namespace nemu {
 namespace mapper {
 
 /// Provides mapping for the NROM-128 cartridge layout.
 ///
-/// Mapping:
-///     Block0:
-///         range: (0x8000, 0xFFFF)
+/// PRG-ROM:
+///     Bank 0:
+///         range: (0x8000, 0xBFFF)
 ///         size: 0x4000 (16kB)
-///         modulus: 0x4000
+///         mirroring: None
+///     Bank 1:
+///         range: (0xC000, 0xFFFF)
+///         size: 0x4000 (16kB)
+///         mirroring: Mirrors Bank 0
+///
+/// CHR-ROM:
+///     Bank 0:
+///         range: (0x0000, 0x0FFF)
+///         size: 0x1000 (8kB)
+///         mirroring: None
 ///
 class NROM128Mapper {
-    using Iterator = std::vector<unsigned>::iterator;
-    std::vector<unsigned> data;
+    std::vector<unsigned> prgROM;
+    std::vector<unsigned> chrROM;
 
    public:
-    NROM128Mapper(const Iterator& begin, const Iterator& end)
-        : data(begin, end)
+    NROM128Mapper() 
+        : prgROM(0x4000)
+        , chrROM(0x1000)
     {}
 
-    NROM128Mapper(std::vector<unsigned>::const_iterator begin, 
-                  std::vector<unsigned>::const_iterator end) 
-        : data(begin, end) 
-    {}
-
-    std::uint8_t Read(std::size_t address)
-    {
-        if (address < 0x8000)
-            return 0;
-        return static_cast<std::uint8_t>(data[address % 0x4000]);
+    /*
+    template <
+        class Iterator,
+        typename std::enable_if<
+            std::is_integral<typename std::iterator_traits<Iterator>::value_type>
+                ::value, 
+            int>::type = 0
+    >
+    */
+    template <class Iterator>
+    void LoadPRGROM(Iterator begin, Iterator end)
+    { 
+        auto it = chrROM.begin();
+        while (begin != end) {
+            *it++ = *begin++;
+        } 
+        // std::copy(begin, end, prgROM.begin()); 
     }
 
-    /// Does not do anything since ROM is read only.
-    void Write(std::size_t address, std::uint8_t value) {}
+    /*
+    template <
+        class Iterator,
+        typename std::enable_if<
+            std::is_integral<typename std::iterator_traits<Iterator>::value_type>
+                ::value, 
+            int>::type = 0    
+    >
+    */
+    template <class Iterator>
+    void LoadCHRROM(Iterator begin, Iterator end)
+    {
+        auto it = chrROM.begin();
+        while (begin != end) {
+            *it++ = *begin++;
+        } 
+        // std::copy(begin, end, chrROM.begin());
+    }
+
+    std::uint8_t ReadPRG(std::size_t address)
+    {
+        if (address <= 0x7FFF)
+            return 0;
+        return prgROM[address % 0x4000];
+    }
+
+    void WritePRG(std::size_t address, std::uint8_t value) {}
+
+    std::uint8_t ReadCHR(std::size_t address)
+    {
+        if (address <= 0x0FFF)
+            return chrROM[address];
+        return 0;
+    }
+
+    void WriteCHR(std::size_t address, std::uint8_t value) {}
 };
 
 } // namespace mapper

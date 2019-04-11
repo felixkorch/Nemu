@@ -15,10 +15,6 @@ namespace nemu {
 
 template <class Mapper>
 class CPU {
-    // TODO:
-    //  For simplicity everything is shared pointers. There are probably more static solutions.
-    std::shared_ptr<Mapper> mapper;
-
     bool nmi, irq;
 
     int remainingCycles;
@@ -37,6 +33,10 @@ class CPU {
     constexpr static unsigned IRQVector   = 0xFFFE;
 
    public:
+    // TODO:
+    //  For simplicity everything is shared pointers. There are probably more static solutions.
+    std::shared_ptr<Mapper> mapper;
+
     std::uint8_t   regX;
     std::uint8_t   regY;
     std::uint8_t   regA;
@@ -44,9 +44,8 @@ class CPU {
     std::uint16_t  regPC;
     StatusRegister regStatus;
 
-    CPU(std::shared_ptr<Mapper> mapper)
-        : mapper(mapper)
-        , regX(0)
+    CPU()
+        : regX(0)
         , regY(0)
         , regA(0)
         , regSP(0xFF)

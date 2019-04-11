@@ -8,6 +8,7 @@
 #include "Nemu/CPU.h"
 #include "Nemu/Joypad.h"
 #include "Nemu/PPU.h"
+#include "Nemu/Mapper/PPUMapper.h"
 #include <memory>
 
 namespace nemu {
@@ -45,7 +46,7 @@ class CPUMapper {
     // TODO:
     //  For simplicity everything is shared pointers. There are probably more static solutions.
     std::shared_ptr<CPU<CPUMapper<CartridgeMapper>>> cpu;
-    std::shared_ptr<PPU> ppu;
+    std::shared_ptr<PPU<PPUMapper<CartridgeMapper>>> ppu;
     std::shared_ptr<CartridgeMapper> cartridgeMapper;
 
     Joypad joypad;
@@ -77,7 +78,7 @@ class CPUMapper {
             return 0;
         }
         if (address <= 0xFFFF)
-            return cartridgeMapper->Read(address);
+            return cartridgeMapper->ReadCHR(address);
         return 0;
     }
 
@@ -108,7 +109,7 @@ class CPUMapper {
             // TODO: Implement the entire APU.
         }
         else if (address <= 0xFFFF) {
-            cartridgeMapper->Write(address, value);
+            cartridgeMapper->WritePRG(address, value);
         }
     }
 };

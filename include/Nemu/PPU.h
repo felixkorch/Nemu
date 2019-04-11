@@ -10,6 +10,7 @@
 #include <cstdint>
 #include <functional>
 #include <vector>
+#include <memory>
 
 /// Determines if the nth bit is set
 #define NthBit(x, n) (((x) >> (n)) & 1)
@@ -48,6 +49,7 @@ RGBA HexToRGBA(unsigned hexValue) {
 
 } // namespace ppu
 
+template <class Mapper>
 class PPU {
     ///	The NES has 4 nametables but the board only contains space for 2.
     ///	The nametables takes up the range 0x2000 -> 0x2FFF (4 * 1024 bytes).
@@ -55,7 +57,8 @@ class PPU {
     ///	Vertical:   0x2000 == 0x2800 && 0x2400 == 0x2C00
     ///	Horizontal: 0x2000 == 0x2400 && 0x2800 == 0x2C00
 
-    unsigned MirroredAddress(unsigned addr) {
+    unsigned MirroredAddress(unsigned addr) 
+    {
         switch (mirroring) {
         case ppu::MirroringMode::Vertical:   return addr % 0x800;
         case ppu::MirroringMode::Horizontal: return ((addr / 2) & 0x400) + (addr % 0x400);
@@ -76,7 +79,7 @@ class PPU {
         std::uint8_t reg;
     };
 
-    // PPUSTATUS Register
+    /// PPUSTATUS Register
     union Status {
         struct {
             unsigned bus       : 5;
@@ -87,7 +90,7 @@ class PPU {
         std::uint8_t reg;
     };
 
-    // PPUMASK Register
+    /// PPUMASK Register
     union Mask {
         struct {
             unsigned gray    : 1; // Grayscale
@@ -102,7 +105,7 @@ class PPU {
         std::uint8_t reg;
     };
 
-    // PPUADDR Register
+    /// PPUADDR Register
     union Addr {
         struct {
             unsigned coarseX   : 5; // Coarse X.
@@ -135,7 +138,6 @@ class PPU {
         bool latch;
     };
 
-   private:
     std::function<void(std::uint8_t*)> HandleNewFrame;
     std::vector<std::uint8_t> pixels;
 
@@ -170,16 +172,17 @@ class PPU {
     int dot;
     bool frameOdd;
 
-    std::vector<unsigned> chrMem;
-
     static void EmptySetNMI() {}
 
    public:
+    // TODO:
+    //  For simplicity everything is shared pointers. There are probably more static solutions.
+    std::shared_ptr<Mapper> mapper;
+
     std::function<void()> SetNMI;
 
-    PPU(std::vector<unsigned>&& chrMem, std::function<void(std::uint8_t* pixels)> newFrameCallback)
-        : chrMem(std::move(chrMem))
-        , SetNMI(EmptySetNMI)
+    PPU(std::function<void(std::uint8_t* pixels)> newFrameCallback)
+        : SetNMI(EmptySetNMI)
         , HandleNewFrame(newFrameCallback)
     {
         Reset();
@@ -310,25 +313,22 @@ class PPU {
     void Write(std::size_t address, std::uint8_t value)
     {
         if (address <= 0x1FFF) { // CHR-ROM/RAM.
-            chrMem[address % chrMem.size()] = value;
-            return;
+            mapper->Write(address, value);
         }
-        if (address <= 0x3EFF) { // Nametables.
+        else if (address <= 0x3EFF) { // Nametables.
             ciRam[MirroredAddress(address)] = value;
-            return;
         }
-        if (address <= 0x3FFF) { // Palettes.
+        else if (address <= 0x3FFF) { // Palettes.
             if ((address & 0x13) == 0x10)
                 address &= ~0x10;
             cgRam[address & 0x1F] = value;
-            return;
         }
     }
 
     std::uint8_t Read(std::size_t address)
     {
         if (address <= 0x1FFF) { // CHR-ROM/RAM.
-            return chrMem[address % chrMem.size()];
+            return mapper->Read(address);
         }
         if (address <= 0x3EFF) { // Nametables.
             return ciRam[MirroredAddress(address)];

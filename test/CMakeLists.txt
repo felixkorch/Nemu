@@ -1,4 +1,4 @@
-set(NEMU_TESTS 
+set(NEMU_TESTS
     6502CPUFunctional
     NROM128ReadWrite
     StatusRegister
@@ -11,7 +11,7 @@ foreach (test ${NEMU_TESTS})
 
     add_executable(${NEMU_TEST_TARGET} Test.cpp)
     target_include_directories(${NEMU_TEST_TARGET} PRIVATE ${CMAKE_SOURCE_DIR}/include)
-    target_compile_definitions(${NEMU_TEST_TARGET} PRIVATE NEMU_TEST_FILE=\"${test}.h\")
+    target_compile_definitions(${NEMU_TEST_TARGET} PRIVATE NEMU_TEST_FILE="${test}.h")
 
     set_target_properties(${NEMU_TEST_TARGET} PROPERTIES
         RUNTIME_OUTPUT_DIRECTORY ${NEMU_TEST_OUTPUT_DIR}
@@ -21,8 +21,6 @@ endforeach()
 # Required by 6502CPUFunctional
 configure_file(
     ${CMAKE_SOURCE_DIR}/test/asm/6502_functional_test.bin
-    # TODO: 
-    #   Should work for all kinds of builds and not only debug.
     ${NEMU_TEST_OUTPUT_DIR}/resources/6502_functional_test.bin
     COPYONLY
 )

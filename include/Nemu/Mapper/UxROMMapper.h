@@ -52,6 +52,12 @@ public:
         if (address & 0x8000)
             currentBank = std::next(data.begin(), 0x4000 * (value & 0xF));
     }
+
+    std::uint8_t ReadPRG(std::size_t address) { return 0; }
+    void WritePRG(std::size_t address, std::uint8_t value) {}
+
+    std::uint8_t ReadCHR(std::size_t address) { return 0; }
+    void WriteCHR(std::size_t address, std::uint8_t value) {}
 };
 
 } // namespace mapper

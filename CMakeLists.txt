@@ -35,4 +35,6 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY_RELEASE ${CMAKE_CURRENT_LIST_DIR}/bin/Release/${PROJECT_NAME}
 )
 
-add_subdirectory(test)
+if (NEMU_ENABLE_TESTS)
+    add_subdirectory(test)
+endif()

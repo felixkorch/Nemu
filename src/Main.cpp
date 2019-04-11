@@ -1,6 +1,7 @@
 #include <ctime>
 #include "Nemu/NESInput.h"
 #include "Nemu/NESInstance.h"
+#include "Nemu/ROMLayout.h"
 
 using namespace sgl;
 using namespace nemu;
@@ -101,11 +102,18 @@ class MainLayer : public Layer {
 
             running = true;
 
+            nesInstance = MakeNESInstance((NESInstance::Descriptor){
+                .rom = ROMLayout(paths[0]),
+                .input = nesInput,
+                .newFrameCallback = std::bind(&MainLayer::OnNewFrame, this, std::placeholders::_1),
+                .mapperCode = -1
+            });
+            /*
             nesInstance = MakeNESInstance(
                 paths[0],
                 nesInput,
                 std::bind(&MainLayer::OnNewFrame, this, std::placeholders::_1));
-
+            */
             if (nesInstance == nullptr) {
                 std::cout << "Failed to load ROM\n";
                 return;
@@ -146,7 +154,7 @@ public:
 	NESApp()
 		: sgl::Application(props)
 	{
-        window->SetFPS(50);
+        window->SetFPS(60);
         window->SetVSync(false);
         PushLayer(new MainLayer);
     }

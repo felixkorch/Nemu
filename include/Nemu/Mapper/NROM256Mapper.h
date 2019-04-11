@@ -3,44 +3,54 @@
 //
 // -------------------------------------------------------------------------------------------------
 
-#pragma once
-
 #include <vector>
 #include <cstddef>
 
 namespace nemu {
 namespace mapper {
 
-/// Provides mapping layout for the NROM-256 cartridge.
+/// Provides mapping for the NROM-256 cartridge layout.
 ///
-/// Mapping:
-///     Block0:
+/// PRG-ROM:
+///     Bank 0:
 ///         range: (0x8000, 0xFFFF)
-///         size: 0x8000 (32kB)
+///         size: 0x8000 (16kB)
+///         mirroring: None
+///
+/// CHR-ROM:
+///     Page 0:
+///         range: (0x0000, 0x0FFF)
+///         size: 0x1000 (8kB)
+///         mirroring: None
 ///
 class NROM256Mapper {
     using Iterator = std::vector<unsigned>::iterator;
-    std::vector<unsigned> data;
+    std::vector<unsigned> prgROM;
+    std::vector<unsigned> chrROM;
 
    public:
-    NROM256Mapper(const Iterator& begin, const Iterator& end)
-        : data(begin, end)
+    NROM256Mapper() 
+        : prgROM(0x8000)
+        , chrROM(0x1000)
     {}
 
-    NROM256Mapper(std::vector<unsigned>::const_iterator begin, 
-                  std::vector<unsigned>::const_iterator end) 
-        : data(begin, end) 
-    {}
-
-    std::uint8_t Read(std::size_t address)
+    std::uint8_t ReadPRG(std::size_t address)
     {
-        if (address < 0x8000)
+        if (address <= 0x7FFF)
             return 0;
-        return static_cast<std::uint8_t>(data[address % 0x8000]);
+        return prgROM[address];
     }
 
-    /// Does not do anything since ROM is read only.
-    void Write(std::size_t address, std::uint8_t value) {}
+    void WritePRG(std::size_t address, std::uint8_t value) {}
+
+    std::uint8_t ReadCHR(std::size_t address)
+    {
+        if (address <= 0x0FFF)
+            return chrROM[address];
+        return 0;
+    }
+
+    void WriteCHR(std::size_t address, std::uint8_t value) {}
 };
 
 } // namespace mapper

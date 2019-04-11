@@ -20,17 +20,17 @@ namespace mapper {
 /// Provides mapping for the NROM-128 cartridge layout.
 ///
 /// PRG-ROM:
-///     Bank 0:
+///     Slot 0:
 ///         range: (0x8000, 0xBFFF)
 ///         size: 0x4000 (16kB)
 ///         mirroring: None
-///     Bank 1:
+///     Slot 1:
 ///         range: (0xC000, 0xFFFF)
 ///         size: 0x4000 (16kB)
-///         mirroring: Mirrors Bank 0
+///         mirroring: Mirrors Slot 0
 ///
 /// CHR-ROM:
-///     Bank 0:
+///     Slot 0:
 ///         range: (0x0000, 0x0FFF)
 ///         size: 0x1000 (8kB)
 ///         mirroring: None
@@ -56,13 +56,7 @@ class NROM128Mapper {
     */
     template <class Iterator>
     void LoadPRGROM(Iterator begin, Iterator end)
-    { 
-        auto it = chrROM.begin();
-        while (begin != end) {
-            *it++ = *begin++;
-        } 
-        // std::copy(begin, end, prgROM.begin()); 
-    }
+    { std::copy(begin, end, prgROM.begin()); }
 
     /*
     template <
@@ -75,13 +69,7 @@ class NROM128Mapper {
     */
     template <class Iterator>
     void LoadCHRROM(Iterator begin, Iterator end)
-    {
-        auto it = chrROM.begin();
-        while (begin != end) {
-            *it++ = *begin++;
-        } 
-        // std::copy(begin, end, chrROM.begin());
-    }
+    { std::copy(begin, end, chrROM.begin()); }
 
     std::uint8_t ReadPRG(std::size_t address)
     {

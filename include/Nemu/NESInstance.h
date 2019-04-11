@@ -9,6 +9,7 @@
 #include "Nemu/Mapper/CPUMapper.h"
 #include "Nemu/Mapper/NROM128Mapper.h"
 #include "Nemu/Mapper/NROM256Mapper.h"
+#include "Nemu/Mapper/MMC1Mapper.h"
 #include "Nemu/Mapper/UxROMMapper.h"
 #include "Nemu/NESInput.h"
 #include "Nemu/PPU.h"
@@ -128,6 +129,7 @@ MakeNESInstance(const std::string& path,
     case 0:
         if (prgROMSize > 0x4000) return MakeNESInstance<mapper::NROM256Mapper>(input, ppu, prgROM);
         else                     return MakeNESInstance<mapper::NROM128Mapper>(input, ppu, prgROM);
+    case 1:                      return MakeNESInstance<mapper::MMC1Mapper>(input, ppu, prgROM);
     case 2:                      return MakeNESInstance<mapper::UxROMMapper>(input, ppu, prgROM);
     default:                     return MakeNESInstance<mapper::UxROMMapper>(input, ppu, prgROM);
     }

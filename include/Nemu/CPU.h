@@ -6,6 +6,7 @@
 #pragma once
 
 #include "Nemu/StatusRegister.h"
+#include <functional>
 #include <iostream>
 #include <vector>
 #include <memory>

@@ -17,6 +17,7 @@ set(Nemu_SOURCE
     include/Nemu/Mapper/NROM128Mapper.h
     include/Nemu/Mapper/NROM256Mapper.h
     include/Nemu/Mapper/UxROMMapper.h
+    include/Nemu/Mapper/MMC1Mapper.h
     include/Nemu/NESInput.h
     include/Nemu/NESInstance.h
     include/Nemu/PPU.h

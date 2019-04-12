@@ -40,36 +40,16 @@ class NROM128Mapper {
     std::vector<unsigned> chrROM;
 
    public:
-    NROM128Mapper() 
-        : prgROM(0x4000)
-        , chrROM(0x1000)
+    NROM128Mapper(std::vector<unsigned>&& prgROM, std::vector<unsigned>&& chrROM) 
+        : prgROM(std::move(prgROM))
+        , chrROM(std::move(chrROM))
     {}
 
-    /*
-    template <
-        class Iterator,
-        typename std::enable_if<
-            std::is_integral<typename std::iterator_traits<Iterator>::value_type>
-                ::value, 
-            int>::type = 0
-    >
-    */
-    template <class Iterator>
-    void LoadPRGROM(Iterator begin, Iterator end)
-    { std::copy(begin, end, prgROM.begin()); }
+    void SetPRGROM(std::vector<unsigned>&& newData)
+    { prgROM = std::move(newData); }
 
-    /*
-    template <
-        class Iterator,
-        typename std::enable_if<
-            std::is_integral<typename std::iterator_traits<Iterator>::value_type>
-                ::value, 
-            int>::type = 0    
-    >
-    */
-    template <class Iterator>
-    void LoadCHRROM(Iterator begin, Iterator end)
-    { std::copy(begin, end, chrROM.begin()); }
+    void SetCHRROM(std::vector<unsigned>&& newData)
+    { chrROM = std::move(newData); }
 
     std::uint8_t ReadPRG(std::size_t address)
     {
@@ -82,7 +62,7 @@ class NROM128Mapper {
 
     std::uint8_t ReadCHR(std::size_t address)
     {
-        if (address <= 0x0FFF)
+        if (address <= 0x1FFF)
             return chrROM[address];
         return 0;
     }

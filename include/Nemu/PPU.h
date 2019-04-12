@@ -588,7 +588,8 @@ class PPU {
 
         if (phase == ScanlinePhase::NMI && dot == 1) {
             status.vBlank = true;
-            if (ctrl.nmiEnable) SetNMI();
+            if (ctrl.nmiEnable) 
+                SetNMI();
         } else if (phase == ScanlinePhase::POST && dot == 0) {
             HandleNewFrame(pixels.data());
         } else if (phase == ScanlinePhase::VISIBLE ||

@@ -78,7 +78,7 @@ class CPUMapper {
             return 0;
         }
         if (address <= 0xFFFF)
-            return cartridgeMapper->ReadCHR(address);
+            return cartridgeMapper->ReadPRG(address);
         return 0;
     }
 

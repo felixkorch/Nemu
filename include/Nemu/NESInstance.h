@@ -65,9 +65,9 @@ class NESInstanceBase: public NESInstance {
     {
         auto rom = descriptor.rom;
 
-        auto cartridgeMapper = std::make_shared<CartridgeMapper>();
-        cartridgeMapper->LoadPRGROM(rom.BeginPRGROM(), rom.EndPRGROM());
-        cartridgeMapper->LoadCHRROM(rom.BeginCHRROM(), rom.EndCHRROM());
+        auto cartridgeMapper = std::make_shared<CartridgeMapper>(
+            std::vector<unsigned>(rom.BeginPRGROM(), rom.EndPRGROM()),
+            std::vector<unsigned>(rom.BeginCHRROM(), rom.EndCHRROM()));
 
         cpuMapper = std::make_shared<typename decltype(cpuMapper)::element_type>();
         cpuMapper->cartridgeMapper = cartridgeMapper;

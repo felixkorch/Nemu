@@ -6,6 +6,7 @@
 #pragma once
 
 #include "Nemu/System.h"
+#include "Nemu/PPU.h"
 #include <cstdint>
 #include <vector>
 #include <iostream>

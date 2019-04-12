@@ -136,7 +136,7 @@ static std::unique_ptr<NESInstance> MakeNESInstance(const NESInstance::Descripto
     case 1:  return MakeNESInstance<mapper::MMC1Mapper>(descriptor);
     case 2:  return MakeNESInstance<mapper::UxROMMapper>(descriptor);
     case 4:  return MakeNESInstance<mapper::MMC3Mapper>(descriptor);
-    default: return MakeNESInstance<mapper::NROM256Mapper>(descriptor);;
+    default: return MakeNESInstance<mapper::NROM128Mapper>(descriptor);
     }
     
 }

@@ -101,7 +101,7 @@ namespace mapper {
             prgSlot[3] = std::prev(prgROM.end(), 0x2000);             // Fixed to last bank
 
             // PRG Mode 0:
-            if (!(regControl & (1 << 6))) {
+            if (!(regControl & 0b01000000)) {
                 prgSlot[0] = std::next(prgROM.begin(), 0x2000 * regs[6]);
                 prgSlot[2] = std::prev(prgROM.end(), 0x2000 * 2); // Second to last bank
             }
@@ -112,7 +112,7 @@ namespace mapper {
             }
 
             // CHR Mode 0:
-            if (!(regControl & (1 << 7))) {
+            if (!(regControl & 0b10000000)) {
                 // 2kB Blocks
                 chrSlot[0] = std::next(chrRAM.begin(), 0x800 * (regs[0] >> 1));
                 chrSlot[1] = std::next(chrSlot[0], 0x400);
@@ -227,9 +227,9 @@ namespace mapper {
                 cpu->SetIRQ();
         }
 
-        void SetMirroring(bool condition)
+        void SetMirroring(bool horizontal)
         {
-            if (condition)
+            if (horizontal)
                 ppu->SetMirroring(ppu::MirroringMode::Horizontal);
             else
                 ppu->SetMirroring(ppu::MirroringMode::Vertical);

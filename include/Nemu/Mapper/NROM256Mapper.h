@@ -23,8 +23,7 @@ namespace mapper {
 ///
 class NROM256Mapper {
     using Iterator = std::vector<unsigned>::iterator;
-    std::vector<unsigned> prgROM, prgRAM;
-    std::vector<unsigned> chrRAM;
+    std::vector<unsigned> prgROM, prgRAM, chrRAM;
 
 public:
 
@@ -35,7 +34,9 @@ public:
         : prgROM(std::move(prg))
         , prgRAM(0x2000)
         , chrRAM(std::move(chr))
-    {}
+    {
+        if (chrRAM.size() == 0) chrRAM = std::vector<unsigned>(0x2000);
+    }
 
     std::uint8_t ReadPRG(std::size_t address)
     {
@@ -46,14 +47,22 @@ public:
         return prgROM[address % 0x8000];
     }
 
-    void WritePRG(std::size_t address, std::uint8_t value) {}
+    void WritePRG(std::size_t address, std::uint8_t value)
+    {
+        if (address >= 0x6000 && address <= 0x7FFF)
+            prgRAM[address % 0x2000] = value;
+    }
 
     std::uint8_t ReadCHR(std::size_t address)
     {
-        return chrRAM[address % 0x2000];
+        return chrRAM[address];
     }
 
-    void WriteCHR(std::size_t address, std::uint8_t value) {}
+    void WriteCHR(std::size_t address, std::uint8_t value)
+    {
+        chrRAM[address] = value;
+    }
+
     void OnScanline() {}
 };
 

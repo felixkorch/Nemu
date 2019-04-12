@@ -91,13 +91,16 @@ class MainLayer : public Layer {
 
     void OnEvent(Event& event) override
 	{
-        // Handling Rom-Loading
+        // Rom Loading
         if (event.GetEventType() == EventType::DropEvent) {
             auto& e = (DropEvent&)event;
             SglTrace(e.ToString());
 
             auto paths = e.GetPaths();
             if (paths.size() > 1)
+                return;
+
+            if (!EndsWith(paths[0], ".nes"))
                 return;
 
             running = true;
@@ -139,6 +142,13 @@ class MainLayer : public Layer {
 			auto& e = (KeyPressedEvent&)event;
 			// TODO: Load / Save State
 		}
+    }
+
+private:
+    bool EndsWith(const std::string& str, const std::string& suffix)
+    {
+        return str.size() >= suffix.size() &&
+            str.compare(str.size() - suffix.size(), suffix.size(), suffix) == 0;
     }
 };
 

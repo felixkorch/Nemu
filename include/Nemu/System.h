@@ -9,8 +9,7 @@
 #include <fstream>
 #include <iostream>
 
-namespace nemu
-{
+namespace nemu {
 
 template <class T>
 inline T ReadFile(const std::string& path)

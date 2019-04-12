@@ -364,7 +364,7 @@ class PPU {
 
     void SetMirroring(ppu::MirroringMode mode) { mirroring = mode; }
 
-   private:
+private:
     bool IsRendering() { return mask.bg || mask.spr; }
     int SpriteHeight() { return ctrl.spriteSize ? 16 : 8; }
 
@@ -444,15 +444,15 @@ class PPU {
         // Number of sprites in the scanline
         unsigned count = 0;
 
-        for (unsigned i = 0; i < 64; i++) {
-            const int diff = scanline - oamMem[i * 4 + 0];
+        for (unsigned n = 0; n < 64; i++) {
+            const int diff = scanline - oamMem[n * 4 + 0];
             // Checks if the sprite is on the scanline
             if (diff >= 0 && diff < SpriteHeight()) {
-                secondaryOam[count].id         = i;
-                secondaryOam[count].y          = oamMem[i * 4 + 0];
-                secondaryOam[count].tile       = oamMem[i * 4 + 1];
-                secondaryOam[count].attributes = oamMem[i * 4 + 2];
-                secondaryOam[count].x          = oamMem[i * 4 + 3];
+                secondaryOam[count].id         = n;
+                secondaryOam[count].y          = oamMem[n * 4 + 0];
+                secondaryOam[count].tile       = oamMem[n * 4 + 1];
+                secondaryOam[count].attributes = oamMem[n * 4 + 2];
+                secondaryOam[count].x          =  oamMem[n * 4 + 3];
 
                 // Maximum of 8 sprites is possible
                 if (++count > 8) {
@@ -525,8 +525,8 @@ class PPU {
                     if (oam[i].id == 64)
                         continue;
 
-                    // If the sprite is outside of the tile, it should not be drawn
                     unsigned sprX = x - oam[i].x;
+                    // If the sprite is outside of the tile, it should not be drawn
                     if (sprX >= 8)
                         continue;
 
@@ -541,7 +541,7 @@ class PPU {
                     if (sprPalette == 0) // Transparent pixel.
                         continue;
 
-                    if (oam[i].id == 0 && palette && x != 255 && !status.spriteHit)
+                    if (oam[i].id == 0 && palette && x != 255)
                         status.spriteHit = true;
 
                     sprPalette |= (oam[i].attributes & 3) << 2;

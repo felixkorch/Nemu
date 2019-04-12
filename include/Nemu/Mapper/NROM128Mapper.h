@@ -33,18 +33,19 @@ namespace mapper {
 ///         size: 0x2000 (8kB)
 ///
 class NROM128Mapper {
-    std::vector<unsigned> prgROM, prgRAM;
-    std::vector<unsigned> chrRAM;
+    std::vector<unsigned> prgROM, prgRAM, chrRAM;
 
 public:
        std::shared_ptr<PPU<PPUMapper<NROM128Mapper>>> ppu;
        std::shared_ptr<CPU<CPUMapper<NROM128Mapper>>> cpu;
 
-    NROM128Mapper(std::vector<unsigned>&& prgROM, std::vector<unsigned>&& chrROM) 
-        : prgROM(std::move(prgROM))
-        , prgRAM(0x2000)
-        , chrRAM(std::move(chrROM))
-    {}
+       NROM128Mapper(std::vector<unsigned>&& prg, std::vector<unsigned>&& chr)
+           : prgROM(std::move(prg))
+           , prgRAM(0x2000)
+           , chrRAM(std::move(chr))
+       {
+           if (chrRAM.size() == 0) chrRAM = std::vector<unsigned>(0x2000);
+       }
 
     void SetPRGROM(std::vector<unsigned>&& newData)
     { prgROM = std::move(newData); }
@@ -61,14 +62,21 @@ public:
         return prgROM[address % 0x4000];
     }
 
-    void WritePRG(std::size_t address, std::uint8_t value) {}
+    void WritePRG(std::size_t address, std::uint8_t value)
+    {
+        if (address >= 0x6000 && address <= 0x7FFF)
+            prgRAM[address % 0x2000] = value;
+    }
 
     std::uint8_t ReadCHR(std::size_t address)
     {
         return chrRAM[address];
     }
 
-    void WriteCHR(std::size_t address, std::uint8_t value) {}
+    void WriteCHR(std::size_t address, std::uint8_t value)
+    {
+        chrRAM[address] = value;
+    }
     void OnScanline() {}
 };
 

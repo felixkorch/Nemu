@@ -11,17 +11,15 @@ namespace mapper {
 
 /// Provides mapping for the NROM-256 cartridge layout.
 ///
-/// PRG-ROM:
-///     Bank 0:
+/// Mapping for PRG:
+///     Slot 0:
 ///         range: (0x8000, 0xFFFF)
-///         size: 0x8000 (16kB)
-///         mirroring: None
+///         size: 0x4000 (16kB)
 ///
-/// CHR-ROM:
-///     Page 0:
-///         range: (0x0000, 0x0FFF)
-///         size: 0x1000 (8kB)
-///         mirroring: None
+/// Mapping for CHR:
+///     Slot 0:
+///         range: (0x0000, 0x1FFF)
+///         size: 0x2000 (8kB)
 ///
 class NROM256Mapper {
     using Iterator = std::vector<unsigned>::iterator;
@@ -41,8 +39,10 @@ public:
 
     std::uint8_t ReadPRG(std::size_t address)
     {
-        if (address <= 0x7FFF)
+        if (address < 0x6000)
             return 0;
+        if (address <= 0x7FFF)
+            return prgRAM[address & 0x2000];
         return prgROM[address % 0x8000];
     }
 
@@ -50,13 +50,11 @@ public:
 
     std::uint8_t ReadCHR(std::size_t address)
     {
-        if (address <= 0x1FFF)
-            return chrRAM[address];
-        return 0;
+        return chrRAM[address % 0x2000];
     }
 
     void WriteCHR(std::size_t address, std::uint8_t value) {}
-    void OnNewScanline() {}
+    void OnScanline() {}
 };
 
 } // namespace mapper

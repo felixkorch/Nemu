@@ -18,7 +18,6 @@ namespace mapper {
     /// Provides mapping for the MMC3 cartridge layout.
     ///
     /// Mapping for PRG:  
-    ///
     ///          (Fixed, PRG-RAM):
     ///           range: (0x6000, 0x7FFF)
     ///           size:  0x2000 (8kB)
@@ -40,30 +39,29 @@ namespace mapper {
     ///           size:  0x2000 (8kB)
     ///
     /// Mapping for CHR:
-    ///
     ///    Slot0 (Switchable, CHR-ROM/RAM):
-    ///           range: (0x6000, 0x7FFF)
+    ///           range: (0x0000, 0x3FF)
     ///           size:  0x400 (1kB)
     ///    Slot1 (Switchable, CHR-ROM/RAM):
-    ///           range: (0x6000, 0x7FFF)
+    ///           range: (0x400, 0x7FF)
     ///           size:  0x400 (1kB)
     ///    Slot2 (Switchable, CHR-ROM/RAM):
-    ///           range: (0x6000, 0x7FFF)
+    ///           range: (0x800, 0xBFF)
     ///           size:  0x400 (1kB)
     ///    Slot3 (Switchable, CHR-ROM/RAM):
-    ///           range: (0x6000, 0x7FFF)
+    ///           range: (0xC00, 0x0FFF)
     ///           size:  0x400 (1kB)
     ///    Slot4 (Switchable, CHR-ROM/RAM):
-    ///           range: (0x6000, 0x7FFF)
+    ///           range: (0x1000, 0x13FF)
     ///           size:  0x400 (1kB)
     ///    Slot5 (Switchable, CHR-ROM/RAM):
-    ///           range: (0x6000, 0x7FFF)
+    ///           range: (0x1400, 0x17FF)
     ///           size:  0x400 (1kB)
     ///    Slot6 (Switchable, CHR-ROM/RAM):
-    ///           range: (0x6000, 0x7FFF)
+    ///           range: (0x1800, 0x1BFF)
     ///           size:  0x400 (1kB)
     ///    Slot7 (Switchable, CHR-ROM/RAM):
-    ///           range: (0x6000, 0x7FFF)
+    ///           range: (0x1C00, 0x1FFF)
     ///           size:  0x400 (1kB)
 
     class MMC3Mapper {
@@ -94,8 +92,6 @@ namespace mapper {
             , irqEnabled(false)
         {
             if (chrRAM.size() == 0) chrRAM = std::vector<unsigned>(0x2000);
-
-            std::cout << "Size of ram " << chrRAM.size() << std::endl;
             Update();
         }
 
@@ -149,14 +145,14 @@ namespace mapper {
             if (address < 0x6000)
                 return 0;
             if (address <= 0x7FFF)
-                return static_cast<std::uint8_t>(prgRAM[address % 0x2000]);
+                return prgRAM[address % 0x2000];
             if (address <= 0x9FFF)
-                return static_cast<std::uint8_t>(*std::next(prgSlot[0], address % 0x2000));
+                return *std::next(prgSlot[0], address % 0x2000);
             if (address <= 0xBFFF)
-                return static_cast<std::uint8_t>(*std::next(prgSlot[1], address % 0x2000));
+                return *std::next(prgSlot[1], address % 0x2000);
             if (address <= 0xDFFF)
-                return static_cast<std::uint8_t>(*std::next(prgSlot[2], address % 0x2000));
-            return static_cast<std::uint8_t>(*std::next(prgSlot[3], address % 0x2000));
+                return *std::next(prgSlot[2], address % 0x2000);
+            return *std::next(prgSlot[3], address % 0x2000);
         }
 
         void WritePRG(std::size_t address, std::uint8_t value)
@@ -182,21 +178,21 @@ namespace mapper {
         std::uint8_t ReadCHR(std::size_t address)
         {
             if (address <= 0x03FF)
-                return static_cast<std::uint8_t>(*std::next(chrSlot[0], address % 0x400));
+                return *std::next(chrSlot[0], address % 0x400);
             if (address <= 0x07FF)
-                return static_cast<std::uint8_t>(*std::next(chrSlot[1], address % 0x400));
+                return *std::next(chrSlot[1], address % 0x400);
             if (address <= 0x0BFF)
-                return static_cast<std::uint8_t>(*std::next(chrSlot[2], address % 0x400));
+                return *std::next(chrSlot[2], address % 0x400);
             if (address <= 0x0FFF)
-                return static_cast<std::uint8_t>(*std::next(chrSlot[3], address % 0x400));
+                return *std::next(chrSlot[3], address % 0x400);
             if (address <= 0x13FF)
-                return static_cast<std::uint8_t>(*std::next(chrSlot[4], address % 0x400));
+                return *std::next(chrSlot[4], address % 0x400);
             if (address <= 0x17FF)
-                return static_cast<std::uint8_t>(*std::next(chrSlot[5], address % 0x400));
+                return *std::next(chrSlot[5], address % 0x400);
             if (address <= 0x1BFF)
-                return static_cast<std::uint8_t>(*std::next(chrSlot[6], address % 0x400));
+                return *std::next(chrSlot[6], address % 0x400);
             if (address <= 0x1FFF)
-                return static_cast<std::uint8_t>(*std::next(chrSlot[7], address % 0x400));
+                return *std::next(chrSlot[7], address % 0x400);
             return 0;
         }
 
@@ -220,7 +216,7 @@ namespace mapper {
                 *(chrSlot[7] + address % 0x400) = value;
         }
 
-        void OnNewScanline()
+        void OnScanline()
         {
             if (irqCounter == 0)
                 irqCounter = irqPeriod;

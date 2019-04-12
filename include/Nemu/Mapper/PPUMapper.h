@@ -33,9 +33,9 @@ class PPUMapper {
         //   Move PPUs internal memory to this class?
     }
 
-    void OnNewScanline()
+    void OnScanline()
     {
-        cartridgeMapper->OnNewScanline();
+        cartridgeMapper->OnScanline();
     }
 };
 

@@ -661,7 +661,7 @@ class PPU {
         }
 
         // Signal scanline to mapper:
-        if (dot == 260 && IsRendering()) mapper->OnNewScanline();
+        if (dot == 260 && IsRendering()) mapper->OnScanline();
     }
 };
 

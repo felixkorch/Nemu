@@ -21,21 +21,23 @@ namespace mapper {
     ///           (Fixed, PRG-RAM):
     ///           range: (0x6000, 0x7FFF)
     ///           size: 0x2000 (8KB)
-    ///           modulus: -
     ///
     ///    Slot0 (Switchable, PRG-ROM):
     ///           range: (0x8000, 0xBFFF)
     ///           size: 0x4000 (16kB)
-    ///           modulus: 0x4000
     ///
     ///    Slot1 (Switchable, PRG-ROM):
     ///           range: (0xC000, 0xFFFF)
     ///           size: 0x4000 (16kB)
-    ///           modulus: 0x4000
     ///
     /// Mapping for CHR:
-    ///           Slot0 (Switchable, CHR-RAM)
-    ///           Slot1 (Switchable, CHR-RAM)
+    ///    Slot0 (Switchable, CHR-ROM/RAM):
+    ///           range: (0x0000, 0x0FFF)
+    ///           size: 0x1000 (4kB)
+    ///
+    ///    Slot1 (Switchable, CHR-ROM/RAM):
+    ///           range: (0x1000, 0x1FFF)
+    ///           size: 0x1000 (4kB)
 
     class MMC1Mapper {
         using Iterator = std::vector<unsigned>::iterator;
@@ -113,7 +115,7 @@ namespace mapper {
         {
             if (address <= 0x0FFF)
                 *(chrSlot[0] + address % 0x1000) = value;
-            if (address <= 0x1FFF)
+            else if(address <= 0x1FFF)
                 *(chrSlot[1] + address % 0x1000) = value;
         }
 
@@ -122,10 +124,10 @@ namespace mapper {
             if (address < 0x6000)
                 return 0;
             if (address <= 0x7FFF)
-                return static_cast<std::uint8_t>(prgRAM[address % 0x2000]);
+                return prgRAM[address % 0x2000];
             if (address <= 0xBFFF)
-                return static_cast<std::uint8_t>(*std::next(prgSlot[0], address % 0x4000));
-            return static_cast<std::uint8_t>(*std::next(prgSlot[1], address % 0x4000));
+                return *std::next(prgSlot[0], address % 0x4000);
+            return *std::next(prgSlot[1], address % 0x4000);
         }
 
         void WritePRG(std::size_t address, std::uint8_t value)
@@ -160,7 +162,7 @@ namespace mapper {
             }
         }
 
-        void OnNewScanline() {}
+        void OnScanline() {}
     };
 
 } // namespace mapper

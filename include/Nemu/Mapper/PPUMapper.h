@@ -32,6 +32,11 @@ class PPUMapper {
         // TODO:
         //   Move PPUs internal memory to this class?
     }
+
+    void OnNewScanline()
+    {
+        cartridgeMapper->OnNewScanline();
+    }
 };
 
 } // namespace mapper

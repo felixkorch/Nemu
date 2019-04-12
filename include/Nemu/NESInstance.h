@@ -10,6 +10,7 @@
 #include "Nemu/Mapper/NROM128Mapper.h"
 #include "Nemu/Mapper/NROM256Mapper.h"
 #include "Nemu/Mapper/MMC1Mapper.h"
+#include "Nemu/Mapper/MMC3Mapper.h"
 #include "Nemu/Mapper/PPUMapper.h"
 #include "Nemu/Mapper/UxROMMapper.h"
 #include "Nemu/NESInput.h"
@@ -69,6 +70,9 @@ class NESInstanceBase: public NESInstance {
             std::vector<unsigned>(rom.BeginPRGROM(), rom.EndPRGROM()),
             std::vector<unsigned>(rom.BeginCHRROM(), rom.EndCHRROM()));
 
+        cartridgeMapper->ppu = ppu;
+        cartridgeMapper->cpu = cpu;
+
         cpuMapper = std::make_shared<typename decltype(cpuMapper)::element_type>();
         cpuMapper->cartridgeMapper = cartridgeMapper;
         cpuMapper->cpu = cpu;
@@ -122,19 +126,19 @@ static std::unique_ptr<NESInstance> MakeNESInstance(const NESInstance::Descripto
     auto rom = descriptor.rom;
     std::cout << rom << std::endl;
 
-    return MakeNESInstance<mapper::NROM128Mapper>(descriptor);
-    /*
     switch (descriptor.mapperCode < 0 ? rom.MapperCode() : descriptor.mapperCode) {
-    case 0:
+    case 0: {
         if (rom.EndPRGROM() - rom.BeginPRGROM() > 0x4000)
             return MakeNESInstance<mapper::NROM256Mapper>(descriptor);
         else
             return MakeNESInstance<mapper::NROM128Mapper>(descriptor);
-    case 1: return MakeNESInstance<mapper::MMC1Mapper>(descriptor);
-    case 2: return MakeNESInstance<mapper::UxROMMapper>(descriptor);
-    default: return nullptr;
     }
-    */
+    case 1:  return MakeNESInstance<mapper::MMC1Mapper>(descriptor);
+    case 2:  return MakeNESInstance<mapper::UxROMMapper>(descriptor);
+    case 4:  return MakeNESInstance<mapper::MMC3Mapper>(descriptor);
+    default: return MakeNESInstance<mapper::NROM256Mapper>(descriptor);;
+    }
+    
 }
 
 } // namespace nemu

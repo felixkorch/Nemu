@@ -102,12 +102,12 @@ class MainLayer : public Layer {
 
             running = true;
 
-            nesInstance = MakeNESInstance((NESInstance::Descriptor){
-                .rom = ROMLayout(paths[0]),
-                .input = nesInput,
-                .newFrameCallback = std::bind(&MainLayer::OnNewFrame, this, std::placeholders::_1),
-                .mapperCode = -1
-            });
+            nesInstance = MakeNESInstance((NESInstance::Descriptor{
+                ROMLayout(paths[0]),
+                nesInput,
+                std::bind(&MainLayer::OnNewFrame, this, std::placeholders::_1),
+                -1
+            }));
             /*
             nesInstance = MakeNESInstance(
                 paths[0],
@@ -154,7 +154,7 @@ public:
 	NESApp()
 		: sgl::Application(props)
 	{
-        window->SetFPS(60);
+        window->SetFPS(50);
         window->SetVSync(false);
         PushLayer(new MainLayer);
     }

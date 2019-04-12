@@ -39,7 +39,10 @@ class NROM128Mapper {
     std::vector<unsigned> prgROM;
     std::vector<unsigned> chrROM;
 
-   public:
+public:
+       std::shared_ptr<PPU<PPUMapper<NROM128Mapper>>> ppu;
+       std::shared_ptr<CPU<CPUMapper<NROM128Mapper>>> cpu;
+
     NROM128Mapper(std::vector<unsigned>&& prgROM, std::vector<unsigned>&& chrROM) 
         : prgROM(std::move(prgROM))
         , chrROM(std::move(chrROM))
@@ -68,6 +71,7 @@ class NROM128Mapper {
     }
 
     void WriteCHR(std::size_t address, std::uint8_t value) {}
+    void OnNewScanline() {}
 };
 
 } // namespace mapper

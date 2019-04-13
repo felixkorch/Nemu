@@ -168,7 +168,11 @@ namespace mapper {
                 case 0xA000: SetMirroring(value & 1);          break;
                 case 0xC000: irqPeriod = value;                break;
                 case 0xC001: irqCounter = 0;                   break;
-                case 0xE000: irqEnabled = false;               break;
+                case 0xE000: {
+                    cpu->SetIRQ(false);
+                    irqEnabled = false;
+                    break;
+                }
                 case 0xE001: irqEnabled = true;                break;
                 }
                 Update();
@@ -224,7 +228,7 @@ namespace mapper {
                 irqCounter--;
 
             if (irqEnabled && irqCounter == 0)
-                cpu->SetIRQ();
+                cpu->SetIRQ(true);
         }
 
         void SetMirroring(bool horizontal)

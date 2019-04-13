@@ -75,9 +75,9 @@ class CPU {
         nmi = true;
     }
 
-    void SetIRQ()
+    void SetIRQ(bool set)
     {
-        irq = true;
+        irq = set;
     }
 
     void RunFrame()

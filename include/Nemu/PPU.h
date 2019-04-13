@@ -57,7 +57,7 @@ class PPU {
     ///	Vertical:   0x2000 == 0x2800 && 0x2400 == 0x2C00
     ///	Horizontal: 0x2000 == 0x2400 && 0x2800 == 0x2C00
 
-    unsigned MirroredAddress(unsigned addr) 
+    std::uint16_t MirroredAddress(std::uint16_t addr)
     {
         switch (mirroring) {
         case ppu::MirroringMode::Vertical:   return addr % 0x800;
@@ -444,7 +444,7 @@ private:
         // Number of sprites in the scanline
         unsigned count = 0;
 
-        for (unsigned n = 0; n < 64; i++) {
+        for (unsigned n = 0; n < 64; n++) {
             const int diff = scanline - oamMem[n * 4 + 0];
             // Checks if the sprite is on the scanline
             if (diff >= 0 && diff < SpriteHeight()) {
@@ -452,7 +452,7 @@ private:
                 secondaryOam[count].y          = oamMem[n * 4 + 0];
                 secondaryOam[count].tile       = oamMem[n * 4 + 1];
                 secondaryOam[count].attributes = oamMem[n * 4 + 2];
-                secondaryOam[count].x          =  oamMem[n * 4 + 3];
+                secondaryOam[count].x          = oamMem[n * 4 + 3];
 
                 // Maximum of 8 sprites is possible
                 if (++count > 8) {

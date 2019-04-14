@@ -238,7 +238,7 @@ class CPU {
           }
       }
 
-    void WriteMemory(std::uint16_t index, unsigned value) 
+    void WriteMemory(std::uint16_t index, std::uint8_t value) 
     {
         Tick();
         mapper->Write(index, value);

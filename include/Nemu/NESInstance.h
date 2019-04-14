@@ -72,6 +72,7 @@ class NESInstanceBase: public NESInstance {
 
         cartridgeMapper->ppu = ppu;
         cartridgeMapper->cpu = cpu;
+        cartridgeMapper->Update();
 
         cpuMapper = std::make_shared<typename decltype(cpuMapper)::element_type>();
         cpuMapper->cartridgeMapper = cartridgeMapper;

@@ -26,7 +26,8 @@ class UxROMMapper {
     using Iterator = std::vector<unsigned>::iterator;
 
     std::vector<unsigned> prgROM, prgRAM, chrRAM;
-    Iterator prgSlots[2];
+    Iterator prgSlot[2];
+    std::uint8_t internalReg;
 
 public:
     std::shared_ptr<PPU<PPUMapper<UxROMMapper>>> ppu;
@@ -36,23 +37,32 @@ public:
         : prgROM(std::move(prg))
         , prgRAM(0x2000)
         , chrRAM(0x2000)
-        , prgSlots{ prgROM.begin(), std::prev(prgROM.end(), 0x4000) }
+        , prgSlot{}
+        , internalReg(0)
     {}
+
+    void Update()
+    {
+        prgSlot[0] = std::next(prgROM.begin(), 0x4000 * (internalReg & 0xF));
+        prgSlot[1] = std::prev(prgROM.end(), 0x4000);
+    }
 
     std::uint8_t ReadPRG(std::size_t address)
     {
         if (address < 0x8000)
             return 0;
         if (address <= 0xBFFF)
-            return *std::next(prgSlots[0], address % 0x4000);
-        return *std::next(prgSlots[1], address % 0x4000);
+            return *std::next(prgSlot[0], address % 0x4000);
+        return *std::next(prgSlot[1], address % 0x4000);
     }
 
     void WritePRG(std::size_t address, std::uint8_t value)
     {
         // Bankswitching if address is in range [0x8000, 0xFFFF]
-        if (address & 0x8000)
-            prgSlots[0] = std::next(prgROM.begin(), 0x4000 * (value & 0xF));
+        if (address & 0x8000) {
+            internalReg = value;
+            Update();
+        }
     }
 
     std::uint8_t ReadCHR(std::size_t address)

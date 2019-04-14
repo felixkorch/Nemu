@@ -38,6 +38,11 @@ public:
         if (chrRAM.size() == 0) chrRAM = std::vector<unsigned>(0x2000);
     }
 
+    void Update()
+    {
+
+    }
+
     std::uint8_t ReadPRG(std::size_t address)
     {
         if (address < 0x6000)

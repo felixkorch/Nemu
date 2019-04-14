@@ -59,7 +59,6 @@ namespace mapper {
             , chrSlot{}
         {
             if (chrRAM.size() == 0) chrRAM = std::vector<unsigned>(0x2000);
-            Update();
         }
 
         void Update()

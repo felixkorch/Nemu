@@ -47,6 +47,11 @@ public:
            if (chrRAM.size() == 0) chrRAM = std::vector<unsigned>(0x2000);
        }
 
+       void Update()
+       {
+
+       }
+
     void SetPRGROM(std::vector<unsigned>&& newData)
     { prgROM = std::move(newData); }
 

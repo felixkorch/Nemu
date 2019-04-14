@@ -73,6 +73,9 @@ class CPUMapper {
         if (address == 0x4016) {
             return joypad.Read(0);
         }
+        if (address == 0x4017) {
+            return joypad.Read(1);
+        }
         if (address <= 0x401F) {
             // TODO: Implement APU.
             return 0;

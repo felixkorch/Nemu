@@ -103,7 +103,7 @@ class NESInstanceBase: public NESInstance {
 
     virtual void Power() override
     {
-        cpu->Reset();
+        cpu->Power();
         ppu->Reset();
     }
 

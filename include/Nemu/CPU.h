@@ -60,21 +60,27 @@ class CPU {
 
     void Reset()
     {
-        regSP = 0xFD;
-        Tick(); Tick(); Tick(); Tick();
-        remainingCycles = 0;
-        nmi = irq = false;
-        regStatus.data = 0x04;
-        regX  = regY = regA = regPC = 0;
+        Tick(); Tick(); Tick(); Tick(); Tick();
+        regStatus.I = 1;
         regPC = Read16(ResetVector);
     }
 
-    void SetNMI()
+    void Power()
     {
-        nmi = true;
+        regSP = 0xFD;
+        remainingCycles = 0;
+        nmi = irq = false;
+        regStatus.data = 0x04;
+        regX = regY = regA = regPC = 0;
+        Reset();
     }
 
-    void SetIRQ(bool set)
+    void SetNMI(bool set = true)
+    {
+        nmi = set;
+    }
+
+    void SetIRQ(bool set = true)
     {
         irq = set;
     }
@@ -108,7 +114,7 @@ class CPU {
     }
 
     /// Write 256 successive bytes to the OAMDMA register.
-    void DmaOam(unsigned bank)
+    void DmaOam(std::uint8_t bank)
     {
         for (int i = 0; i < 256; i++)
             WriteMemory(0x2014, ReadMemory(bank * 0x100 + i));
@@ -126,53 +132,16 @@ class CPU {
           IndirectY, Implied
       };
 
-      static constexpr unsigned InstructionSizeImmediate = 2;
-      static constexpr unsigned InstructionSizeAbsolute  = 3;
-      static constexpr unsigned InstructionSizeAbsoluteX = 3;
-      static constexpr unsigned InstructionSizeAbsoluteY = 3;
-      static constexpr unsigned InstructionSizeIndirect  = 3;
-      static constexpr unsigned InstructionSizeRelative  = 2;
-      static constexpr unsigned InstructionSizeZeropage  = 2;
-      static constexpr unsigned InstructionSizeZeropageX = 2;
-      static constexpr unsigned InstructionSizeZeropageY = 2;
-      static constexpr unsigned InstructionSizeIndirectX = 2;
-      static constexpr unsigned InstructionSizeIndirectY = 2;
-      static constexpr unsigned InstructionSizeImplied   = 1;
-
-      unsigned InstructionSize(AddressMode mode)
-      {
-          switch (mode) {
-          case AddressMode::Immediate:  return InstructionSizeImmediate;
-          case AddressMode::Absolute:   return InstructionSizeAbsolute;
-          case AddressMode::AbsoluteX:  return InstructionSizeAbsoluteX;
-          case AddressMode::_AbsoluteX: return InstructionSizeAbsoluteX;
-          case AddressMode::AbsoluteY:  return InstructionSizeAbsoluteY;
-          case AddressMode::Indirect:   return InstructionSizeIndirect;
-          case AddressMode::Relative:   return InstructionSizeRelative;
-          case AddressMode::Zeropage:   return InstructionSizeZeropage;
-          case AddressMode::ZeropageX:  return InstructionSizeZeropageX;
-          case AddressMode::ZeropageY:  return InstructionSizeZeropageY;
-          case AddressMode::IndirectX:  return InstructionSizeIndirectX;
-          case AddressMode::IndirectY:  return InstructionSizeIndirectY;
-          case AddressMode::_IndirectY: return InstructionSizeIndirectY;
-          case AddressMode::Implied:    return InstructionSizeImplied;
-          default:                      return InstructionSizeImmediate;
-          }
-      }
-
       void StackPush(std::uint8_t value)
       {
           Tick();
-          mapper->Write(0x0100 | regSP, value);
-          regSP--;
+          mapper->Write(0x0100 | regSP--, value);
       }
 
       std::uint8_t StackPop()
       {
           Tick();
-          regSP++;
-          auto temp = mapper->Read(0x0100 | regSP);
-          return temp;
+          return mapper->Read(0x0100 | ++regSP);
       }
 
       bool HasCrossedPage(std::uint16_t a, std::uint8_t b)
@@ -182,18 +151,24 @@ class CPU {
 
       std::uint16_t GetAddressImmediate()
       {
-          return regPC + 1;
+          return regPC++;
       }
+
+      std::uint16_t GetAddressImmediate16()
+      {
+          regPC += 2;
+          return regPC - 2;
+      }
+
       std::uint16_t GetAddressAbsolute()
       {
-          std::uint16_t address = Read16(regPC + 1);
-          return address;
+          return Read16(GetAddressImmediate16());
       }
+
       std::uint16_t _GetAddressAbsoluteX()
       {
           Tick();
-          std::uint16_t address = GetAddressAbsolute() + regX;
-          return address;
+          return GetAddressAbsolute() + regX;
       }
 
       std::uint16_t GetAddressAbsoluteX()
@@ -209,44 +184,40 @@ class CPU {
           if (HasCrossedPage(address, regY)) Tick();
           return address + regY;
       }
-      std::uint16_t GetAddressRelative()
-      {
-          return regPC + 1;
-      }
+
       std::uint16_t GetAddressIndirectX()
       {
-          std::uint16_t lowByte = GetAddressZeropageX();
+          std::uint8_t lowByte = GetAddressZeropageX();
           return Read16At(lowByte, (lowByte + 1) % 0x100);
       }
       std::uint16_t GetAddressIndirectY()
       {
-          std::uint16_t lowByte = GetAddressZeropage();
-          std::uint16_t address = Read16At(lowByte, (lowByte + 1) % 0x100) + regY;
+          std::uint16_t address = _GetAddressIndirectY();
           if (HasCrossedPage(address - regY, regY)) Tick();
           return address;
       }
+
       std::uint16_t _GetAddressIndirectY()
       {
-          std::uint16_t lowByte = GetAddressZeropage();
+          std::uint8_t lowByte = GetAddressZeropage();
           return Read16At(lowByte, (lowByte + 1) % 0x100) + regY;
       }
+
       std::uint16_t GetAddressZeropage()
       {
-          std::uint8_t address = ReadMemory(regPC + 1);
-          return address;
+          return ReadMemory(GetAddressImmediate());
       }
 
       std::uint16_t GetAddressZeropageX()
       {
           Tick();
-          std::uint8_t address = ReadMemory(regPC + 1) + regX;
-          return address;
+          return ((GetAddressZeropage() + regX) % 0x100);
       }
+
       std::uint16_t GetAddressZeropageY()
       {
           Tick();
-          std::uint8_t address = ReadMemory(regPC + 1) + regY;
-          return address;
+          return ((GetAddressZeropage() + regY) % 0x100);
       }
 
       std::uint16_t GetAddress(AddressMode mode)
@@ -257,7 +228,6 @@ class CPU {
           case AddressMode::AbsoluteX:  return GetAddressAbsoluteX();
           case AddressMode::_AbsoluteX: return GetAddressAbsoluteX();
           case AddressMode::AbsoluteY:  return GetAddressAbsoluteY();
-          case AddressMode::Relative:   return GetAddressRelative();
           case AddressMode::Zeropage:   return GetAddressZeropage();
           case AddressMode::ZeropageX:  return GetAddressZeropageX();
           case AddressMode::ZeropageY:  return GetAddressZeropageY();
@@ -280,12 +250,12 @@ class CPU {
         return mapper->Read(index);
     }
 
-    std::uint16_t Read16At(std::size_t low, std::size_t high)
+    std::uint16_t Read16At(std::uint16_t low, std::uint16_t high)
     {
         return ReadMemory(low) | (ReadMemory(high) << 8);
     }
 
-    std::uint16_t Read16(std::size_t index)
+    std::uint16_t Read16(std::uint16_t index)
     {
         return Read16At(index, index + 1);
     }
@@ -294,7 +264,7 @@ class CPU {
     {
         Tick(); Tick();
         StackPush(regPC >> 8);
-        StackPush(regPC);
+        StackPush(regPC & 0xFF);
         StackPush(regStatus & ~Flag_B);
         regStatus.I = 1;
         regPC = Read16(NMIVector);
@@ -305,17 +275,16 @@ class CPU {
     {
         Tick(); Tick();
         StackPush(regPC >> 8);
-        StackPush(regPC);
+        StackPush(regPC & 0xFF);
         StackPush(regStatus & ~Flag_B);
         regStatus.I = 1;
         regPC = Read16(IRQVector);
-        irq = false;
     }
 
     /// Fetch / Decode / Execute
     void Execute()
     {
-        switch (ReadMemory(regPC)) {
+        switch (ReadMemory(regPC++)) {
         case 0x00: OpBRK();                             break;
         case 0xA0: OpLD(AddressMode::Immediate, regY);  break;
         case 0xA4: OpLD(AddressMode::Zeropage, regY);   break;
@@ -362,10 +331,10 @@ class CPU {
         case 0x85: OpST(AddressMode::Zeropage, regA);   break;
         case 0x95: OpST(AddressMode::ZeropageX, regA);  break;
         case 0x8D: OpST(AddressMode::Absolute, regA);   break;
-        case 0x9D: OpSTAbsoluteX();                     break;
-        case 0x99: OpSTAbsoluteY();                     break;
+        case 0x9D: OpST2();                             break;
+        case 0x99: OpST3();                             break;
         case 0x81: OpST(AddressMode::IndirectX, regA);  break;
-        case 0x91: OpSTIndirectY();                     break;
+        case 0x91: OpST1();                             break;
         case 0x86: OpST(AddressMode::Zeropage, regX);   break;
         case 0x96: OpST(AddressMode::ZeropageY, regX);  break;
         case 0x8E: OpST(AddressMode::Absolute, regX);   break;
@@ -422,7 +391,7 @@ class CPU {
         case 0x66: OpROR(AddressMode::Zeropage);        break;
         case 0x76: OpROR(AddressMode::ZeropageX);       break;
         case 0x6E: OpROR(AddressMode::Absolute);        break;
-        case 0x7E: OpROR(AddressMode::_AbsoluteX);       break;
+        case 0x7E: OpROR(AddressMode::_AbsoluteX);      break;
         case 0x29: OpAND(AddressMode::Immediate);       break;
         case 0x25: OpAND(AddressMode::Zeropage);        break;
         case 0x35: OpAND(AddressMode::ZeropageX);       break;
@@ -480,26 +449,24 @@ class CPU {
     {
         std::uint16_t address = GetAddress(mode);
         unsigned oper = ReadMemory(address);
-        Tick();
         oper <<= 1;
         oper = regStatus.C ? oper | 1 : oper & ~1;
         regStatus.C = oper & 0x0100;
+        Tick();
         WriteMemory(address, oper & 0xFF);
-        UpdateFlagN(oper);
-        UpdateFlagZ(oper);
-        regPC += InstructionSize(mode);
+        UpdateFlagN(oper & 0xFF);
+        UpdateFlagZ(oper & 0xFF);
     }
 
     void OpROLImplied()
     {
-        unsigned temp = regA;
-        temp <<= 1;
-        temp = regStatus.C ? temp | 1 : temp & ~1;
-        regStatus.C = temp & 0x0100;
-        regA = temp & 0xFF;
+        unsigned oper = regA;
+        oper <<= 1;
+        oper = regStatus.C ? oper | 1 : oper & ~1;
+        regStatus.C = oper & 0x0100;
+        regA = oper & 0xFF;
         UpdateFlagN(regA);
         UpdateFlagZ(regA);
-        regPC += InstructionSize(AddressMode::Implied);
         Tick();
     }
 
@@ -507,26 +474,24 @@ class CPU {
     {
         std::uint16_t address = GetAddress(mode);
         unsigned oper = ReadMemory(address);
-        Tick();
         oper = regStatus.C ? oper | 0x0100 : oper & ~0x0100;
         regStatus.C = oper & 1;
         oper >>= 1;
+        Tick();
         WriteMemory(address, oper & 0xFF);
-        UpdateFlagN(oper);
-        UpdateFlagZ(oper);
-        regPC += InstructionSize(mode);
+        UpdateFlagN(oper & 0xFF);
+        UpdateFlagZ(oper & 0xFF);
     }
 
     void OpRORImplied()
     {
-        unsigned temp = regA;
-        temp = regStatus.C ? temp | 0x0100 : temp & ~0x0100;
-        regStatus.C = temp & 1;
-        temp >>= 1;
-        regA = temp & 0xFF;
+        unsigned oper = regA;
+        oper = regStatus.C ? oper | 0x0100 : oper & ~0x0100;
+        regStatus.C = oper & 1;
+        oper >>= 1;
+        regA = oper & 0xFF;
         UpdateFlagN(regA);
         UpdateFlagZ(regA);
-        regPC += InstructionSize(AddressMode::Implied);
         Tick();
     }
 
@@ -534,13 +499,12 @@ class CPU {
     {
         std::uint16_t address = GetAddress(mode);
         std::uint8_t oper = ReadMemory(address);
-        Tick();
         regStatus.C = oper & 0x80;
         oper <<= 1;
+        Tick();
         WriteMemory(address, oper);
         UpdateFlagN(oper);
         UpdateFlagZ(oper);
-        regPC += InstructionSize(mode);
     }
 
     void OpASLImplied()
@@ -549,7 +513,6 @@ class CPU {
         regA <<= 1;
         UpdateFlagN(regA);
         UpdateFlagZ(regA);
-        regPC += InstructionSize(AddressMode::Implied);
         Tick();
     }
 
@@ -557,13 +520,12 @@ class CPU {
     {
         std::uint16_t address = GetAddress(mode);
         std::uint8_t oper = ReadMemory(address);
-        Tick();
         regStatus.C = oper & 1;
         oper >>= 1;
+        Tick();
         WriteMemory(address, oper);
         regStatus.Z = oper == 0;
         regStatus.N = 0;
-        regPC += InstructionSize(mode);
     }
 
     void OpLSRImplied()
@@ -572,7 +534,6 @@ class CPU {
         regA >>= 1;
         regStatus.Z = regA == 0;
         regStatus.N = 0;
-        regPC += InstructionSize(AddressMode::Implied);
         Tick();
     }
 
@@ -580,24 +541,22 @@ class CPU {
     {
         std::uint16_t address = GetAddress(mode);
         std::uint8_t oper = ReadMemory(address);
-        Tick();
         oper--;
+        Tick();
         WriteMemory(address, oper);
         regStatus.Z = oper == 0;
         regStatus.N = oper & 0x80;
-        regPC += InstructionSize(mode);
     }
 
     void OpINC(AddressMode mode)
     {
         std::uint16_t address = GetAddress(mode);
         std::uint8_t oper = ReadMemory(address);
-        Tick();
         oper++;
+        Tick();
         WriteMemory(address, oper);
         UpdateFlagN(oper);
         UpdateFlagZ(oper);
-        regPC += InstructionSize(mode);
     }
 
     /// Write Instructions
@@ -605,40 +564,34 @@ class CPU {
     void OpST(AddressMode mode, std::uint8_t& reg)
     {
         WriteMemory(GetAddress(mode), reg);
-        regPC += InstructionSize(mode);
     }
 
-    // Special Cases
-    void OpSTIndirectY()
+    // Special Cases for register A
+    void OpST1() // Indirect Y
     {
         Tick();
         WriteMemory(GetAddress(AddressMode::_IndirectY), regA);
-        regPC += InstructionSize(AddressMode::_IndirectY);
     }
 
-    void OpSTAbsoluteX()
+    void OpST2() // Absolute X
     {
         Tick();
         WriteMemory(GetAddress(AddressMode::Absolute) + regX, regA);
-        regPC += InstructionSize(AddressMode::AbsoluteX);
     }
-    void OpSTAbsoluteY()
+
+    void OpST3() // Absolute Y
     {
         Tick();
         WriteMemory(GetAddress(AddressMode::Absolute) + regY, regA);
-        regPC += InstructionSize(AddressMode::AbsoluteY);
     }
 
     /// Read Instructions
 
     void OpLD(AddressMode mode, std::uint8_t& reg)
     {
-        if (mode == AddressMode::AbsoluteX)
-            Tick();
         reg = ReadMemory(GetAddress(mode));
         UpdateFlagN(reg);
         UpdateFlagZ(reg);
-        regPC += InstructionSize(mode);
     }
 
     void OpORA(AddressMode mode)
@@ -646,21 +599,19 @@ class CPU {
         regA |= ReadMemory(GetAddress(mode));
         UpdateFlagN(regA);
         UpdateFlagZ(regA);
-        regPC += InstructionSize(mode);
     }
 
     void OpBIT(AddressMode mode)
     {
-        auto oper = ReadMemory(GetAddress(mode));
+        std::uint8_t oper = ReadMemory(GetAddress(mode));
         regStatus.N = oper & 0x80;
         regStatus.V = oper & 0x40;
         regStatus.Z = (oper & regA) == 0;
-        regPC += InstructionSize(mode);
     }
 
     void OpADC(AddressMode mode)
     {
-        auto oper = ReadMemory(GetAddress(mode));
+        std::uint8_t oper = ReadMemory(GetAddress(mode));
         unsigned result = regA + oper + regStatus.C;
         bool overflow = !((regA ^ oper) & 0x80) && ((regA ^ result) & 0x80);
         regStatus.Z = (result & 0xFF) == 0;
@@ -668,13 +619,12 @@ class CPU {
         regStatus.V = overflow;
         regStatus.N = result & 0x80;
         regA = result & 0xFF;
-        regPC += InstructionSize(mode);
     }
 
 
     void OpSBC(AddressMode mode)
     {
-        auto oper = ReadMemory(GetAddress(mode));
+        std::uint8_t oper = ReadMemory(GetAddress(mode));
         unsigned result = regA - oper - !regStatus.C;
         bool overflow = ((regA ^ result) & 0x80) && ((regA ^ oper) & 0x80);
         regStatus.Z = (result & 0xFF) == 0;
@@ -682,54 +632,61 @@ class CPU {
         regStatus.V = overflow;
         regStatus.N = result & 0x80;
         regA = result & 0xFF;
-        regPC += InstructionSize(mode);
     }
 
     void OpCMP(AddressMode mode, std::uint8_t& reg)
     {
-        auto oper = ReadMemory(GetAddress(mode));
+        std::uint8_t oper = ReadMemory(GetAddress(mode));
         unsigned result = reg - oper;
         regStatus.Z = reg == oper;
         regStatus.N = result & 0x80;
         regStatus.C = result < 0x0100;
-        regPC += InstructionSize(mode);
     }
 
     void OpAND(AddressMode mode)
     {
-        auto oper = ReadMemory(GetAddress(mode));
+        std::uint8_t oper = ReadMemory(GetAddress(mode));
         regA &= oper;
         UpdateFlagN(regA);
         UpdateFlagZ(regA);
-        regPC += InstructionSize(mode);
     }
 
     void OpEOR(AddressMode mode)
     {
-        auto oper = ReadMemory(GetAddress(mode));
+        std::uint8_t oper = ReadMemory(GetAddress(mode));
         regA ^= oper;
         UpdateFlagN(regA);
         UpdateFlagZ(regA);
-        regPC += InstructionSize(mode);
     }
 
     /// Flow control
     void OpJMPAbsolute()
     {
-        regPC = Read16(regPC + 1);
+        regPC = Read16(GetAddressImmediate16());
     }
 
     void OpJMPIndirect()
     {
-        std::uint16_t offset = Read16(regPC + 1);
+        std::uint16_t offset = Read16(GetAddressImmediate16());
         regPC = Read16At(offset, (offset & 0xFF00) | ((offset + 1) % 0x100));
+    }
+
+    void OpJSR()
+    {
+        std::uint16_t returnAddress = regPC + 1;
+        Tick();
+        StackPush(returnAddress >> 8);
+        StackPush(returnAddress);
+        regPC = Read16(GetAddressImmediate16());
     }
 
     void OpBRA(bool condition)
     {
-        std::int8_t oper = ReadMemory(GetAddress(AddressMode::Immediate));
-        if (condition) Tick();
-        regPC += condition ? oper + InstructionSize(AddressMode::Immediate) : InstructionSize(AddressMode::Immediate);
+        std::int8_t oper = ReadMemory(GetAddressImmediate());
+        if (condition) {
+            Tick();
+            regPC += oper;
+        }
     }
 
     /// Instructions accessing the stack
@@ -737,9 +694,8 @@ class CPU {
     void OpBRK()
     {
         Tick();
-        regPC += 2;
         StackPush(regPC >> 8);
-        StackPush(regPC);
+        StackPush(regPC & 0xFF);
         StackPush(regStatus | Flag_B);
         regStatus.I = 1;
         regPC = Read16(IRQVector);
@@ -749,14 +705,12 @@ class CPU {
     {
         Tick();
         StackPush(regA);
-        regPC++;
     }
 
     void OpPHP()
     {
         Tick();
         StackPush(regStatus | Flag_B | Flag_Unused);
-        regPC++;
     }
     void OpPLA()
     {
@@ -764,39 +718,25 @@ class CPU {
         regA = StackPop();
         UpdateFlagN(regA);
         UpdateFlagZ(regA);
-        regPC++;
     }
     void OpPLP()
     {
         Tick(); Tick();
         regStatus = StackPop();
-        regPC++;
     }
     void OpRTI()
     {
-        regStatus = StackPop();
-        unsigned PC_low = StackPop();
-        unsigned PC_high = StackPop();
-        regPC = (PC_high << 8) | PC_low;
+        OpPLP();
+        regPC = StackPop() | (StackPop() << 8);
     }
 
     void OpRTS()
     {
         Tick(); Tick();
-        unsigned PC_low = StackPop();
-        unsigned PC_high = StackPop();
-        regPC = ((PC_high << 8) | PC_low) + 1;
+        regPC = (StackPop() | (StackPop() << 8)) + 1;
         Tick();
     }
 
-    void OpJSR()
-    {
-        Tick();
-        regPC += 2;
-        StackPush(regPC >> 8);
-        StackPush(regPC);
-        regPC = Read16(regPC - 1);
-    }
 
     /// Immediate instructions (No memory access)
 
@@ -805,7 +745,6 @@ class CPU {
         regA = regX;
         UpdateFlagN(regA);
         UpdateFlagZ(regA);
-        regPC++;
         Tick();
     }
     void OpTAX()
@@ -813,7 +752,6 @@ class CPU {
         regX = regA;
         UpdateFlagN(regX);
         UpdateFlagZ(regX);
-        regPC++;
         Tick();
     }
     void OpTAY()
@@ -821,7 +759,6 @@ class CPU {
         regY = regA;
         UpdateFlagN(regY);
         UpdateFlagZ(regY);
-        regPC++;
         Tick();
     }
     void OpTSX()
@@ -829,13 +766,11 @@ class CPU {
         regX = regSP;
         UpdateFlagN(regX);
         UpdateFlagZ(regX);
-        regPC++;
         Tick();
     }
     void OpTXS()
     {
         regSP = regX;
-        regPC++;
         Tick();
     }
     void OpTYA()
@@ -843,20 +778,17 @@ class CPU {
         regA = regY;
         UpdateFlagN(regA);
         UpdateFlagZ(regA);
-        regPC++;
         Tick();
     }
 
     void OpCLR(unsigned flag)
     {
         regStatus = (unsigned)regStatus & ~flag;
-        regPC++;
         Tick();
     }
     void OpSET(unsigned flag)
     {
         regStatus = (unsigned)regStatus | flag;
-        regPC++;
         Tick();
     }
 
@@ -865,7 +797,6 @@ class CPU {
         regX--;
         UpdateFlagN(regX);
         UpdateFlagZ(regX);
-        regPC++;
         Tick();
     }
     void OpDEY()
@@ -873,7 +804,6 @@ class CPU {
         regY--;
         regStatus.Z = regY == 0;
         regStatus.N = regY & 0x80;
-        regPC++;
         Tick();
     }
 
@@ -882,7 +812,6 @@ class CPU {
         regX++;
         UpdateFlagN(regX);
         UpdateFlagZ(regX);
-        regPC++;
         Tick();
     }
     void OpINY()
@@ -890,13 +819,11 @@ class CPU {
         regY++;
         UpdateFlagN(regY);
         UpdateFlagZ(regY);
-        regPC++;
         Tick();
     }
 
     void OpNOP()
     {
-        regPC++;
         Tick();
     }
 

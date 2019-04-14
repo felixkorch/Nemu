@@ -48,7 +48,7 @@ class CPU {
         : regX(0)
         , regY(0)
         , regA(0)
-        , regSP(0xFF)
+        , regSP(0xFD)
         , regPC(0)
         , regStatus()
         , nmi(false)
@@ -60,12 +60,11 @@ class CPU {
 
     void Reset()
     {
-        regSP -= 3;
+        regSP = 0xFD;
         Tick(); Tick(); Tick(); Tick();
         remainingCycles = 0;
         nmi = irq = false;
         regStatus.data = 0x04;
-        regSP = 0xFF;
         regX  = regY = regA = regPC = 0;
         regPC = Read16(ResetVector);
     }
@@ -269,13 +268,13 @@ class CPU {
           }
       }
 
-    void WriteMemory(std::size_t index, unsigned value) 
+    void WriteMemory(std::uint16_t index, unsigned value) 
     {
         Tick();
         mapper->Write(index, value);
     }
 
-    std::uint8_t ReadMemory(std::size_t index) 
+    std::uint8_t ReadMemory(std::uint16_t index) 
     {
         Tick();
         return mapper->Read(index);
@@ -634,6 +633,8 @@ class CPU {
 
     void OpLD(AddressMode mode, std::uint8_t& reg)
     {
+        if (mode == AddressMode::AbsoluteX)
+            Tick();
         reg = ReadMemory(GetAddress(mode));
         UpdateFlagN(reg);
         UpdateFlagZ(reg);

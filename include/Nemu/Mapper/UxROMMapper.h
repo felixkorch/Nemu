@@ -6,7 +6,11 @@
 #pragma once
 
 #include <vector>
+#include <memory>
 #include <cstddef>
+#include "Nemu/CPU.h"
+#include "Nemu/PPU.h"
+#include "Nemu/Mapper/CPUMapper.h"
 
 namespace nemu {
 namespace mapper {

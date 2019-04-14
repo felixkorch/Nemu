@@ -139,9 +139,17 @@ class PPU {
     };
 
     std::function<void(std::uint8_t*)> HandleNewFrame;
-    std::vector<std::uint8_t> pixels;
-
     ppu::MirroringMode mirroring;
+
+    // Background Memory
+    std::uint8_t ciRam[0x800]; // Nametables (2048 B)
+    std::uint8_t cgRam[0x20];  // Palettes   (32 B)
+
+    // OAM Memory (Sprite data)
+    std::uint8_t oamMem[0x100]; // (256 B)
+    Sprite oam[8];
+    Sprite secondaryOam[8];
+    std::uint8_t pixels[256 * 240 * 4];
 
     Ctrl ctrl;
     Mask mask;
@@ -157,15 +165,6 @@ class PPU {
     std::uint8_t  atShiftLow, atShiftHigh;
     std::uint8_t  nametable, attributes, bgLow, bgHigh;
     bool atLatchLow, atLatchHigh;
-
-    // OAM Memory (Sprite data)
-    Sprite oam[8];
-    Sprite secondaryOam[8];
-    std::uint8_t oamMem[0x100]; // (256 B)
-
-    // Background Memory
-    std::uint8_t ciRam[0x800]; // Nametables (2048 B)
-    std::uint8_t cgRam[0x20];  // Palettes   (32 B)
 
     // Renderer Counters
     int scanline;
@@ -184,27 +183,19 @@ class PPU {
     PPU(std::function<void(std::uint8_t* pixels)> newFrameCallback)
         : SetNMI(EmptySetNMI)
         , HandleNewFrame(newFrameCallback)
-    {
-        Reset();
-    }
+    {}
 
     ~PPU() {}
 
-    void Reset() {
-        pixels  = std::vector<std::uint8_t>(256 * 240 * 4);
-        ctrl    = {};
-        mask    = {};
-        vAddr   = {};
-        tAddr   = {};
-        access  = {};
-        oamAddr = fineX = scanline = dot = 0;
-        bgShiftLow = bgShiftHigh = atShiftLow = atLatchHigh = nametable = attributes = bgLow = bgHigh = 0;
-        frameOdd = atLatchLow = atLatchHigh = false;
-        memset(oam,          0, sizeof(oam));
-        memset(oamMem,       0, sizeof(oamMem));
-        memset(secondaryOam, 0, sizeof(secondaryOam));
-        memset(ciRam,        0, sizeof(ciRam));
-        memset(cgRam,        0, sizeof(cgRam));
+    void Reset()
+    {
+        frameOdd = false;
+        scanline = dot = 0;
+        ctrl.reg = mask.reg = status.reg = 0;
+
+        memset(pixels, 0x00, sizeof(pixels));
+        memset(ciRam, 0xFF, sizeof(ciRam));
+        memset(oamMem, 0x00, sizeof(oamMem));
     }
 
     /// Address: $2002
@@ -591,7 +582,7 @@ private:
             if (ctrl.nmiEnable) 
                 SetNMI();
         } else if (phase == ScanlinePhase::POST && dot == 0) {
-            HandleNewFrame(pixels.data());
+            HandleNewFrame(pixels);
         } else if (phase == ScanlinePhase::VISIBLE ||
                    phase == ScanlinePhase::PRE) {
             // Update Sprites

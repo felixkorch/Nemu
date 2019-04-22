@@ -6,8 +6,8 @@
 using namespace sgl;
 using namespace nemu;
 
-#define Width 512
-#define Height 480
+#define Width 768
+#define Height 720
 
 #define TexWidth 256
 #define TexHeight 240
@@ -22,7 +22,7 @@ class MainLayer : public Layer {
     std::unique_ptr<NESInstance> nesInstance;
     std::unique_ptr<NESInstance> state;
     NESInput nesInput;
-    bool running;
+    bool running, showSettings;
 
    public:
     MainLayer()
@@ -32,6 +32,7 @@ class MainLayer : public Layer {
 		, frameTexture(TexWidth, TexHeight)
 		, nesInput()
 		, running(false)
+        , showSettings(false)
 	{
         const float scaledWidth = (float)Height * aspectRatio;
         const float xPosition = Width / 2 - scaledWidth / 2;
@@ -94,7 +95,7 @@ class MainLayer : public Layer {
         // Rom Loading
         if (event.GetEventType() == EventType::DropEvent) {
             auto& e = (DropEvent&)event;
-            SglTrace(e.ToString());
+            SGL_TRACE(e.ToString());
 
             auto paths = e.GetPaths();
             if (paths.size() > 1)
@@ -124,7 +125,7 @@ class MainLayer : public Layer {
             nesInstance->Power();
         }
         // Window Resized
-        else if (event.GetEventType() == EventType::WindowResizedEvent) {
+        else if (event.GetEventType() == EventType::WindowResized) {
             auto& e = (WindowResizedEvent&)event;
             // Width according to aspect ratio
             const float scaledWidth = (float)e.GetHeight() * aspectRatio;
@@ -139,9 +140,92 @@ class MainLayer : public Layer {
             renderer->SetScreenSize(e.GetWidth(), e.GetHeight());
         }
 		else if (event.GetEventType() == EventType::KeyPressed) {
-			auto& e = (KeyPressedEvent&)event;
+			KeyPressedEvent& e = (KeyPressedEvent&)event;
 			// TODO: Load / Save State
+
+            if(e.GetKeyCode() == SGL_KEY_ESCAPE)
+                showSettings = !showSettings;
 		}
+    }
+
+    void OnImGuiRender() override
+    {
+        auto& app = Application::Get();
+        static int counter = 0;
+
+        ImGui::ShowDemoWindow();
+
+        if (showSettings) {
+            bool show = ImGui::Begin("Settings", &showSettings, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
+                ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoSavedSettings);
+            if (!show) {
+                ImGui::End();
+            }
+            else {
+                ImGui::SetWindowSize(ImVec2((float)app.GetWindow()->GetWidth() * 0.75, (float)app.GetWindow()->GetHeight() * 0.75));
+                ImGui::SetWindowPos(ImVec2((float)app.GetWindow()->GetWidth() * 0.125, (float)app.GetWindow()->GetHeight() * 0.125));
+
+                ImGui::BeginTabBar("MyTabBar", ImGuiTabBarFlags_None);
+                if (ImGui::BeginTabItem("Emulator")) {
+                    ImGui::NewLine();
+                   /* ImGui::Columns(2, "Columns", false);*/
+                    //ImGui::Separator();
+
+                    ImGui::Text("Set Frames per second.");
+                    ImGui::SameLine();
+                    ImGui::SliderInt("FPS", &app.GetWindow()->GetFPS(), 30, 144);
+                    //ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+
+                    /*ImGui::NextColumn();
+
+                    if (ImGui::Button("Increase Counter"))
+                        counter++;
+                    ImGui::SameLine();
+                    ImGui::Text("counter = %d", counter);*/
+                    ImGui::EndTabItem();
+                }
+                if (ImGui::BeginTabItem("Input")) {
+                    ImGui::PushItemWidth(90);
+                    ImGui::NewLine();
+                    if (ImGui::Button("A", ImVec2(60, 30))) SGL_TRACE("Awaiting input...");
+                    ImGui::SameLine();
+                    ImGui::Text("Keyboard: X");
+                    ImGui::NewLine();
+
+                    if (ImGui::Button("B", ImVec2(60, 30))) SGL_TRACE("Awaiting input...");
+                    ImGui::SameLine();
+                    ImGui::Text("Keyboard: X");
+                    ImGui::NewLine();
+
+                    if (ImGui::Button("UP", ImVec2(60, 30))) SGL_TRACE("Awaiting input...");
+                    ImGui::SameLine();
+                    ImGui::Text("Keyboard: X");
+                    ImGui::NewLine();
+
+                    if (ImGui::Button("DOWN", ImVec2(60, 30))) SGL_TRACE("Awaiting input...");
+                    ImGui::SameLine();
+                    ImGui::Text("Keyboard: X");
+                    ImGui::NewLine();
+
+                    if (ImGui::Button("LEFT", ImVec2(60, 30))) SGL_TRACE("Awaiting input...");
+                    ImGui::SameLine();
+                    char name[20] = "Keyboard: X";
+                    ImGui::InputText("##edit", name, IM_ARRAYSIZE(name), ImGuiInputTextFlags_ReadOnly, 0);
+                    ImGui::NewLine();
+
+                    if (ImGui::Button("RIGHT", ImVec2(60, 30))) SGL_TRACE("Awaiting input...");
+                    ImGui::SameLine();
+                    ImGui::Text("Keyboard: X");
+
+                    ImGui::PopItemWidth();
+
+                    ImGui::EndTabItem();
+                }
+                ImGui::EndTabBar();
+
+                ImGui::End();
+            }
+        }
     }
 
 private:
@@ -155,7 +239,7 @@ private:
 const WindowProperties props {
     Width,                 // WindowWidth
     Height,                // WindowHeight
-    true,                  // Resizable
+    false,                  // Resizable
     "Nemu - NES Emulator"  // Title
 };
 

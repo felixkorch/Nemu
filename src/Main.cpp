@@ -15,7 +15,7 @@ using namespace nemu;
 class MainLayer : public Layer {
 
     static constexpr float aspectRatio = (float)TexWidth / (float)TexHeight;
-    std::unique_ptr<Renderer2D> renderer;
+	Renderer2D renderer;
     Renderable2D frame;
     Texture2D frameTexture;
 
@@ -23,22 +23,27 @@ class MainLayer : public Layer {
     std::unique_ptr<NESInstance> state;
     NESInput nesInput;
     bool running, showSettings;
+	std::chrono::steady_clock::time_point delay;
+	int fps;
 
    public:
     MainLayer()
         : Layer("MainLayer")
-		, renderer(Renderer2D::Create(Width, Height))
+		, renderer(Width, Height)
 		, frame()
 		, frameTexture(TexWidth, TexHeight)
 		, nesInput()
 		, running(false)
         , showSettings(false)
+		, delay(std::chrono::steady_clock::now())
+		, fps(60)
 	{
         const float scaledWidth = (float)Height * aspectRatio;
         const float xPosition = Width / 2 - scaledWidth / 2;
 
-        frame = Renderable2D(glm::vec2(scaledWidth, Height), glm::vec2(xPosition, 0));
-        frame.uv = { glm::vec2(0, 1), glm::vec2(1, 1), glm::vec2(1, 0), glm::vec2(0, 0) };
+        frame = Renderable2D(glm::vec2(xPosition, 0), &frameTexture);
+		frame.SetSize(scaledWidth, Height);
+        frame.SetUV({ glm::vec2(0, 1), glm::vec2(1, 1), glm::vec2(1, 0), glm::vec2(0, 0) });
 
         // Input - Key Mapping
         NESKeyMapper keyMapper;
@@ -83,11 +88,13 @@ class MainLayer : public Layer {
             nesInstance->RunFrame();
 
         // Render
-        renderer->Begin();
-        renderer->SubmitTexture(&frameTexture);
-        renderer->Submit(frame);
-        renderer->End();
-        renderer->Flush();
+		renderer.Begin();
+		renderer.Submit(&frame);
+		renderer.End();
+		renderer.Flush();
+
+		std::this_thread::sleep_until(delay);
+		delay += std::chrono::nanoseconds(1000000000) / fps;
     }
 
     void OnEvent(Event& event) override
@@ -134,11 +141,9 @@ class MainLayer : public Layer {
             // Update the renderable
             frame = Renderable2D(glm::vec2(scaledWidth, e.GetHeight()),
                                  glm::vec2(xPosition, 0));
-            frame.uv = {glm::vec2(0, 1), glm::vec2(1, 1), glm::vec2(1, 0),
-                        glm::vec2(0, 0)};
-            // Set size of camera
-            renderer->SetScreenSize(e.GetWidth(), e.GetHeight());
+			frame.SetUV({ glm::vec2(0, 1), glm::vec2(1, 1), glm::vec2(1, 0), glm::vec2(0, 0) });
         }
+
 		else if (event.GetEventType() == EventType::KeyPressed) {
 			KeyPressedEvent& e = (KeyPressedEvent&)event;
 			// TODO: Load / Save State
@@ -153,7 +158,7 @@ class MainLayer : public Layer {
         auto& app = Application::Get();
         static int counter = 0;
 
-        ImGui::ShowDemoWindow();
+        //ImGui::ShowDemoWindow();
 
         if (showSettings) {
             bool show = ImGui::Begin("Settings", &showSettings, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
@@ -173,7 +178,7 @@ class MainLayer : public Layer {
 
                     ImGui::Text("Set Frames per second.");
                     ImGui::SameLine();
-                    ImGui::SliderInt("FPS", &app.GetWindow()->GetFPS(), 30, 144);
+                    ImGui::SliderInt("FPS", &fps, 30, 144);
                     //ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
 
                     /*ImGui::NextColumn();
@@ -248,7 +253,6 @@ public:
 	NESApp()
 		: sgl::Application(props)
 	{
-        window->SetFPS(60);
         window->SetVSync(false);
         PushLayer(new MainLayer);
     }

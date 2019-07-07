@@ -1,34 +1,41 @@
 project(Nemu)
 cmake_minimum_required(VERSION 3.1)
-set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD 14)
 
 if(!MSVC)
     set(CMAKE_CXX_FLAGS_RELEASE "-O3")
     set(THREADS_PREFER_PTHREAD_FLAG ON)
 endif()
 
-
-add_subdirectory(deps/Sgl)
+add_subdirectory("ext/GLFW")
+add_subdirectory("ext/Glad")
 
 set(Nemu_SOURCE
-    src/Main.cpp
-    include/Nemu/CPU.h
-    include/Nemu/Mapper/CPUMapper.h
-    include/Nemu/Mapper/NROM128Mapper.h
-    include/Nemu/Mapper/NROM256Mapper.h
-    include/Nemu/Mapper/UxROMMapper.h
-    include/Nemu/Mapper/MMC1Mapper.h
-    include/Nemu/NESInput.h
-    include/Nemu/NESInstance.h
-    include/Nemu/PPU.h
-    include/Nemu/ROMLayout.h
-    include/Nemu/StatusRegister.h
-    include/Nemu/System.h
+    src/Nemu/Main.cpp
+    src/Nemu/Graphics/Input.cpp
+    src/Nemu/Graphics/Window.cpp
+    src/Nemu/Core/CPU.h
+    src/Nemu/Mapper/CPUMapper.h
+    src/Nemu/Mapper/NROM128Mapper.h
+    src/Nemu/Mapper/NROM256Mapper.h
+    src/Nemu/Mapper/UxROMMapper.h
+    src/Nemu/Mapper/MMC1Mapper.h
+    src/Nemu/Core/NESInput.h
+    src/Nemu/Core/NESInstance.h
+    src/Nemu/Core/PPU.h
+    src/Nemu/Core/ROMLayout.h
+    src/Nemu/Core/StatusRegister.h
+    src/Nemu/Core/Utilities.h
 )
 
 add_executable(${PROJECT_NAME} ${Nemu_SOURCE})
-target_link_libraries(${PROJECT_NAME} Sgl ${Sgl_LIBRARIES})
-target_include_directories(${PROJECT_NAME} PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/include>)
+target_include_directories(${PROJECT_NAME}
+	PUBLIC
+	$<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/src>
+	$<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/ext/glm>
+	${GLFW_INCLUDE_DIRS}
+)
+target_link_libraries(${PROJECT_NAME} PUBLIC glfw ${GLFW_LIBRARIES} Glad)
 
 set_target_properties(${PROJECT_NAME} PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY_DEBUG ${CMAKE_CURRENT_LIST_DIR}/bin/Debug/${PROJECT_NAME}

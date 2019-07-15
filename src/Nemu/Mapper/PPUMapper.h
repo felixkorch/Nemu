@@ -16,6 +16,10 @@ class PPUMapper {
    public:
     std::shared_ptr<CartridgeMapper> cartridgeMapper;
 
+	PPUMapper()
+		: cartridgeMapper(nullptr)
+	{}
+
     std::uint8_t Read(std::size_t address)
     {
         if (address <= 0x1FFF)

@@ -23,7 +23,7 @@ class ROMLayout {
 
     /// Initialize by reading the file at path.
     ROMLayout(const std::string& path)
-        : data(ReadFile<decltype(data)>(path))
+        : data(util::ReadFile<decltype(data)>(path))
     {}
 
     unsigned MapperCode() const

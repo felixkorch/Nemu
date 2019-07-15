@@ -20,6 +20,7 @@
 #include <functional>
 #include <iostream>
 #include <vector>
+#include <cstdint>
 
 namespace nemu {
 
@@ -32,8 +33,6 @@ class NESInstance {
 
         /// Input configuration.
         NESInput input;
-
-        std::function<void(std::uint8_t*)> newFrameCallback;
 
         /// If set to a value greater than 0 it will be used instead of the mapper given from the 
         /// header.
@@ -48,6 +47,8 @@ class NESInstance {
     virtual void RunFrame() = 0;
     virtual void Power() = 0;
     virtual std::vector<unsigned> DumpCPUMemory() = 0;
+	virtual std::unique_ptr<NESInstance> MakeCopy() = 0;
+	virtual std::uint8_t* GetPixels() = 0;
 };
 
 template <class CartridgeMapper>
@@ -58,11 +59,14 @@ class NESInstanceBase: public NESInstance {
     std::shared_ptr<mapper::PPUMapper<CartridgeMapper>> ppuMapper;
     std::shared_ptr<CPU<typename decltype(cpuMapper)::element_type>> cpu;
     std::shared_ptr<PPU<typename decltype(ppuMapper)::element_type>> ppu;
+	std::shared_ptr<CartridgeMapper> cartridgeMapper;
 
    public:
     NESInstanceBase(const NESInstance::Descriptor& descriptor)
         : cpu(std::make_shared<typename decltype(cpu)::element_type>())
-        , ppu(std::make_shared<typename decltype(ppu)::element_type>(descriptor.newFrameCallback))
+        , ppu(std::make_shared<typename decltype(ppu)::element_type>())
+		, cpuMapper(std::make_shared<typename decltype(cpuMapper)::element_type>())
+		, ppuMapper(std::make_shared<typename decltype(ppuMapper)::element_type>())
     {
         auto rom = descriptor.rom;
 
@@ -70,19 +74,19 @@ class NESInstanceBase: public NESInstance {
             std::vector<unsigned>(rom.BeginPRGROM(), rom.EndPRGROM()),
             std::vector<unsigned>(rom.BeginCHRROM(), rom.EndCHRROM()));
 
+		// Connect all objects
+		this->cartridgeMapper = cartridgeMapper;
+
         cartridgeMapper->ppu = ppu;
         cartridgeMapper->cpu = cpu;
         cartridgeMapper->Update();
 
-        cpuMapper = std::make_shared<typename decltype(cpuMapper)::element_type>();
         cpuMapper->cartridgeMapper = cartridgeMapper;
         cpuMapper->cpu = cpu;
         cpuMapper->ppu = ppu;
         cpuMapper->joypad.SetInput(descriptor.input);
         
         cpu->mapper = cpuMapper;
-
-        ppuMapper = std::make_shared<typename decltype(ppuMapper)::element_type>();
         ppuMapper->cartridgeMapper = cartridgeMapper;
 
         ppu->mapper = ppuMapper;
@@ -98,6 +102,47 @@ class NESInstanceBase: public NESInstance {
             this->cpu->DecrementCycles();
         };
     }
+
+	virtual std::unique_ptr<NESInstance> MakeCopy() override
+	{
+		return std::make_unique<NESInstanceBase<CartridgeMapper>>(*this);
+	}
+
+	virtual std::uint8_t* GetPixels() override
+	{
+		return ppu->GetPixels();
+	}
+
+	NESInstanceBase(const NESInstanceBase<CartridgeMapper>& other)
+		: cpuMapper(std::make_shared<typename decltype(cpuMapper)::element_type>(*other.cpuMapper))
+		, ppuMapper(std::make_shared<typename decltype(ppuMapper)::element_type>(*other.ppuMapper))
+		, cpu(std::make_shared<typename decltype(cpu)::element_type>(*other.cpu))
+		, ppu(std::make_shared<typename decltype(ppu)::element_type>(*other.ppu))
+		, cartridgeMapper(std::make_shared<CartridgeMapper>(*other.cartridgeMapper))
+	{
+		// Connect all objects
+		cartridgeMapper->ppu = ppu;
+		cartridgeMapper->cpu = cpu;
+
+		cpuMapper->cartridgeMapper = cartridgeMapper;
+		cpuMapper->cpu = cpu;
+		cpuMapper->ppu = ppu;
+
+		ppuMapper->cartridgeMapper = cartridgeMapper;
+
+		cpu->mapper = cpuMapper;
+		ppu->mapper = ppuMapper;
+
+		// Set connector lambdas for communication between CPU and PPU.
+		ppu->SetNMI = [this]() { this->cpu->SetNMI(); };
+
+		cpu->Tick = [this]() {
+			this->ppu->Step();
+			this->ppu->Step();
+			this->ppu->Step();
+			this->cpu->DecrementCycles();
+		};
+	}
 
     virtual void RunFrame() override
     { cpu->RunFrame(); }
@@ -137,56 +182,9 @@ static std::unique_ptr<NESInstance> MakeNESInstance(const NESInstance::Descripto
     case 1:  return MakeNESInstance<mapper::MMC1Mapper>(descriptor);
     case 2:  return MakeNESInstance<mapper::UxROMMapper>(descriptor);
     case 4:  return MakeNESInstance<mapper::MMC3Mapper>(descriptor);
-    default: return MakeNESInstance<mapper::NROM128Mapper>(descriptor);
+    default: return MakeNESInstance<mapper::UxROMMapper>(descriptor);
     }
     
 }
 
 } // namespace nemu
-
-/*
-template <class CartridgePRGROM>
-std::unique_ptr<NESInstanceBase<CartridgePRGROM>>
-MakeNESInstance(const NESInput& input, std::shared_ptr<PPU> ppu,
-                const std::vector<unsigned>& prgROM)
-{
-    std::unique_ptr<NESInstanceBase<CartridgePRGROM>> instance(new NESInstanceBase<CartridgePRGROM>(
-        ppu, std::make_shared<CartridgePRGROM>(prgROM.cbegin(), prgROM.cend())));
-    instance->SetInput(input);
-    return instance;
-}
-
-std::unique_ptr<NESInstance>
-MakeNESInstance(const std::string& path,
-                NESInput& input,
-                std::function<void(std::uint8_t*)> newFrameCallback)
-{
-    ROMLayout rom(path);
-
-    std::cout << rom << std::endl;
-
-    auto prgROMSize = (rom.EndPRGROM() - rom.BeginPRGROM());
-    auto chrROMSize = (rom.EndCHRROM() - rom.BeginCHRROM());
-
-    std::vector<unsigned> prgROM(rom.BeginPRGROM(), rom.EndPRGROM());
-
-    std::shared_ptr<PPU> ppu;
-
-    if(chrROMSize == 0)
-        ppu = std::make_shared<PPU>(std::vector<unsigned>(0x2000), newFrameCallback);
-    else
-        ppu = std::make_shared<PPU>(
-            std::vector<unsigned>(rom.BeginCHRROM(), rom.EndCHRROM()), newFrameCallback);
-
-    ppu->SetMirroring(rom.MirroringMode());
-
-    switch (rom.MapperCode()) {
-    case 0:
-        if (prgROMSize > 0x4000) return MakeNESInstance<mapper::NROM256Mapper>(input, ppu, prgROM);
-        else                     return MakeNESInstance<mapper::NROM128Mapper>(input, ppu, prgROM);
-    case 1:                      return MakeNESInstance<mapper::MMC1Mapper>(input, ppu, prgROM);
-    case 2:                      return MakeNESInstance<mapper::UxROMMapper>(input, ppu, prgROM);
-    default:                     return nullptr;
-    }
-}
-*/

@@ -30,15 +30,12 @@ int main()
 	Shader textureShader;
 	textureShader.LoadFromString(simpleShader);
 
-	// Game state
-	std::unique_ptr<NESInstance> nesInstance;
-	std::unique_ptr<NESInstance> state;
+	// Game objects
+	std::unique_ptr<NESInstance> nesInstance, state;
 	bool running = false;
 	auto delay = std::chrono::steady_clock::now();
 	NESInput input;
 	input.SetKeyboardConfig(NESKeyMapper::DefaultMap());
-
-	auto PPUCallback = [&texture](std::uint8_t* pixels) { texture.SetData(pixels); };
 
 	while (window->IsOpen()) {
 		window->Clear();
@@ -52,17 +49,18 @@ int main()
 				if (e.Count() > 1)
 					return 1;
 
-				if (!StringEndsWith(e.GetPaths()[0], ".nes"))
+				if (!util::StringEndsWith(e.GetPaths()[0], ".nes"))
 					return 1;
 
 				running = true;
 
-				nesInstance = MakeNESInstance((NESInstance::Descriptor{
+				NESInstance::Descriptor descriptor {
 					ROMLayout(e.GetPaths()[0]),
 					input,
-					PPUCallback,
-					1
-				}));
+					-1
+				};
+
+				nesInstance = MakeNESInstance(descriptor);
 
 				if (nesInstance == nullptr) {
 					std::cout << "Failed to load ROM\n";
@@ -73,24 +71,26 @@ int main()
 			else if (event.GetEventType() == EventType::KeyPressEvent) {
 				KeyPressEvent& e = event;
 				switch (e.GetKey()) {
-				case GLFW_KEY_F1: {
-					*state = *nesInstance;
-					std::cout << "State saved!\n";
-					break;
-				}
-				case GLFW_KEY_F2: {
-					*nesInstance = *state;
-					std::cout << "State loaded!\n";
-					break;
-				}
+                case GLFW_KEY_F1: {
+                    state = nesInstance->MakeCopy();
+                    std::cout << "State saved!\n";
+                    break;
+                }
+                case GLFW_KEY_F2: {
+					nesInstance = state->MakeCopy();
+                    std::cout << "State loaded!\n";
+                    break;
+                }
 				}
 			}
 
 		}
 
 		// Update states
-		if (running)
+		if (running) {
 			nesInstance->RunFrame();
+			texture.SetData(nesInstance->GetPixels());
+		}
 
 
 		// Draw

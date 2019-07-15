@@ -44,7 +44,8 @@ public:
            , prgRAM(0x2000)
            , chrRAM(std::move(chr))
        {
-           if (chrRAM.size() == 0) chrRAM = std::vector<unsigned>(0x2000);
+           if (chrRAM.size() == 0)
+			   chrRAM = std::vector<unsigned>(0x2000);
        }
 
        void Update()

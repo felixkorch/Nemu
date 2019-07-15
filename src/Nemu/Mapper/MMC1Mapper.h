@@ -11,6 +11,8 @@
 #include <cstddef>
 #include <memory>
 #include <vector>
+#include <iterator>
+#include <array>
 
 namespace nemu {
 namespace mapper {
@@ -40,11 +42,9 @@ namespace mapper {
     ///           size: 0x1000 (4kB)
 
     class MMC1Mapper {
-        using Iterator = std::vector<unsigned>::iterator;
         std::vector<unsigned> prgROM, prgRAM, chrRAM;
-        std::uint8_t regs[4]; // Internal registers - [0]: Control, [1]: CHR-bank 0, [2]: CHR-bank 1, [3]: PRG-bank
-        Iterator prgSlot[2];
-        Iterator chrSlot[2];
+        std::array<std::uint8_t, 4> regs;					// Internal registers - [0]: Control, [1]: CHR-bank 0, [2]: CHR-bank 1, [3]: PRG-bank
+		std::array<std::size_t, 2> prgSlot, chrSlot;
 
     public:
         std::shared_ptr<PPU<PPUMapper<MMC1Mapper>>> ppu;
@@ -62,6 +62,16 @@ namespace mapper {
 				chrRAM = std::vector<unsigned>(0x2000);
         }
 
+		void SetPRGROM(std::vector<unsigned>&& newData)
+		{
+			prgROM = std::move(newData);
+		}
+
+		void SetCHRROM(std::vector<unsigned>&& newData)
+		{
+			chrRAM = std::move(newData);
+		}
+
         void Update()
         {
             // Determines whether the whole 32KB block is fixed
@@ -69,30 +79,30 @@ namespace mapper {
             if (regs[0] & 0b1000) {
                 // [0x8000, 0xBFFF] switchable, [0xC000, 0xFFFF] fixed
                 if (regs[0] & 0b100) {
-                    prgSlot[0] = std::next(prgROM.begin(), 0x4000 * (regs[3] & 0xF));
-                    prgSlot[1] = std::prev(prgROM.end(), 0x4000); // Last bank
+					prgSlot[0] = 0x4000 * (regs[3] & 0xF);
+					prgSlot[1] = prgROM.size() - 0x4000;//std::prev(prgROM.end(), 0x4000); // Last bank
                 }
                 // [0x8000, 0xBFFF] fixed, [0xC000, 0xFFFF] switchable
                 else {
-                    prgSlot[0] = prgROM.begin();
-                    prgSlot[1] = std::next(prgROM.begin(), 0x4000 * (regs[3] & 0xF));
+					prgSlot[0] = 0;
+					prgSlot[1] = 0x4000 * (regs[3] & 0xF);
                 }
             }
             // 32KB
             else {
-                prgSlot[0] = std::next(prgROM.begin(), 0x4000 * ((regs[3] & 0xF) >> 1));
-                prgSlot[1] = std::next(prgSlot[0], 0x4000);
+				prgSlot[0] = 0x4000 * ((regs[3] & 0xF) >> 1);
+				prgSlot[1] = prgSlot[0] + 0x4000;
             }
 
             // 4KB CHR:
             if (regs[0] & 0b10000) {
-                chrSlot[0] = std::next(chrRAM.begin(), 0x1000 * regs[1]);
-                chrSlot[1] = std::next(chrRAM.begin(), 0x1000 * regs[2]);
+				chrSlot[0] = 0x1000 * regs[1];
+				chrSlot[1] = 0x1000 * regs[2];
             }
             // 8KB CHR:
             else {
-                chrSlot[0] = std::next(chrRAM.begin(), 0x1000 * (regs[1] >> 1));
-                chrSlot[1] = std::next(chrSlot[0], 0x1000);
+				chrSlot[0] = 0x1000 * (regs[1] >> 1);
+				chrSlot[1] = chrSlot[0] + 0x1000;
             }
             // Set mirroring:
             switch (regs[0] & 0b11) {
@@ -104,19 +114,19 @@ namespace mapper {
 
         std::uint8_t ReadCHR(std::size_t address)
         {
-            if (address <= 0x0FFF)
-                return static_cast<std::uint8_t>(*std::next(chrSlot[0], address % 0x1000));
+			if (address <= 0x0FFF)
+				return chrRAM[chrSlot[0] + address % 0x1000];
             if (address <= 0x1FFF)
-                return static_cast<std::uint8_t>(*std::next(chrSlot[1], address % 0x1000));
+				return chrRAM[chrSlot[1] + address % 0x1000];
             return 0;
         }
 
         void WriteCHR(std::size_t address, std::uint8_t value)
         {
-            if (address <= 0x0FFF)
-                *(chrSlot[0] + address % 0x1000) = value;
+			if (address <= 0x0FFF)
+				chrRAM[chrSlot[0] + address % 0x1000] = value;
             else if(address <= 0x1FFF)
-                *(chrSlot[1] + address % 0x1000) = value;
+				chrRAM[chrSlot[1] + address % 0x1000] = value;
         }
 
         std::uint8_t ReadPRG(std::size_t address)
@@ -125,9 +135,9 @@ namespace mapper {
                 return 0;
             if (address <= 0x7FFF)
                 return prgRAM[address % 0x2000];
-            if (address <= 0xBFFF)
-                return *std::next(prgSlot[0], address % 0x4000);
-            return *std::next(prgSlot[1], address % 0x4000);
+			if (address <= 0xBFFF)
+				return prgROM[prgSlot[0] + address % 0x4000];
+            return prgROM[prgSlot[1] + address % 0x4000];
         }
 
         void WritePRG(std::size_t address, std::uint8_t value)

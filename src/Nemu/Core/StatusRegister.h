@@ -87,6 +87,12 @@ class StatusRegister {
     {
         return data = newValue;
     }
+
+	StatusRegister& operator=(StatusRegister& other)
+	{
+		data = other.data;
+		return *this;
+	}
 };
 
 } // namespace nemu

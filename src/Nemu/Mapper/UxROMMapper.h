@@ -45,6 +45,16 @@ public:
         , internalReg(0)
     {}
 
+	void SetPRGROM(std::vector<unsigned>&& newData)
+	{
+		prgROM = std::move(newData);
+	}
+
+	void SetCHRROM(std::vector<unsigned>&& newData)
+	{
+		chrRAM = std::move(newData);
+	}
+
     void Update()
     {
         prgSlot[0] = std::next(prgROM.begin(), 0x4000 * (internalReg & 0xF));

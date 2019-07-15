@@ -138,7 +138,6 @@ class PPU {
         bool latch;
     };
 
-    std::function<void(std::uint8_t*)> HandleNewFrame;
     ppu::MirroringMode mirroring;
 
     // Background Memory
@@ -180,9 +179,8 @@ class PPU {
 
     std::function<void()> SetNMI;
 
-    PPU(std::function<void(std::uint8_t* pixels)> newFrameCallback)
+    PPU()
         : SetNMI(EmptySetNMI)
-        , HandleNewFrame(newFrameCallback)
     {}
 
     ~PPU() {}
@@ -352,6 +350,11 @@ class PPU {
             }
         }
     }
+
+	std::uint8_t* GetPixels()
+	{
+		return &pixels[0];
+	}
 
     void SetMirroring(ppu::MirroringMode mode) { mirroring = mode; }
 
@@ -582,7 +585,7 @@ private:
             if (ctrl.nmiEnable) 
                 SetNMI();
         } else if (phase == ScanlinePhase::POST && dot == 0) {
-            HandleNewFrame(pixels);
+            //HandleNewFrame(pixels);
         } else if (phase == ScanlinePhase::VISIBLE ||
                    phase == ScanlinePhase::PRE) {
             // Update Sprites

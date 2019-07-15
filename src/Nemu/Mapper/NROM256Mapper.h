@@ -35,13 +35,23 @@ public:
         , prgRAM(0x2000)
         , chrRAM(std::move(chr))
     {
-        if (chrRAM.size() == 0) chrRAM = std::vector<unsigned>(0x2000);
+		if (chrRAM.size() == 0) chrRAM = std::vector<unsigned>(0x2000);
     }
 
     void Update()
     {
 
     }
+
+	void SetPRGROM(std::vector<unsigned>&& newData)
+	{
+		prgROM = std::move(newData);
+	}
+
+	void SetCHRROM(std::vector<unsigned>&& newData)
+	{
+		chrRAM = std::move(newData);
+	}
 
     std::uint8_t ReadPRG(std::size_t address)
     {

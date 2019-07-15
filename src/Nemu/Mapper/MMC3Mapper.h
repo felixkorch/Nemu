@@ -94,6 +94,17 @@ namespace mapper {
             if (chrRAM.size() == 0) chrRAM = std::vector<unsigned>(0x2000);
         }
 
+
+		void SetPRGROM(std::vector<unsigned>&& newData)
+		{
+			prgROM = std::move(newData);
+		}
+
+		void SetCHRROM(std::vector<unsigned>&& newData)
+		{
+			chrRAM = std::move(newData);
+		}
+
         void Update()
         {
             prgSlot[1] = std::next(prgROM.begin(), 0x2000 * regs[7]); // Switchable, but always in same address range 

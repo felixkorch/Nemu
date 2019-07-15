@@ -6,12 +6,13 @@
 #include "Nemu/Core/NESInput.h"
 #include <cstddef>
 #include <iostream>
+#include <array>
 
 namespace nemu
 {
 class Joypad {
     NESInput input;
-    std::uint8_t shiftReg[2];
+	std::array<std::uint8_t, 2> shiftReg;
     bool strobe;
 
 public:

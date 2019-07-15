@@ -10,6 +10,7 @@
 #include <iostream>
 
 namespace nemu {
+namespace util {
 
 	bool StringEndsWith(const std::string& str, const std::string& suffix)
 	{
@@ -34,4 +35,5 @@ namespace nemu {
 		output.write(buff, length);
 	}
 
+}
 }

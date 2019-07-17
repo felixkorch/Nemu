@@ -9,8 +9,7 @@
 #include <fstream>
 #include <iostream>
 
-namespace nemu {
-namespace util {
+namespace nemu::util {
 
 	bool StringEndsWith(const std::string& str, const std::string& suffix)
 	{
@@ -35,5 +34,4 @@ namespace util {
 		output.write(buff, length);
 	}
 
-}
 }

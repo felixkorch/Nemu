@@ -8,8 +8,7 @@
 #include <cstdint>
 #include <memory>
 
-namespace nemu {
-namespace mapper {
+namespace nemu::mapper {
 
 template <class CartridgeMapper>
 class PPUMapper {
@@ -44,4 +43,3 @@ class PPUMapper {
 };
 
 } // namespace mapper
-} // namespace nemu

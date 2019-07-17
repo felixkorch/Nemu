@@ -6,8 +6,7 @@
 #include <vector>
 #include <cstddef>
 
-namespace nemu {
-namespace mapper {
+namespace nemu::mapper {
 
 /// Provides mapping for the NROM-256 cartridge layout.
 ///
@@ -82,4 +81,3 @@ public:
 };
 
 } // namespace mapper
-} // namespace nemu

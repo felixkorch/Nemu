@@ -1,13 +1,12 @@
 #pragma once
-#include "glad/glad.h"
+#include "Nemu/Graphics/OpenGL.h"
 #include "glm/glm.hpp"
 #include <string>
 #include <iostream>
 #include <fstream>
 #include <sstream>
 
-namespace nemu {
-namespace graphics {
+namespace nemu::graphics {
 
 	class Shader {
 		unsigned handle;
@@ -17,7 +16,7 @@ namespace graphics {
 			std::string FragmentSource;
 		};
 
-		void Shader::CreateShader(const std::string& vertexShader, const std::string& fragmentShader)
+		void CreateShader(const std::string& vertexShader, const std::string& fragmentShader)
 		{
 			if (vertexShader.empty() || fragmentShader.empty())
 				std::cout << "Vertex or Fragment shader empty." << std::endl;
@@ -41,7 +40,7 @@ namespace graphics {
 			handle = program;
 		}
 
-		unsigned int Shader::CompileShader(unsigned int type, const std::string& source)
+		unsigned int CompileShader(unsigned int type, const std::string& source)
 		{
 			unsigned int id = glCreateShader(type);
 			const char* src = source.c_str();
@@ -64,7 +63,7 @@ namespace graphics {
 			return id;
 		}
 
-		ShaderProgramSource Shader::ParseShader(std::stringstream& str)
+		ShaderProgramSource ParseShader(std::stringstream& str)
 		{
 			enum class ShaderType {
 				NONE = -1, VERTEX = 0, FRAGMENT = 1
@@ -97,7 +96,7 @@ namespace graphics {
 			return { ss[0].str(), ss[1].str() };
 		}
 
-		int Shader::GetUniformLocation(const std::string& name)
+		int GetUniformLocation(const std::string& name)
 		{
 			int location = glGetUniformLocation(handle, name.c_str());
 			if (location == -1)
@@ -121,47 +120,47 @@ namespace graphics {
 			glDeleteProgram(handle);
 		}
 
-		void Shader::Bind() const
+		void Bind() const
 		{
 			glUseProgram(handle);
 		}
 
-		void Shader::Unbind() const
+		void Unbind() const
 		{
 			glUseProgram(0);
 		}
 
-		void Shader::SetUniform1i(const std::string& name, int v0)
+		void SetUniform1i(const std::string& name, int v0)
 		{
 			glUniform1i(GetUniformLocation(name), v0);
 		}
 
-		void Shader::SetUniform1iv(const std::string& name, int count, const int* value)
+		void SetUniform1iv(const std::string& name, int count, const int* value)
 		{
 			glUniform1iv(GetUniformLocation(name), count, value);
 		}
 
-		void Shader::SetUniform4f(const std::string& name, float v0, float v1, float v2, float v3)
+		void SetUniform4f(const std::string& name, float v0, float v1, float v2, float v3)
 		{
 			glUniform4f(GetUniformLocation(name), v0, v1, v2, v3);
 		}
 
-		void Shader::SetUniform4f(const std::string& name, const glm::vec4& vec4)
+		void SetUniform4f(const std::string& name, const glm::vec4& vec4)
 		{
 			glUniform4f(GetUniformLocation(name), vec4.x, vec4.y, vec4.z, vec4.w);
 		}
 
-		void Shader::SetUniformMat4f(const std::string& name, const glm::mat4& mat)
+		void SetUniformMat4f(const std::string& name, const glm::mat4& mat)
 		{
 			glUniformMatrix4fv(GetUniformLocation(name), 1, GL_FALSE, &mat[0][0]);
 		}
 
-		void Shader::SetUniform1f(const std::string& name, float v0)
+		void SetUniform1f(const std::string& name, float v0)
 		{
 			glUniform1f(GetUniformLocation(name), v0);
 		}
 
-		void Shader::SetUniform3f(const std::string& name, const glm::vec3& vec3)
+		void SetUniform3f(const std::string& name, const glm::vec3& vec3)
 		{
 			glUniform3f(GetUniformLocation(name), vec3.x, vec3.y, vec3.z);
 		}
@@ -185,4 +184,4 @@ namespace graphics {
 		}
 	};
 
-}}
+}

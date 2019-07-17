@@ -53,20 +53,26 @@ class NESInstance {
 
 template <class CartridgeMapper>
 class NESInstanceBase: public NESInstance {
+
+	using CPUMapperType = mapper::CPUMapper<CartridgeMapper>;
+	using PPUMapperType = mapper::PPUMapper<CartridgeMapper>;
+	using CPUType = CPU<CPUMapperType>;
+	using PPUType = PPU<PPUMapperType>;
+
     // TODO:
     //  For simplicity everything is shared pointers. There are probably more static solutions.
-    std::shared_ptr<mapper::CPUMapper<CartridgeMapper>> cpuMapper;
-    std::shared_ptr<mapper::PPUMapper<CartridgeMapper>> ppuMapper;
-    std::shared_ptr<CPU<typename decltype(cpuMapper)::element_type>> cpu;
-    std::shared_ptr<PPU<typename decltype(ppuMapper)::element_type>> ppu;
+    std::shared_ptr<CPUMapperType> cpuMapper;
+    std::shared_ptr<PPUMapperType> ppuMapper;
+    std::shared_ptr<CPUType>> cpu;
+    std::shared_ptr<PPUType> ppu;
 	std::shared_ptr<CartridgeMapper> cartridgeMapper;
 
    public:
     NESInstanceBase(const NESInstance::Descriptor& descriptor)
-        : cpu(std::make_shared<typename decltype(cpu)::element_type>())
-        , ppu(std::make_shared<typename decltype(ppu)::element_type>())
-		, cpuMapper(std::make_shared<typename decltype(cpuMapper)::element_type>())
-		, ppuMapper(std::make_shared<typename decltype(ppuMapper)::element_type>())
+        : cpu(std::make_shared<CPUType>())
+        , ppu(std::make_shared<PPUType())
+		, cpuMapper(std::make_shared<CPUMapperType>())
+		, ppuMapper(std::make_shared<PPUMapperType>())
     {
         auto rom = descriptor.rom;
 
@@ -114,10 +120,10 @@ class NESInstanceBase: public NESInstance {
 	}
 
 	NESInstanceBase(const NESInstanceBase<CartridgeMapper>& other)
-		: cpuMapper(std::make_shared<typename decltype(cpuMapper)::element_type>(*other.cpuMapper))
-		, ppuMapper(std::make_shared<typename decltype(ppuMapper)::element_type>(*other.ppuMapper))
-		, cpu(std::make_shared<typename decltype(cpu)::element_type>(*other.cpu))
-		, ppu(std::make_shared<typename decltype(ppu)::element_type>(*other.ppu))
+		: cpuMapper(std::make_shared<CPUMapperType>(*other.cpuMapper))
+		, ppuMapper(std::make_shared<PPUMapperType>(*other.ppuMapper))
+		, cpu(std::make_shared<CPUType>(*other.cpu))
+		, ppu(std::make_shared<PPUType>(*other.ppu))
 		, cartridgeMapper(std::make_shared<CartridgeMapper>(*other.cartridgeMapper))
 	{
 		// Connect all objects

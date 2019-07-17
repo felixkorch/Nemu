@@ -14,8 +14,7 @@
 #include <iterator>
 #include <array>
 
-namespace nemu {
-namespace mapper {
+namespace nemu::mapper {
 
     /// Provides mapping for the MMC1 / SxROM cartridge layout.
     ///
@@ -176,4 +175,3 @@ namespace mapper {
     };
 
 } // namespace mapper
-} // namespace nemu

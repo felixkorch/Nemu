@@ -11,8 +11,7 @@
 #include "Nemu/Mapper/PPUMapper.h"
 #include <memory>
 
-namespace nemu {
-namespace mapper {
+namespace nemu::mapper {
 
 /// Mapper for the memory accesable by the CPU. It consists of two parts; a internal mapper which is
 /// always the same and a mapper that is dependent on the mapper of the cartridge.
@@ -118,4 +117,3 @@ class CPUMapper {
 };
 
 } // namespace mapper
-} // namespace nemu

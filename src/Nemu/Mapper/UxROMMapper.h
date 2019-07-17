@@ -12,8 +12,7 @@
 #include "Nemu/Core/PPU.h"
 #include "Nemu/Mapper/CPUMapper.h"
 
-namespace nemu {
-namespace mapper {
+namespace nemu::mapper {
 
 /// Provides mapping for the UNROM / UOROM cartridge layout.
 ///
@@ -91,4 +90,3 @@ public:
 };
 
 } // namespace mapper
-} // namespace nemu

@@ -1,12 +1,12 @@
 #pragma once
 #include "Nemu/Graphics/Shader.h"
-#include "glad/glad.h"
+#include "Nemu/Graphics/OpenGL.h"
 #include "glm/gtc/matrix_transform.hpp"
 #include "glm/gtx/transform.hpp"
 #include <cstdint>
 #include <vector>
 
-namespace nemu { namespace graphics {
+namespace nemu::graphics {
 
 	class Texture2D {
 
@@ -200,4 +200,4 @@ namespace nemu { namespace graphics {
 
 	};
 
-}}
+}

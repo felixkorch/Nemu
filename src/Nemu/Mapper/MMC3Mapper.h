@@ -12,8 +12,7 @@
 #include "Nemu/Core/PPU.h"
 #include "Nemu/Mapper/CPUMapper.h"
 
-namespace nemu {
-namespace mapper {
+namespace nemu::mapper {
 
     /// Provides mapping for the MMC3 cartridge layout.
     ///
@@ -251,4 +250,3 @@ namespace mapper {
     };
 
 } // namespace mapper
-} // namespace nemu

@@ -14,9 +14,15 @@
 using namespace nemu;
 using namespace graphics;
 
-const char* simpleShader = {
+#ifdef NEMU_PLATFORM_WEB
+const char* minimalShader = {
+	#include "Nemu/Graphics/Shaders/texture.gles3.shader"
+};
+#else
+const char* minimalShader = {
 	#include "Nemu/Graphics/Shaders/texture.shader"
 };
+#endif
 
 int main()
 {
@@ -28,7 +34,7 @@ int main()
 	Texture2D texture(256, 240);
 	texture.Resize(512, 480);
 	Shader textureShader;
-	textureShader.LoadFromString(simpleShader);
+	textureShader.LoadFromString(minimalShader);
 
 	// Game objects
 	std::unique_ptr<NESInstance> nesInstance, state;
@@ -54,13 +60,12 @@ int main()
 
 				running = true;
 
-				NESInstance::Descriptor descriptor {
+
+				nesInstance = MakeNESInstance(NESInstance::Descriptor {
 					ROMLayout(e.GetPaths()[0]),
 					input,
 					-1
-				};
-
-				nesInstance = MakeNESInstance(descriptor);
+				});
 
 				if (nesInstance == nullptr) {
 					std::cout << "Failed to load ROM\n";

@@ -4,7 +4,7 @@
 #include <string>
 #include <memory>
 
-namespace nemu { namespace graphics {
+namespace nemu::graphics {
 
 	enum class EventType {
 		WindowCloseEvent, WindowResizeEvent, DropEvent, KeyTypeEvent,
@@ -94,4 +94,4 @@ namespace nemu { namespace graphics {
 		}
 	};
 
-}}
+}

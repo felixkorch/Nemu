@@ -8,8 +8,8 @@
 #include <iostream>
 #include <array>
 
-namespace nemu
-{
+namespace nemu {
+
 class Joypad {
     NESInput input;
 	std::array<std::uint8_t, 2> shiftReg;

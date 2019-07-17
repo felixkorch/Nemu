@@ -15,8 +15,7 @@
 /// Determines if the nth bit is set
 #define NthBit(x, n) (((x) >> (n)) & 1)
 
-namespace nemu {
-namespace ppu {
+namespace nemu::ppu {
 
 enum MirroringMode { Vertical, Horizontal };
 
@@ -48,6 +47,8 @@ RGBA HexToRGBA(unsigned hexValue) {
 }
 
 } // namespace ppu
+
+namespace nemu {
 
 template <class Mapper>
 class PPU {
@@ -141,19 +142,20 @@ class PPU {
     ppu::MirroringMode mirroring;
 
     // Background Memory
-    std::uint8_t ciRam[0x800]; // Nametables (2048 B)
-    std::uint8_t cgRam[0x20];  // Palettes   (32 B)
+    std::array<std::uint8_t, 0x800> ciRam; // Nametables (2048 Bytes)
+    std::array<std::uint8_t, 0x20> cgRam; // Palettes   (32 Bytes)
 
     // OAM Memory (Sprite data)
-    std::uint8_t oamMem[0x100]; // (256 B)
-    Sprite oam[8];
-    Sprite secondaryOam[8];
-    std::uint8_t pixels[256 * 240 * 4];
+    std::array<std::uint8_t, 0x100> oamMem;  // (256 Bytes)
+    std::array<Sprite, 8> oam, secondaryOam; // (7 * 8 Bytes each)
 
+	// Pixel data
+    std::array<std::uint8_t, 256 * 240 * 4> pixels; // (256 * 240 * 4 Bytes)
+
+	// PPU Registers
     Ctrl ctrl;
     Mask mask;
     Status status;
-
     Addr vAddr, tAddr;
     std::uint8_t oamAddr;
     std::uint8_t fineX;
@@ -183,17 +185,15 @@ class PPU {
         : SetNMI(EmptySetNMI)
     {}
 
-    ~PPU() {}
-
     void Reset()
     {
         frameOdd = false;
         scanline = dot = 0;
         ctrl.reg = mask.reg = status.reg = 0;
 
-        memset(pixels, 0x00, sizeof(pixels));
-        memset(ciRam, 0xFF, sizeof(ciRam));
-        memset(oamMem, 0x00, sizeof(oamMem));
+		pixels.fill(0);
+		ciRam.fill(0);
+		oamMem.fill(0);
     }
 
     /// Address: $2002
@@ -353,7 +353,7 @@ class PPU {
 
 	std::uint8_t* GetPixels()
 	{
-		return &pixels[0];
+		return pixels.data();
 	}
 
     void SetMirroring(ppu::MirroringMode mode) { mirroring = mode; }
@@ -659,4 +659,4 @@ private:
     }
 };
 
-} // namespace nemu
+}

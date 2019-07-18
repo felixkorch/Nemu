@@ -63,14 +63,14 @@ class NESInstanceBase: public NESInstance {
     //  For simplicity everything is shared pointers. There are probably more static solutions.
     std::shared_ptr<CPUMapperType> cpuMapper;
     std::shared_ptr<PPUMapperType> ppuMapper;
-    std::shared_ptr<CPUType>> cpu;
+    std::shared_ptr<CPUType> cpu;
     std::shared_ptr<PPUType> ppu;
 	std::shared_ptr<CartridgeMapper> cartridgeMapper;
 
    public:
     NESInstanceBase(const NESInstance::Descriptor& descriptor)
         : cpu(std::make_shared<CPUType>())
-        , ppu(std::make_shared<PPUType())
+        , ppu(std::make_shared<PPUType>())
 		, cpuMapper(std::make_shared<CPUMapperType>())
 		, ppuMapper(std::make_shared<PPUMapperType>())
     {
@@ -171,7 +171,7 @@ class NESInstanceBase: public NESInstance {
 
 template <class CartridgeMapper>
 std::unique_ptr<NESInstance> MakeNESInstance(const NESInstance::Descriptor& descriptor)
-{ return std::unique_ptr<NESInstance>(new NESInstanceBase<CartridgeMapper>(descriptor)); }
+{ return std::make_unique<NESInstanceBase<CartridgeMapper>>(descriptor); }
 
 static std::unique_ptr<NESInstance> MakeNESInstance(const NESInstance::Descriptor& descriptor)
 {

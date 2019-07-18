@@ -42,7 +42,7 @@ namespace nemu::mapper {
 
     class MMC1Mapper {
         std::vector<unsigned> prgROM, prgRAM, chrRAM;
-        std::array<std::uint8_t, 4> regs;					// Internal registers - [0]: Control, [1]: CHR-bank 0, [2]: CHR-bank 1, [3]: PRG-bank
+		std::array<std::uint8_t, 4> regs;             // Internal registers - [0]: Control, [1]: CHR-bank 0, [2]: CHR-bank 1, [3]: PRG-bank
 		std::array<std::size_t, 2> prgSlot, chrSlot;
 
     public:
@@ -79,7 +79,7 @@ namespace nemu::mapper {
                 // [0x8000, 0xBFFF] switchable, [0xC000, 0xFFFF] fixed
                 if (regs[0] & 0b100) {
 					prgSlot[0] = 0x4000 * (regs[3] & 0xF);
-					prgSlot[1] = prgROM.size() - 0x4000;//std::prev(prgROM.end(), 0x4000); // Last bank
+					prgSlot[1] = prgROM.size() - 0x4000; // Last bank
                 }
                 // [0x8000, 0xBFFF] fixed, [0xC000, 0xFFFF] switchable
                 else {

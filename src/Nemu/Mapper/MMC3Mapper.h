@@ -64,12 +64,12 @@ namespace nemu::mapper {
     ///           size:  0x400 (1kB)
 
     class MMC3Mapper {
-        using Iterator = std::vector<unsigned>::iterator;
         std::vector<unsigned> prgROM, prgRAM, chrRAM;
-        std::uint8_t regs[8];
+		std::array<std::uint8_t, 8> regs;
         std::uint8_t regControl;
-        Iterator prgSlot[4];
-        Iterator chrSlot[8];
+
+		std::array<std::size_t, 4> prgSlot;
+		std::array<std::size_t, 8> chrSlot;
 
         unsigned irqPeriod, irqCounter;
         bool irqEnabled;
@@ -90,7 +90,8 @@ namespace nemu::mapper {
             , irqCounter(0)
             , irqEnabled(false)
         {
-            if (chrRAM.size() == 0) chrRAM = std::vector<unsigned>(0x2000);
+            if (chrRAM.size() == 0)
+				chrRAM = std::vector<unsigned>(0x2000);
         }
 
 
@@ -106,45 +107,45 @@ namespace nemu::mapper {
 
         void Update()
         {
-            prgSlot[1] = std::next(prgROM.begin(), 0x2000 * regs[7]); // Switchable, but always in same address range 
-            prgSlot[3] = std::prev(prgROM.end(), 0x2000);             // Fixed to last bank
+            prgSlot[1] = 0x2000 * regs[7]; // Switchable, but always in same address range 
+            prgSlot[3] = prgROM.size() - 0x2000; // Fixed to last bank
 
             // PRG Mode 0:
             if (!(regControl & 0b01000000)) {
-                prgSlot[0] = std::next(prgROM.begin(), 0x2000 * regs[6]);
-                prgSlot[2] = std::prev(prgROM.end(), 0x2000 * 2); // Second to last bank
+				prgSlot[0] = 0x2000 * regs[6];
+				prgSlot[2] = prgROM.size() - 0x2000 * 2; // Second to last bank
             }
             // PRG Mode 1:
             else {
-                prgSlot[0] = std::prev(prgROM.end(), 0x2000 * 2);
-                prgSlot[2] = std::next(prgROM.begin(), 0x2000 * regs[6]);
+				prgSlot[0] = prgROM.size() - 0x2000 * 2; // Second to last bank
+				prgSlot[2] = 0x2000 * regs[6];
             }
 
             // CHR Mode 0:
             if (!(regControl & 0b10000000)) {
                 // 2kB Blocks
-                chrSlot[0] = std::next(chrRAM.begin(), 0x800 * (regs[0] >> 1));
-                chrSlot[1] = std::next(chrSlot[0], 0x400);
-                chrSlot[2] = std::next(chrRAM.begin(), 0x800 * (regs[1] >> 1));
-                chrSlot[3] = std::next(chrSlot[2], 0x400);
+				chrSlot[0] = 0x800 * (regs[0] >> 1);
+				chrSlot[1] = chrSlot[0] + 0x400;
+				chrSlot[2] = 0x800 * (regs[1] >> 1);
+				chrSlot[3] = chrSlot[2] + 0x400;
 
                 // 1kB Blocks
-                chrSlot[4] = std::next(chrRAM.begin(), 0x400 * regs[2]);
-                chrSlot[5] = std::next(chrRAM.begin(), 0x400 * regs[3]);
-                chrSlot[6] = std::next(chrRAM.begin(), 0x400 * regs[4]);
-                chrSlot[7] = std::next(chrRAM.begin(), 0x400 * regs[5]);
+				chrSlot[4] = 0x400 * regs[2];
+                chrSlot[5] = 0x400 * regs[3];
+				chrSlot[6] = 0x400 * regs[4];
+				chrSlot[7] = 0x400 * regs[5];
             }
             // CHR Mode 1:
             else {
                 // 1kB Blocks
-                chrSlot[0] = std::next(chrRAM.begin(), 0x400 * regs[2]);
-                chrSlot[1] = std::next(chrRAM.begin(), 0x400 * regs[3]);
-                chrSlot[2] = std::next(chrRAM.begin(), 0x400 * regs[4]);
-                chrSlot[3] = std::next(chrRAM.begin(), 0x400 * regs[5]);
+				chrSlot[0] = 0x400 * regs[2];
+				chrSlot[1] = 0x400 * regs[3];
+				chrSlot[2] = 0x400 * regs[4];
+				chrSlot[3] = 0x400 * regs[5];
 
                 // 2kB Blocks
-                chrSlot[2] = std::next(chrRAM.begin(), 0x800 * (regs[0] >> 1));
-                chrSlot[3] = std::next(chrRAM.begin(), 0x800 * (regs[1] >> 1));
+				chrSlot[2] = 0x800 * (regs[0] >> 1);
+				chrSlot[3] = 0x800 * (regs[1] >> 1);
             }
 
         }
@@ -156,12 +157,12 @@ namespace nemu::mapper {
             if (address <= 0x7FFF)
                 return prgRAM[address % 0x2000];
             if (address <= 0x9FFF)
-                return *std::next(prgSlot[0], address % 0x2000);
-            if (address <= 0xBFFF)
-                return *std::next(prgSlot[1], address % 0x2000);
-            if (address <= 0xDFFF)
-                return *std::next(prgSlot[2], address % 0x2000);
-            return *std::next(prgSlot[3], address % 0x2000);
+                return prgROM[prgSlot[0] + address % 0x2000];
+			if (address <= 0xBFFF)
+				return prgROM[prgSlot[1] + address % 0x2000];
+			if (address <= 0xDFFF)
+				return prgROM[prgSlot[2] + address % 0x2000];
+			return prgROM[prgSlot[3] + address % 0x2000];
         }
 
         void WritePRG(std::size_t address, std::uint8_t value)
@@ -190,43 +191,43 @@ namespace nemu::mapper {
 
         std::uint8_t ReadCHR(std::size_t address)
         {
-            if (address <= 0x03FF)
-                return *std::next(chrSlot[0], address % 0x400);
+			if (address <= 0x03FF)
+				return chrRAM[chrSlot[0] + address % 0x400];
             if (address <= 0x07FF)
-                return *std::next(chrSlot[1], address % 0x400);
+                return chrRAM[chrSlot[1] + address % 0x400];
             if (address <= 0x0BFF)
-                return *std::next(chrSlot[2], address % 0x400);
+                return chrRAM[chrSlot[2] + address % 0x400];
             if (address <= 0x0FFF)
-                return *std::next(chrSlot[3], address % 0x400);
+                return chrRAM[chrSlot[3] + address % 0x400];
             if (address <= 0x13FF)
-                return *std::next(chrSlot[4], address % 0x400);
+                return chrRAM[chrSlot[4] + address % 0x400];
             if (address <= 0x17FF)
-                return *std::next(chrSlot[5], address % 0x400);
+                return chrRAM[chrSlot[5] + address % 0x400];
             if (address <= 0x1BFF)
-                return *std::next(chrSlot[6], address % 0x400);
+                return chrRAM[chrSlot[6] + address % 0x400];
             if (address <= 0x1FFF)
-                return *std::next(chrSlot[7], address % 0x400);
+                return chrRAM[chrSlot[7] + address % 0x400];
             return 0;
         }
 
         void WriteCHR(std::size_t address, std::uint8_t value)
         {
             if (address <= 0x03FF)
-                *(chrSlot[0] + address % 0x400) = value;
+                chrRAM[chrSlot[0] + address % 0x400] = value;
             if (address <= 0x07FF)
-                *(chrSlot[1] + address % 0x400) = value;
+				chrRAM[chrSlot[1] + address % 0x400] = value;
             if (address <= 0x0BFF)
-                *(chrSlot[2] + address % 0x400) = value;
+				chrRAM[chrSlot[2] + address % 0x400] = value;
             if (address <= 0x0FFF)
-                *(chrSlot[3] + address % 0x400) = value;
+				chrRAM[chrSlot[3] + address % 0x400] = value;
             if (address <= 0x13FF)
-                *(chrSlot[4] + address % 0x400) = value;
+				chrRAM[chrSlot[4] + address % 0x400] = value;
             if (address <= 0x17FF)
-                *(chrSlot[5] + address % 0x400) = value;
+				chrRAM[chrSlot[5] + address % 0x400] = value;
             if (address <= 0x1BFF)
-                *(chrSlot[6] + address % 0x400) = value;
+				chrRAM[chrSlot[6] + address % 0x400] = value;
             if (address <= 0x1FFF)
-                *(chrSlot[7] + address % 0x400) = value;
+				chrRAM[chrSlot[7] + address % 0x400] = value;
         }
 
         void OnScanline()

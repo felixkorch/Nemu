@@ -1,5 +1,6 @@
 #pragma once
 #include "Nemu/Graphics/OpenGL.h"
+#include "Nemu/Graphics/GLPrimitive.h"
 #include "glm/glm.hpp"
 #include <string>
 #include <iostream>
@@ -8,8 +9,7 @@
 
 namespace nemu::graphics {
 
-	class Shader {
-		unsigned handle;
+	class Shader : public GLPrimitive {
 
 		struct ShaderProgramSource {
 			std::string VertexSource;
@@ -106,14 +106,30 @@ namespace nemu::graphics {
 
 	public:
 
-		Shader()
-			: handle(0)
-		{}
+		Shader() = default;
+		Shader(Shader&& other) = default;
 
-		Shader(Shader& other) = delete;
-		Shader(Shader&& other) = delete;
-		Shader& operator=(Shader&& other) = delete;
-		Shader& operator=(Shader& other) = delete;
+		static Shader CreateFromFile(const std::string& path)
+		{
+			Shader shader;
+			std::ifstream stream(path);
+			if (!stream.good())
+				std::cout << "Shader not found, path given: " << path << std::endl;
+			std::stringstream str;
+			str << stream.rdbuf();
+			ShaderProgramSource source = shader.ParseShader(str);
+			shader.CreateShader(source.VertexSource, source.FragmentSource);
+			return shader;
+		}
+
+		static Shader CreateFromString(const char* program)
+		{
+			Shader shader;
+			std::stringstream str(program);
+			ShaderProgramSource source = shader.ParseShader(str);
+			shader.CreateShader(source.VertexSource, source.FragmentSource);
+			return shader;
+		}
 
 		~Shader()
 		{
@@ -165,23 +181,6 @@ namespace nemu::graphics {
 			glUniform3f(GetUniformLocation(name), vec3.x, vec3.y, vec3.z);
 		}
 
-		void LoadFromFile(const std::string& path)
-		{
-			std::ifstream stream(path);
-			if (!stream.good())
-				std::cout << "Shader not found, path given: " << path << std::endl;
-			std::stringstream str;
-			str << stream.rdbuf();
-			ShaderProgramSource source = ParseShader(str);
-			CreateShader(source.VertexSource, source.FragmentSource);
-		}
-
-		void LoadFromString(const char* program)
-		{
-			std::stringstream str(program);
-			ShaderProgramSource source = ParseShader(str);
-			CreateShader(source.VertexSource, source.FragmentSource);
-		}
 	};
 
 }

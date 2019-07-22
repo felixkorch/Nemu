@@ -13,30 +13,90 @@ namespace nemu::graphics {
 		bool vsync;
 		GLFWwindow* window;
 		std::queue<EventWrapper> eventQueue;
-		static std::shared_ptr<Window> globalInstance;
 
 	public:
 
-		Window(int width, int height, const std::string& title, bool resizable)
+		Window(GLFWwindow* window, int width, int height, const std::string& title, bool resizable = false)
 			: width(width)
 			, height(height)
 			, title(title)
 			, resizable(resizable)
 			, vsync(false)
-			, window(nullptr)
+			, window(window)
 			, eventQueue()
-		{}
-		
-		static std::shared_ptr<Window> Create(int width, int height, const std::string& title, bool resizable = false)
 		{
-			assert(globalInstance == nullptr);
-			globalInstance = std::make_shared<Window>(width, height, title, resizable);
-			if (!globalInstance->TryInit())
-				return nullptr;
-			return globalInstance;
+			glfwSetWindowUserPointer(window, this);
+
+			glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
+			glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+			glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+			glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+			glfwWindowHint(GLFW_SAMPLES, 4);
+
+			if (resizable) {
+				glfwWindowHint(GLFW_RESIZABLE, GL_TRUE);
+			}
+			else {
+				glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
+			}
+
+			/*
+			glfwSetWindowCloseCallback(window, [](GLFWwindow * window) {
+			});
+
+			glfwSetScrollCallback(window, [](GLFWwindow * window, double xOffset, double yOffset) {
+			});
+
+			glfwSetCursorPosCallback(window, [](GLFWwindow * window, double xPos, double yPos) {
+			});
+
+			glfwSetMouseButtonCallback(window, [](GLFWwindow * window, int button, int action, int mods) {
+			});
+
+			glfwSetCharCallback(window, [](GLFWwindow * window, unsigned int keycode) {
+			});
+
+			glfwSetKeyCallback(window, [](GLFWwindow * window, int key, int scancode, int action, int mods) {
+			});
+			*/
+
+			// Callback to set the viewport to match the new size of the window
+			glfwSetFramebufferSizeCallback(window, [](GLFWwindow * window, int width, int height) {
+				glViewport(0, 0, width, height);
+			});
+
+			// Drop Event
+			glfwSetDropCallback(window, [](GLFWwindow * window, int count, const char** ptr) {
+				Window* win = (Window*)glfwGetWindowUserPointer(window);
+				win->eventQueue.push(WrapEvent<DropEvent>(ptr, count));
+			});
+
+			// Key Event
+			glfwSetKeyCallback(window, [](GLFWwindow * window, int key, int scancode, int action, int mods) {
+				Window* win = (Window*)glfwGetWindowUserPointer(window);
+				switch (action) {
+				case GLFW_PRESS: {
+					win->eventQueue.push(WrapEvent<KeyPressEvent>(key));
+					break;
+				}
+				case GLFW_RELEASE: {
+					win->eventQueue.push(WrapEvent<KeyReleaseEvent>(key));
+					break;
+				}
+				case GLFW_REPEAT: {
+					// TODO
+					break;
+				}
+				}
+			});
+
+			glfwSetWindowSizeCallback(window, [](GLFWwindow * window, int width, int height) {
+				Window* win = (Window*)glfwGetWindowUserPointer(window);
+				win->eventQueue.push(WrapEvent<ResizeEvent>(width, height));
+			});
 		}
 
-		bool PollEvent(EventWrapper & event)
+		bool PollEvent(EventWrapper& event)
 		{
 			if (!eventQueue.empty()) {
 				event = eventQueue.front();
@@ -72,108 +132,6 @@ namespace nemu::graphics {
 				glfwSwapInterval(0);
 			}
 			vsync = enabled;
-		}
-
-		bool TryInit()
-		{
-			if (!glfwInit()) {
-				std::cout << "Failed to initialize window." << std::endl;
-				return false;
-			}
-
-			window = glfwCreateWindow(width, height, title.c_str(), nullptr, nullptr);
-
-			if (!window) {
-				glfwTerminate();
-				std::cout << "Failed to initialize window." << std::endl;
-				return false;
-			}
-
-			glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
-			glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-			glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-			glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-			glfwWindowHint(GLFW_SAMPLES, 4);
-
-			if (resizable) {
-				glfwWindowHint(GLFW_RESIZABLE, GL_TRUE);
-			}
-			else {
-				glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
-			}
-
-			glfwMakeContextCurrent(window);
-			glfwSetWindowUserPointer(window, this);
-
-#ifndef NEMU_PLATFORM_WEB
-
-			if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
-				std::cout << "Failed to initialize OpenGL" << std::endl;
-				return false;
-			}
-#endif
-
-			/*
-			glfwSetWindowCloseCallback(window, [](GLFWwindow * window) {
-			});
-
-			glfwSetScrollCallback(window, [](GLFWwindow * window, double xOffset, double yOffset) {
-			});
-
-			glfwSetCursorPosCallback(window, [](GLFWwindow * window, double xPos, double yPos) {
-			});
-
-			glfwSetMouseButtonCallback(window, [](GLFWwindow * window, int button, int action, int mods) {
-			});
-
-			glfwSetCharCallback(window, [](GLFWwindow * window, unsigned int keycode) {
-			});
-
-			glfwSetKeyCallback(window, [](GLFWwindow * window, int key, int scancode, int action, int mods) {
-			});
-			*/
-
-			// Callback to set the viewport to match the new size of the window
-			glfwSetFramebufferSizeCallback(window, [](GLFWwindow * window, int width, int height) {
-				glViewport(0, 0, width, height);
-				});
-
-			// Drop Event
-			glfwSetDropCallback(window, [](GLFWwindow * window, int count, const char** ptr) {
-				Window* win = (Window*)glfwGetWindowUserPointer(window);
-				auto e = std::make_shared<DropEvent>(ptr, count);
-				win->eventQueue.push(EventWrapper(e));
-				});
-
-			// Key Event
-			glfwSetKeyCallback(window, [](GLFWwindow * window, int key, int scancode, int action, int mods) {
-				Window* win = (Window*)glfwGetWindowUserPointer(window);
-				switch (action) {
-				case GLFW_PRESS: {
-					auto e = std::make_shared<KeyPressEvent>(key);
-					win->eventQueue.push(EventWrapper(e));
-					break;
-				}
-				case GLFW_RELEASE: {
-					auto e = std::make_shared<KeyReleaseEvent>(key);
-					win->eventQueue.push(EventWrapper(e));
-					break;
-				}
-				case GLFW_REPEAT: {
-					// TODO
-					break;
-				}
-				}
-				});
-
-			glfwSetWindowSizeCallback(window, [](GLFWwindow * window, int width, int height) {
-				Window* win = (Window*)glfwGetWindowUserPointer(window);
-				auto e = std::make_shared<ResizeEvent>(width, height);
-				win->eventQueue.push(EventWrapper(e));
-				});
-
-
-			return true;
 		}
 
 		bool IsKeyPressed(int keycode)
@@ -240,9 +198,33 @@ namespace nemu::graphics {
 			type.Draw(width, height, shader);
 		}
 
-		static std::shared_ptr<Window> GetGlobalInstance() { return globalInstance; }
-
 	};
 
-	inline std::shared_ptr<Window> Window::globalInstance = nullptr;
+	std::shared_ptr<Window> MakeWindow(int width, int height, const std::string& title)
+	{
+		if (!glfwInit()) {
+			std::cout << "Failed to create window." << std::endl;
+			return nullptr;
+		}
+
+		auto glfwWindow = glfwCreateWindow(width, height, title.c_str(), nullptr, nullptr);
+
+		if (!glfwWindow) {
+			glfwTerminate();
+			std::cout << "Failed to create window." << std::endl;
+			return nullptr;
+		}
+
+		glfwMakeContextCurrent(glfwWindow);
+
+#ifndef NEMU_PLATFORM_WEB
+
+		if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
+			std::cout << "Failed to initialize OpenGL" << std::endl;
+			return nullptr;
+		}
+#endif
+		std::cout << "Window successfully created" << std::endl;
+		return std::make_shared<Window>(glfwWindow, width, height, title);
+	}
 }

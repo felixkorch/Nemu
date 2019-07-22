@@ -142,15 +142,15 @@ class PPU {
     ppu::MirroringMode mirroring;
 
     // Background Memory
-    std::vector<std::uint8_t> ciRam; // Nametables (2048 Bytes)
-    std::vector<std::uint8_t> cgRam; // Palettes   (32 Bytes)
+	std::array<std::uint8_t, 0x800> ciRam; // Nametables (2048 Bytes)
+	std::array<std::uint8_t, 0x20> cgRam; // Palettes   (32 Bytes)
 
     // OAM Memory (Sprite data)
-    std::vector<std::uint8_t> oamMem;  // (256 Bytes)
-    std::vector<Sprite> oam, secondaryOam; // (7 * 8 Bytes each)
+    std::array<std::uint8_t, 0x100> oamMem;  // (256 Bytes)
+    std::array<Sprite, 8> oam, secondaryOam; // (7 * 8 Bytes each)
 
 	// Pixel data
-    std::vector<std::uint8_t> pixels; // (256 * 240 * 4 Bytes)
+    std::array<std::uint8_t, 256*240*4> pixels; // (256 * 240 * 4 Bytes)
 
 	// PPU Registers
     Ctrl ctrl;
@@ -183,12 +183,6 @@ class PPU {
 
     PPU()
         : SetNMI(EmptySetNMI)
-		, ciRam(0x800)
-		, cgRam(0x20)
-		, oamMem(0x100)
-		, oam(8)
-		, secondaryOam(8)
-		, pixels(256*240*4)
     {}
 
     void Reset()
@@ -197,9 +191,9 @@ class PPU {
         scanline = dot = 0;
         ctrl.reg = mask.reg = status.reg = 0;
 
-		pixels.clear();
-		ciRam.clear();
-		oamMem.clear();
+		pixels.fill(0);
+		ciRam.fill(0);
+		oamMem.fill(0);
     }
 
     /// Address: $2002

@@ -117,6 +117,7 @@ namespace nemu::graphics {
 			shader.SetUniformMat4f("ortho", mvp);
 			Bind(0);
 
+
 			glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr);
 
 			// Unbind

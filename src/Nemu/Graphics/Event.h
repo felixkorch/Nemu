@@ -26,7 +26,7 @@ namespace nemu::graphics {
 				paths.push_back(std::string(ptr[i]));
 		}
 
-		 EventType GetEventType() { return EventType::DropEvent; }
+		 virtual EventType GetEventType() override { return EventType::DropEvent; }
 		 std::vector<std::string>& GetPaths() { return paths; }
 		 unsigned int Count() { return paths.size(); }
 
@@ -40,7 +40,7 @@ namespace nemu::graphics {
 			, height(height)
 		{}
 
-		EventType GetEventType() { return EventType::WindowResizeEvent; }
+		virtual EventType GetEventType() override { return EventType::WindowResizeEvent; }
 		int GetWidth() { return width; }
 		int GetHeight() { return height; }
 	};
@@ -52,7 +52,7 @@ namespace nemu::graphics {
 			: keycode(code)
 		{}
 
-		EventType GetEventType() { return EventType::KeyPressEvent; }
+		virtual EventType GetEventType() override { return EventType::KeyPressEvent; }
 		int GetKey() { return keycode; }
 	};
 
@@ -63,14 +63,14 @@ namespace nemu::graphics {
 			: keycode(code)
 		{}
 
-		EventType GetEventType() { return EventType::KeyReleaseEvent; }
+		virtual EventType GetEventType() override { return EventType::KeyReleaseEvent; }
 		int GetKey() { return keycode; }
 	};
 
 	class EventWrapper {
 		std::shared_ptr<Event> event;
 	public:
-
+		
 		EventWrapper()
 			: event(nullptr)
 		{}
@@ -79,19 +79,27 @@ namespace nemu::graphics {
 			: event(std::move(e))
 		{}
 
-		EventType GetEventType() { return event->GetEventType(); }
-
-		template <class T>
-		constexpr operator T&() const
+		template <typename T>
+		operator T&()
 		{
 			return *(T*)event.get();
 		}
 
-		template <class T>
-		T& Get()
+		Event* operator->() const
 		{
-			return *(T*)event.get();
+			return event.get();
+		}
+
+		bool operator==(std::nullptr_t)
+		{
+			return event == nullptr;
 		}
 	};
+
+	template <typename EventClass, typename ...Args>
+	inline static EventWrapper WrapEvent(Args... args)
+	{
+		return EventWrapper(std::make_shared<EventClass>(args...));
+	}
 
 }

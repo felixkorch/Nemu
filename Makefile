@@ -1,6 +1,6 @@
 CC = em++
 
-FLAGS = -g4 -Wall -fpermissive -std=c++17 -D NEMU_PLATFORM_WEB
+FLAGS = -O3 -fpermissive -std=c++17 -D NEMU_PLATFORM_WEB
 
 EM_FLAGS = -s FULL_ES3=1 -s USE_GLFW=3 -s DEMANGLE_SUPPORT=1 \
 -s WASM=1 -s USE_WEBGL2=1 -lglfw3 -lGL \

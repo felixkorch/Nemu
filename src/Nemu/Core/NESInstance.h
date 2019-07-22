@@ -47,7 +47,7 @@ class NESInstance {
     virtual void RunFrame() = 0;
     virtual void Power() = 0;
     virtual std::vector<unsigned> DumpCPUMemory() = 0;
-	virtual std::unique_ptr<NESInstance> MakeCopy() = 0;
+	virtual std::unique_ptr<NESInstance> Clone() = 0;
 	virtual std::uint8_t* GetPixels() = 0;
 };
 
@@ -109,7 +109,7 @@ class NESInstanceBase: public NESInstance {
         };
     }
 
-	virtual std::unique_ptr<NESInstance> MakeCopy() override
+	virtual std::unique_ptr<NESInstance> Clone() override
 	{
 		return std::make_unique<NESInstanceBase<CartridgeMapper>>(*this);
 	}
@@ -170,10 +170,12 @@ class NESInstanceBase: public NESInstance {
 };
 
 template <class CartridgeMapper>
-std::unique_ptr<NESInstance> MakeNESInstance(const NESInstance::Descriptor& descriptor)
-{ return std::make_unique<NESInstanceBase<CartridgeMapper>>(descriptor); }
+inline static std::unique_ptr<NESInstance> MakeNESInstance(const NESInstance::Descriptor& descriptor)
+{
+	return std::make_unique<NESInstanceBase<CartridgeMapper>>(descriptor);
+}
 
-static std::unique_ptr<NESInstance> MakeNESInstance(const NESInstance::Descriptor& descriptor)
+inline static std::unique_ptr<NESInstance> MakeNESInstance(const NESInstance::Descriptor& descriptor)
 {
     auto rom = descriptor.rom;
     std::cout << rom << std::endl;
@@ -192,5 +194,52 @@ static std::unique_ptr<NESInstance> MakeNESInstance(const NESInstance::Descripto
     }
     
 }
+
+/*
+class NESInstanceWrapper {
+	std::unique_ptr<NESInstance> instance;
+public:
+	NESInstance* operator->()
+	{
+		return instance.get();
+	}
+
+	bool operator==(std::nullptr_t)
+	{
+		return instance == nullptr;
+	}
+
+	NESInstanceWrapper()
+		: instance(nullptr)
+	{}
+
+	NESInstanceWrapper(std::unique_ptr<NESInstance> nesInstance)
+		: instance(std::move(nesInstance))
+	{}
+
+	NESInstanceWrapper(std::unique_ptr<NESInstance>&& nesInstance)
+		: instance(std::move(nesInstance))
+	{}
+
+	~NESInstanceWrapper() {}
+
+	NESInstanceWrapper(NESInstanceWrapper& other)
+		: instance(other->Clone())
+	{}
+
+	NESInstanceWrapper& operator=(NESInstanceWrapper& other)
+	{
+		instance = other->Clone();
+		return *this;
+	}
+
+	NESInstanceWrapper& operator=(std::unique_ptr<NESInstance>&& other)
+	{
+		instance = std::move(other);
+		return *this;
+	}
+
+
+};*/
 
 } // namespace nemu

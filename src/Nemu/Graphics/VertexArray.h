@@ -1,21 +1,24 @@
 #pragma once
-#include "Nemu/Graphics/GLPrimitive.h"
 #include "Nemu/Graphics/OpenGL.h"
 #include "Nemu/Graphics/VertexBuffer.h"
 
-class VertexArray : public GLPrimitive {
-	std::vector<VertexBuffer> buffers;
+class VertexArray {
+	unsigned int id;
 public:
 	VertexArray()
-		: GLPrimitive()
 	{
-		glGenVertexArrays(1, &handle);
+		glGenVertexArrays(1, &id);
 	}
 
 	~VertexArray()
 	{
-		glDeleteVertexArrays(1, &handle);
+		glDeleteVertexArrays(1, &id);
 	}
+
+	VertexArray& operator=(VertexArray& other) = delete;
+	VertexArray& operator=(VertexArray&& other) = delete;
+	VertexArray(VertexArray& other) = delete;
+	VertexArray(VertexArray&& other) = delete;
 
 	void AddBuffer(VertexBuffer& vb, const VertexBufferLayout& layout)
 	{
@@ -30,13 +33,12 @@ public:
 			offset += element.count * VertexBufferElement::GetSizeOfType(element.type);
 		}
 
-		buffers.push_back(std::move(vb));
 		Unbind();
 	}
 
 	void Bind() const
 	{
-		glBindVertexArray(handle);
+		glBindVertexArray(id);
 	}
 
 	void Unbind() const

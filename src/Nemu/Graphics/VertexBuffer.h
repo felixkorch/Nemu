@@ -1,42 +1,44 @@
 #pragma once
-#include "Nemu/Graphics/GLPrimitive.h"
 #include "Nemu/Graphics/VertexBufferLayout.h"
 #include "Nemu/Graphics/OpenGL.h"
 
-class VertexBuffer : public GLPrimitive {
+class VertexBuffer {
 	std::size_t bufferSize;
+	unsigned int id;
 public:
 
 	VertexBuffer()
-		: GLPrimitive()
-		, bufferSize(0)
+		: bufferSize(0)
 	{
-		glGenBuffers(1, &handle);
+		glGenBuffers(1, &id);
 	}
-
-	VertexBuffer(VertexBuffer&& other) = default;
 
 	~VertexBuffer()
 	{
-		glDeleteBuffers(1, &handle);
+		glDeleteBuffers(1, &id);
 	}
+
+	VertexBuffer(VertexBuffer& other) = delete;
+	VertexBuffer(VertexBuffer&& other) = delete;
+	VertexBuffer& operator=(VertexBuffer& other) = delete;
+	VertexBuffer& operator=(VertexBuffer&& other) = delete;
 
 	void Bind()
 	{
-		glBindBuffer(GL_ARRAY_BUFFER, handle);
+		glBindBuffer(GL_ARRAY_BUFFER, id);
 	}
 
 	void InitStaticBufferUsage(const void* data, std::size_t size)
 	{
 		bufferSize = size;
-		glBindBuffer(GL_ARRAY_BUFFER, handle);
+		glBindBuffer(GL_ARRAY_BUFFER, id);
 		glBufferData(GL_ARRAY_BUFFER, size, data, GL_STATIC_DRAW);
 	}
 
 	void InitDynamicBufferUsage(std::size_t size)
 	{
 		bufferSize = size;
-		glBindBuffer(GL_ARRAY_BUFFER, handle);
+		glBindBuffer(GL_ARRAY_BUFFER, id);
 		glBufferData(GL_ARRAY_BUFFER, size, nullptr, GL_DYNAMIC_DRAW);
 	}
 

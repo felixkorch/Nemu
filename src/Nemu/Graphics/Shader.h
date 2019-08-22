@@ -1,6 +1,5 @@
 #pragma once
 #include "Nemu/Graphics/OpenGL.h"
-#include "Nemu/Graphics/GLPrimitive.h"
 #include "glm/glm.hpp"
 #include <string>
 #include <iostream>
@@ -8,8 +7,20 @@
 #include <sstream>
 
 namespace nemu::graphics {
+	
+	namespace ShaderPrograms {
+#ifdef NEMU_PLATFORM_WEB
+		
+#else
+		const char* renderer2d = {
+			#include "Nemu/Graphics/Shaders/Renderer2D.shader"
+		};
+#endif
+	}
 
-	class Shader : public GLPrimitive {
+	class Shader {
+
+		unsigned int id;
 
 		struct ShaderProgramSource {
 			std::string VertexSource;
@@ -37,7 +48,7 @@ namespace nemu::graphics {
 			glDeleteShader(vs);
 			glDeleteShader(fs);
 
-			handle = program;
+			id = program;
 		}
 
 		unsigned int CompileShader(unsigned int type, const std::string& source)
@@ -98,7 +109,7 @@ namespace nemu::graphics {
 
 		int GetUniformLocation(const std::string& name)
 		{
-			int location = glGetUniformLocation(handle, name.c_str());
+			int location = glGetUniformLocation(id, name.c_str());
 			if (location == -1)
 				std::cout << "Uniform doesn't exist." << std::endl;
 			return location;
@@ -107,38 +118,53 @@ namespace nemu::graphics {
 	public:
 
 		Shader() = default;
-		Shader(Shader&& other) = default;
+		Shader(Shader& other) = delete;
+		Shader(Shader&& other) = delete;
+		Shader& operator=(Shader& other) = delete;
+		Shader& operator=(Shader&& other) = delete;
 
-		static Shader CreateFromFile(const std::string& path)
+		std::shared_ptr<Shader> CreateFromFile(const std::string& path)
 		{
-			Shader shader;
+			auto shader = std::make_shared<Shader>();
+			shader->LoadFromFile(path);
+			return shader;
+		}
+
+		std::shared_ptr<Shader> CreateFromString(const char* program)
+		{
+			auto shader = std::make_shared<Shader>();
+			shader->LoadFromString(program);
+			return shader;
+		}
+
+		void LoadFromString(const char* program)
+		{
+			std::stringstream str(program);
+			auto source = ParseShader(str);
+			CreateShader(source.VertexSource, source.FragmentSource);
+		}
+
+		void LoadFromFile(const std::string& path)
+		{
 			std::ifstream stream(path);
 			if (!stream.good())
 				std::cout << "Shader not found, path given: " << path << std::endl;
 			std::stringstream str;
 			str << stream.rdbuf();
-			ShaderProgramSource source = shader.ParseShader(str);
-			shader.CreateShader(source.VertexSource, source.FragmentSource);
-			return shader;
+			auto source = ParseShader(str);
+			CreateShader(source.VertexSource, source.FragmentSource);
 		}
 
-		static Shader CreateFromString(const char* program)
-		{
-			Shader shader;
-			std::stringstream str(program);
-			ShaderProgramSource source = shader.ParseShader(str);
-			shader.CreateShader(source.VertexSource, source.FragmentSource);
-			return shader;
-		}
+		bool IsValid() { return id; }
 
 		~Shader()
 		{
-			glDeleteProgram(handle);
+			glDeleteProgram(id);
 		}
 
 		void Bind() const
 		{
-			glUseProgram(handle);
+			glUseProgram(id);
 		}
 
 		void Unbind() const

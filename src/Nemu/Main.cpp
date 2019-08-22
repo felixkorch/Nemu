@@ -3,7 +3,9 @@
 #include "Nemu/Graphics/Event.h"
 #include "Nemu/Graphics/Shader.h"
 #include "Nemu/Graphics/VertexBuffer.h"
-#include "Nemu/Graphics/Texture.h"
+#include "Nemu/Graphics/Texture2D.h"
+#include "Nemu/Graphics/Sprite.h"
+#include "Nemu/Graphics/Renderer.h"
 #include "Nemu/Core/NESInstance.h"
 #include "Nemu/Core/ROMLayout.h"
 #include "Nemu/Core/Utilities.h"
@@ -14,16 +16,6 @@
 
 using namespace nemu;
 using namespace graphics;
-
-#ifdef NEMU_PLATFORM_WEB
-const char* minimalShader = {
-	#include "Nemu/Graphics/Shaders/texture.gles3.shader"
-};
-#else
-const char* minimalShader = {
-	#include "Nemu/Graphics/Shaders/texture.shader"
-};
-#endif
 
 // Hack for emscripten
 static void CallMain(void* fp)
@@ -40,12 +32,13 @@ int main()
 
 	Input::SetSourceWindow(window);
 
-	// Graphic elements
-	Texture2D texture(256, 240);
-	texture.Resize(512, 480);
-	Shader textureShader = Shader::CreateFromString(minimalShader);
+	// Graphic setup
+	Renderer renderer(512, 480);
+	auto texture = std::make_shared<Texture2D>(256, 240);
+	auto frame = std::make_shared<Sprite>(256, 240, 256, 240, texture);
+	frame->FlipVertical();
 
-	// Game objects
+	// Game setup
 	std::unique_ptr<NESInstance> nesInstance, state;
 	bool running = false;
 	auto delay = std::chrono::steady_clock::now();
@@ -109,11 +102,15 @@ int main()
 		// Update states
 		if (running) {
 			nesInstance->RunFrame();
-			texture.SetData(nesInstance->GetPixels());
+			texture->SetData(nesInstance->GetPixels());
 		}
 
 		// Draw
-		window->Draw(texture, textureShader);
+		renderer.Begin();
+		renderer.Submit(frame);
+		renderer.End();
+		renderer.Present();
+
 		window->Update();
 
 		// Delay to force 60fps

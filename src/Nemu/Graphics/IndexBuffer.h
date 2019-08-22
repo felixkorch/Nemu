@@ -1,38 +1,41 @@
 #pragma once
-#include "Nemu/Graphics/GLPrimitive.h"
 #include "Nemu/Graphics/OpenGL.h"
 
-class IndexBuffer : public GLPrimitive {
+class IndexBuffer {
 	unsigned int count;
+	unsigned int id;
 public:
 	IndexBuffer(const unsigned int* data, unsigned int count)
-		: GLPrimitive()
-		, count(count)
+		: count(count)
 	{
 		Load(data, count);
 	}
 
 	IndexBuffer()
-		: GLPrimitive()
-		, count(0)
+		: count(0)
 	{}
 
 	~IndexBuffer()
 	{
-		glDeleteBuffers(1, &handle);
+		glDeleteBuffers(1, &id);
 	}
+
+	IndexBuffer& operator=(IndexBuffer& other) = delete;
+	IndexBuffer& operator=(IndexBuffer&& other) = delete;
+	IndexBuffer(IndexBuffer& other) = delete;
+	IndexBuffer(IndexBuffer&& other) = delete;
 
 	void Load(const unsigned int* data, unsigned int count)
 	{
 		this->count = count;
-		glGenBuffers(1, &handle);
-		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, handle);
+		glGenBuffers(1, &id);
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, id);
 		glBufferData(GL_ELEMENT_ARRAY_BUFFER, count * sizeof(unsigned int), data, GL_STATIC_DRAW);
 	}
 
 	void Bind() const
 	{
-		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, handle);
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, id);
 	}
 
 	void Unbind() const

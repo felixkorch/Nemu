@@ -33,9 +33,18 @@ set(Nemu_SOURCE
 	src/Nemu/Graphics/Shader.h
 	src/Nemu/Graphics/Texture.h
 	src/Nemu/Graphics/Window.h
+	src/Nemu/Graphics/Renderable2D.h
+	src/Nemu/Graphics/Texture2D.h
+	src/Nemu/Graphics/Maths/Rectangle.cpp
+	src/Nemu/Graphics/Maths/Rectangle.h
+	src/Nemu/Graphics/Maths/AABB.cpp
+	src/Nemu/Graphics/Maths/AABB.h
 )
 
 add_executable(${PROJECT_NAME} ${Nemu_SOURCE})
+
+target_compile_features(Nemu PUBLIC cxx_std_17)
+
 target_include_directories(${PROJECT_NAME}
 	PUBLIC
 	$<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/src>

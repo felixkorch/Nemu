@@ -1,3 +1,0 @@
-[submodule "deps/Sgl"]
-	path = deps/Sgl
-	url = https://github.com/felixkorch/Sgl.git

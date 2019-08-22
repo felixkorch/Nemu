@@ -192,12 +192,6 @@ namespace nemu::graphics {
 			return GetMousePosition().second;
 		}
 
-		template <class T>
-		void Draw(T& type, Shader& shader)
-		{
-			type.Draw(width, height, shader);
-		}
-
 	};
 
 	std::shared_ptr<Window> MakeWindow(int width, int height, const std::string& title)

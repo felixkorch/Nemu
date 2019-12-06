@@ -4,6 +4,7 @@
 *.lua
 bin-int/
 bin/
+out/
 build*
 *.user
 *.json

@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "Nemu/Core/Utilities.h"
+#include "Nemu/Utilities.h"
 #include "Nemu/Core/PPU.h"
 #include <cstdint>
 #include <vector>
@@ -25,6 +25,13 @@ class ROMLayout {
     ROMLayout(const std::string& path)
         : data(util::ReadFile<decltype(data)>(path))
     {}
+
+    /// Initialize by copying from a source
+    ROMLayout(std::uint8_t* source, std::size_t length)
+        : data(length)
+    {
+        std::copy(source, source + length, data.begin());
+    }
 
     unsigned MapperCode() const
     { return (data[7] & 0xF0) | (data[6] >> 4); }

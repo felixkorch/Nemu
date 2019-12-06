@@ -7,11 +7,18 @@ if(!MSVC)
     set(THREADS_PREFER_PTHREAD_FLAG ON)
 endif()
 
-add_subdirectory("ext/GLFW")
-add_subdirectory("ext/Glad")
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake")
+
+find_package(SDL2 REQUIRED)
+find_package(SDL2_ttf REQUIRED)
+include_directories(${SDL2_INCLUDE_DIRS})
+include_directories(${SDL2_TTF_INCLUDE_DIRS})
 
 set(Nemu_SOURCE
     src/Nemu/Main.cpp
+    src/Nemu/Utilities.h
+    src/Nemu/GUI.h
+    src/Nemu/Input.h
     src/Nemu/Mapper/CPUMapper.h
     src/Nemu/Mapper/PPUMapper.h
     src/Nemu/Mapper/NROM128Mapper.h
@@ -26,19 +33,6 @@ set(Nemu_SOURCE
     src/Nemu/Core/PPU.h
     src/Nemu/Core/ROMLayout.h
     src/Nemu/Core/StatusRegister.h
-    src/Nemu/Core/Utilities.h
-	src/Nemu/Graphics/Event.h
-	src/Nemu/Graphics/Input.h
-	src/Nemu/Graphics/OpenGL.h
-	src/Nemu/Graphics/Shader.h
-	src/Nemu/Graphics/Texture.h
-	src/Nemu/Graphics/Window.h
-	src/Nemu/Graphics/Renderable2D.h
-	src/Nemu/Graphics/Texture2D.h
-	src/Nemu/Graphics/Maths/Rectangle.cpp
-	src/Nemu/Graphics/Maths/Rectangle.h
-	src/Nemu/Graphics/Maths/AABB.cpp
-	src/Nemu/Graphics/Maths/AABB.h
 )
 
 add_executable(${PROJECT_NAME} ${Nemu_SOURCE})
@@ -48,10 +42,8 @@ target_compile_features(Nemu PUBLIC cxx_std_17)
 target_include_directories(${PROJECT_NAME}
 	PUBLIC
 	$<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/src>
-	$<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/ext/glm>
-	${GLFW_INCLUDE_DIRS}
 )
-target_link_libraries(${PROJECT_NAME} PUBLIC glfw ${GLFW_LIBRARIES} Glad)
+target_link_libraries(${PROJECT_NAME} PUBLIC ${SDL2_LIBRARIES} ${SDL2_TTF_LIBRARIES})
 
 set_target_properties(${PROJECT_NAME} PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY_DEBUG ${CMAKE_CURRENT_LIST_DIR}/bin/Debug/${PROJECT_NAME}
